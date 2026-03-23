@@ -3,6 +3,8 @@ import { MEAL_OPTIONS } from "@/types";
 interface UpdateEmailProps {
   reservationId: number;
   eventName: string;
+  eventDate: string;
+  timeInfo: string;
   changes: string[];
   guests: {
     firstName: string;
@@ -13,7 +15,14 @@ interface UpdateEmailProps {
 }
 
 export function renderUpdateEmail(props: UpdateEmailProps): string {
-  const { reservationId, eventName, changes, guests } = props;
+  const { reservationId, eventName, eventDate, timeInfo, changes, guests } = props;
+
+  const formattedDate = new Date(eventDate).toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
   const changesList = changes
     .map((c) => `<li style="padding: 4px 0; color: #1e293b;">${c}</li>`)
@@ -52,6 +61,7 @@ export function renderUpdateEmail(props: UpdateEmailProps): string {
           <div style="padding: 32px;">
             <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
               <p style="margin: 0; color: #1d4ed8; font-weight: 600;">Réservation #${reservationId} — ${eventName}</p>
+              <p style="margin: 4px 0 0; color: #3b82f6; font-size: 13px;">${formattedDate} à ${timeInfo}</p>
               <p style="margin: 8px 0 0; color: #1e40af; font-size: 14px;">Des modifications ont été apportées à votre réservation :</p>
             </div>
 

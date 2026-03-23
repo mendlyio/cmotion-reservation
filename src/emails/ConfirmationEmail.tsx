@@ -73,7 +73,7 @@ export function renderConfirmationEmail(props: ConfirmationEmailProps): string {
             <table style="width: 100%; margin-bottom: 24px;">
               <tr><td style="padding: 4px 0; color: #64748b;">Spectacle</td><td style="padding: 4px 0; font-weight: 600;">${eventName}</td></tr>
               <tr><td style="padding: 4px 0; color: #64748b;">Date</td><td style="padding: 4px 0; font-weight: 600;">${formattedDate}</td></tr>
-              <tr><td style="padding: 4px 0; color: #64748b;">Horaires</td><td style="padding: 4px 0; font-weight: 600;">${timeInfo}</td></tr>
+              <tr><td style="padding: 4px 0; color: #64748b;">Heure</td><td style="padding: 4px 0; font-weight: 600;">${timeInfo}</td></tr>
               <tr><td style="padding: 4px 0; color: #64748b;">Élève référent</td><td style="padding: 4px 0; font-weight: 600;">${referentStudent}</td></tr>
             </table>
 

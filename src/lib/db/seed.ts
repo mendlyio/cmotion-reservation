@@ -19,28 +19,28 @@ const SEATING_PLAN = [
 
 const EVENTS = [
   {
-    name: "Spectacle +12 ans — 11h",
+    name: "Spectacle +12 ans",
     eventDate: "2026-05-17",
     timeInfo: "11h",
     ageGroup: "+12",
     description: "Spectacle de danse pour les élèves de +12 ans",
   },
   {
-    name: "Spectacle +12 ans — 17h30",
+    name: "Spectacle +12 ans",
     eventDate: "2026-05-17",
     timeInfo: "17h30",
     ageGroup: "+12",
     description: "Spectacle de danse pour les élèves de +12 ans",
   },
   {
-    name: "Spectacle -12 ans — 11h",
+    name: "Spectacle -12 ans",
     eventDate: "2026-06-07",
     timeInfo: "11h",
     ageGroup: "-12",
     description: "Spectacle de danse pour les élèves de -12 ans",
   },
   {
-    name: "Spectacle -12 ans — 17h",
+    name: "Spectacle -12 ans",
     eventDate: "2026-06-07",
     timeInfo: "17h",
     ageGroup: "-12",

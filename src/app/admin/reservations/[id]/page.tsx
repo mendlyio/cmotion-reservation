@@ -106,7 +106,7 @@ export default async function AdminReservationPage({ params }: Props) {
             Réservation #{reservation.id}
           </h1>
           <p className="text-slate-500 text-sm">
-            {event.name} — {date}
+            {event.name} — {date} à {event.timeInfo}
           </p>
         </div>
         <StatusBadge status={reservation.stripeStatus || "pending"} />

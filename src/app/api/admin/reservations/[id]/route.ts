@@ -111,6 +111,8 @@ export async function PUT(
       const html = renderUpdateEmail({
         reservationId: reservation.id,
         eventName: event.name,
+        eventDate: event.eventDate,
+        timeInfo: event.timeInfo,
         changes,
         guests: updatedGuests.map((g) => ({
           firstName: g.firstName,
