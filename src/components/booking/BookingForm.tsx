@@ -48,6 +48,7 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
   const total = calculateTotal(data);
 
   const pay = async (sim: boolean) => {
+    if (loading) return;
     setLoading(true); setError(null);
     try {
       const rr = await fetch("/api/reservation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
@@ -74,7 +75,7 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
   return (
     <div>
       {/* Header bar */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-5 py-4 flex items-center justify-between">
+        <div className="bg-linear-to-r from-slate-900 to-slate-800 px-5 py-4 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-white font-bold text-sm">Table {table.rowNumber}-{table.tableNumber}</span>
@@ -126,6 +127,9 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
                   Vous pouvez encore ajouter des sièges en cliquant sur le plan ci-dessus
                 </p>
               )}
+              <p className="text-[11px] text-slate-400 bg-slate-50 px-3 py-2 rounded-xl">
+                Veuillez choisir un plat pour chaque convive ci-dessous.
+              </p>
               <AnimatePresence initial={false}>
                 {guests.map((g, i) => {
                   const seat = table.seats.find((s) => s.id === g.seatId);
@@ -194,7 +198,7 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
 
           {step === 2 && (
             <motion.div key="s2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.12 }} className="space-y-4">
-              <OrderSummary data={data} />
+              <OrderSummary data={data} table={table} />
               {error && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">{error}</div>}
             </motion.div>
           )}
@@ -214,13 +218,15 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
         ) : (
           <div className="flex gap-2">
             <button onClick={() => pay(false)} disabled={!cOk || loading}
-              className="flex-1 h-12 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-bold rounded-xl disabled:opacity-20 active:scale-[0.98] transition-all shadow-lg shadow-purple-500/20">
+              className="flex-1 h-12 bg-linear-to-r from-purple-600 to-blue-600 text-white text-sm font-bold rounded-xl disabled:opacity-20 active:scale-[0.98] transition-all shadow-lg shadow-purple-500/20">
               {loading ? "Traitement…" : `Payer ${(total / 100).toFixed(2)}€`}
             </button>
-            <button onClick={() => pay(true)} disabled={!cOk || loading}
-              className="h-12 px-4 bg-slate-100 text-slate-500 text-[11px] font-bold rounded-xl disabled:opacity-20 active:scale-[0.98] transition-all">
-              Test
-            </button>
+            {process.env.NODE_ENV !== "production" && (
+              <button onClick={() => pay(true)} disabled={!cOk || loading}
+                className="h-12 px-4 bg-slate-100 text-slate-500 text-[11px] font-bold rounded-xl disabled:opacity-20 active:scale-[0.98] transition-all">
+                Test
+              </button>
+            )}
           </div>
         )}
       </div>

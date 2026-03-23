@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import { tables, seats, reservations, reservationSeats } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { verifyAdmin } from "@/lib/admin";
-import { MEAL_OPTIONS } from "@/types";
 
 export async function GET(
   _request: NextRequest,
@@ -44,7 +43,7 @@ export async function GET(
   const revenue = paid.reduce((sum, r) => sum + r.totalAmount, 0);
 
   const paidIds = paid.map((r) => r.id);
-  let mealCounts: Record<string, number> = {};
+  const mealCounts: Record<string, number> = {};
   let dessertCount = 0;
 
   if (paidIds.length > 0) {

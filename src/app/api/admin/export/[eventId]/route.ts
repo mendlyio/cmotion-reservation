@@ -56,8 +56,8 @@ export async function GET(
     .where(inArray(reservationSeats.reservationId, resIds));
 
   const seatIds = allGuests.map((g) => g.seatId);
-  let seatMap: Record<number, { seatNumber: number; tableId: number }> = {};
-  let tableMap: Record<
+  const seatMap: Record<number, { seatNumber: number; tableId: number }> = {};
+  const tableMap: Record<
     number,
     { rowNumber: number; tableNumber: number; isVip: boolean }
   > = {};

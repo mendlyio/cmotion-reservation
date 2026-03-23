@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { MEAL_OPTIONS, MealChoice } from "@/types";
+import { MEAL_OPTIONS } from "@/types";
 
 interface GuestData {
   id: number;
@@ -29,16 +29,12 @@ interface GuestData {
 
 interface ReservationEditorProps {
   reservationId: number;
-  email: string;
-  eventName: string;
   adminNotes: string;
   guests: GuestData[];
 }
 
 export function ReservationEditor({
   reservationId,
-  email,
-  eventName,
   adminNotes: initialNotes,
   guests: initialGuests,
 }: ReservationEditorProps) {

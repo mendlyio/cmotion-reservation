@@ -4,9 +4,8 @@ import {
   tables,
   seats,
   reservationSeats,
-  reservations,
 } from "@/lib/db/schema";
-import { eq, inArray, and } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { verifyAdmin } from "@/lib/admin";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
@@ -56,7 +55,7 @@ export default async function AdminEventPage({ params }: Props) {
     .filter((s) => s.status === "reserved")
     .map((s) => s.id);
 
-  let guestBySeat: Record<
+  const guestBySeat: Record<
     number,
     { firstName: string; lastName: string; mealChoice: string; reservationId: number }
   > = {};

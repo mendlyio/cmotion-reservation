@@ -55,9 +55,13 @@ export default async function HomePage() {
                 const month = d.toLocaleDateString("fr-FR", { month: "long" });
                 const year = d.getFullYear();
                 const isPlus12 = dateEvents[0]?.ageGroup === "+12";
-                const color = isPlus12
-                  ? { bg: "bg-[#eef4ff]", accent: "#3b82f6", badge: "bg-blue-500 text-white", ring: "ring-blue-200/50" }
-                  : { bg: "bg-[#fff0f3]", accent: "#f43f5e", badge: "bg-rose-500 text-white", ring: "ring-rose-200/50" };
+                // Charte bleue unique pour toutes les journées
+                const color = {
+                  bg: "bg-[#eef4ff]",
+                  accent: "#3b82f6",
+                  badge: "bg-blue-500 text-white",
+                  ring: "ring-blue-200/50",
+                };
 
                 return (
                   <div key={dateStr} className={`rounded-2xl ${color.bg} ring-1 ${color.ring} overflow-hidden`}>

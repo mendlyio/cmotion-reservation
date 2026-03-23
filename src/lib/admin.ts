@@ -1,24 +1,28 @@
 import { cookies } from "next/headers";
+import { createHmac, timingSafeEqual } from "crypto";
 
 const ADMIN_COOKIE = "cmotion_admin";
+const AUTH_SALT = "cmotion-admin-v2";
+
+function generateToken(): string {
+  const password = process.env.ADMIN_PASSWORD || "";
+  return createHmac("sha256", password).update(AUTH_SALT).digest("hex");
+}
 
 export async function verifyAdmin(): Promise<boolean> {
   const cookieStore = await cookies();
   const token = cookieStore.get(ADMIN_COOKIE)?.value;
   if (!token) return false;
 
-  const expected = Buffer.from(process.env.ADMIN_PASSWORD || "").toString(
-    "base64"
-  );
-  return token === expected;
+  const expected = generateToken();
+  if (token.length !== expected.length) return false;
+
+  return timingSafeEqual(Buffer.from(token), Buffer.from(expected));
 }
 
 export async function setAdminCookie() {
   const cookieStore = await cookies();
-  const token = Buffer.from(process.env.ADMIN_PASSWORD || "").toString(
-    "base64"
-  );
-  cookieStore.set(ADMIN_COOKIE, token, {
+  cookieStore.set(ADMIN_COOKIE, generateToken(), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

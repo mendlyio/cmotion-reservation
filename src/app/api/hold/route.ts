@@ -37,6 +37,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Table introuvable" }, { status: 404 });
   }
 
+  if (table.eventId !== eventId) {
+    return NextResponse.json(
+      { error: "Table n'appartient pas à cet événement" },
+      { status: 400 }
+    );
+  }
+
   let targetSeatIds: number[];
 
   if (table.isVip) {
@@ -69,8 +76,51 @@ export async function POST(request: NextRequest) {
     targetSeatIds = seatIds;
   }
 
+  // Pre-check: reject if any target seats already have active holds
+  const existingHolds = await db
+    .select()
+    .from(holds)
+    .where(inArray(holds.seatId, targetSeatIds));
+
+  if (existingHolds.length > 0) {
+    // Verify these holds have matching seat states — clean up orphans
+    const holdSeatIds = existingHolds.map((h) => h.seatId!).filter(Boolean);
+    const seatStates = await db
+      .select()
+      .from(seats)
+      .where(inArray(seats.id, holdSeatIds));
+    const actuallyHeld = new Set(
+      seatStates.filter((s) => s.status === "held").map((s) => s.id)
+    );
+
+    const orphanIds = existingHolds
+      .filter((h) => h.seatId && !actuallyHeld.has(h.seatId))
+      .map((h) => h.id);
+    if (orphanIds.length > 0) {
+      await db.delete(holds).where(inArray(holds.id, orphanIds));
+    }
+
+    const realConflicts = existingHolds.filter(
+      (h) => h.seatId && actuallyHeld.has(h.seatId)
+    );
+    if (realConflicts.length > 0) {
+      const unavailable = seatStates.filter((s) => s.status !== "available");
+      return NextResponse.json(
+        {
+          error: table.isVip
+            ? "Cette table VIP est en cours de réservation par un autre utilisateur"
+            : "Certains sièges ne sont plus disponibles",
+          details: unavailable.map(
+            (s) =>
+              `Siège ${s.seatNumber}: ${s.status === "held" ? "en cours de réservation" : "réservé"}`
+          ),
+        },
+        { status: 409 }
+      );
+    }
+  }
+
   // Atomic hold: UPDATE only seats that are still 'available'
-  // The WHERE clause ensures only truly available seats get updated
   await db
     .update(seats)
     .set({ status: "held" })
@@ -78,16 +128,14 @@ export async function POST(request: NextRequest) {
       and(inArray(seats.id, targetSeatIds), eq(seats.status, "available"))
     );
 
-  // Verify all target seats are now held
+  // Verify all target seats are now held (handles race with 'reserved' seats)
   const nowHeld = await db
     .select()
     .from(seats)
     .where(and(inArray(seats.id, targetSeatIds), eq(seats.status, "held")));
 
   if (nowHeld.length !== targetSeatIds.length) {
-    // Partial hold - rollback everything by only releasing seats we just held
-    // (only those that weren't already held by someone else)
-    // We check: any seats we held that don't already have a hold record belong to us
+    // Rollback — release only the seats we just flipped (no prior hold record)
     const existingHolds = await db
       .select()
       .from(holds)
@@ -107,7 +155,6 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    // Report which seats are unavailable
     const allTargetSeats = await db
       .select()
       .from(seats)

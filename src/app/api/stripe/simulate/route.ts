@@ -4,6 +4,13 @@ import { reservations, reservationSeats, seats, holds } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json(
+      { error: "Simulation non disponible en production" },
+      { status: 403 }
+    );
+  }
+
   const { reservationId } = await request.json();
 
   if (!reservationId) {

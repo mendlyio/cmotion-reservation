@@ -18,7 +18,7 @@ const inputClass = (value: string) =>
       : "border-slate-200"
   }`;
 
-export function GuestForm({ index, seatId, seatLabel, data, isVip, onChange }: Props) {
+export function GuestForm({ index, seatLabel, data, isVip, onChange }: Props) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-slate-50/80 border-b border-slate-100">

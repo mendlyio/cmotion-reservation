@@ -46,6 +46,7 @@ export async function PUT(
         .where(eq(reservationSeats.id, guest.id));
 
       if (!existing) continue;
+      if (existing.reservationId !== reservationId) continue;
 
       const updates: Record<string, unknown> = {};
 

@@ -11,7 +11,7 @@ import { eq, inArray } from "drizzle-orm";
 import { verifyAdmin } from "@/lib/admin";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { MEAL_OPTIONS, UPSELL_OPTIONS } from "@/types";
+import { UPSELL_OPTIONS } from "@/types";
 import { ReservationEditor } from "./ReservationEditor";
 
 export const dynamic = "force-dynamic";
@@ -172,8 +172,6 @@ export default async function AdminReservationPage({ params }: Props) {
       {/* Editable guest list */}
       <ReservationEditor
         reservationId={reservation.id}
-        email={reservation.email}
-        eventName={event.name}
         adminNotes={reservation.adminNotes || ""}
         guests={resSeats.map((rs) => {
           const seat = seatDetails.find((s) => s.id === rs.seatId);

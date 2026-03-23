@@ -1,4 +1,4 @@
-import { MEAL_OPTIONS } from "@/types";
+import { MEAL_OPTIONS, UPSELL_OPTIONS } from "@/types";
 
 interface ConfirmationEmailProps {
   reservationId: number;
@@ -7,12 +7,15 @@ interface ConfirmationEmailProps {
   timeInfo: string;
   referentStudent: string;
   totalAmount: number;
+  tableInfo?: string;
+  isVip?: boolean;
   guests: {
     firstName: string;
     lastName: string;
     mealChoice: string;
     hasDessert: boolean;
   }[];
+  upsells?: { type: string; quantity: number; unitPrice: number }[];
 }
 
 export function renderConfirmationEmail(props: ConfirmationEmailProps): string {
@@ -23,7 +26,10 @@ export function renderConfirmationEmail(props: ConfirmationEmailProps): string {
     timeInfo,
     referentStudent,
     totalAmount,
+    tableInfo,
+    isVip,
     guests,
+    upsells = [],
   } = props;
 
   const formattedDate = new Date(eventDate).toLocaleDateString("fr-FR", {
@@ -75,6 +81,7 @@ export function renderConfirmationEmail(props: ConfirmationEmailProps): string {
               <tr><td style="padding: 4px 0; color: #64748b;">Date</td><td style="padding: 4px 0; font-weight: 600;">${formattedDate}</td></tr>
               <tr><td style="padding: 4px 0; color: #64748b;">Heure</td><td style="padding: 4px 0; font-weight: 600;">${timeInfo}</td></tr>
               <tr><td style="padding: 4px 0; color: #64748b;">Élève référent</td><td style="padding: 4px 0; font-weight: 600;">${referentStudent}</td></tr>
+              ${tableInfo ? `<tr><td style="padding: 4px 0; color: #64748b;">Table</td><td style="padding: 4px 0; font-weight: 600;">${tableInfo}${isVip ? " ★ VIP" : ""}</td></tr>` : ""}
             </table>
 
             <h2 style="color: #1e293b; font-size: 18px; margin: 0 0 12px;">Convives</h2>
@@ -90,6 +97,18 @@ export function renderConfirmationEmail(props: ConfirmationEmailProps): string {
                 ${guestRows}
               </tbody>
             </table>
+
+            ${upsells.length > 0 ? `
+            <h2 style="color: #1e293b; font-size: 18px; margin: 0 0 12px;">Extras</h2>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+              ${upsells.map((u) => {
+                const opt = UPSELL_OPTIONS.find((o) => o.type === u.type);
+                return `<tr>
+                  <td style="padding: 6px 0; color: #475569;">${opt?.label || u.type} ×${u.quantity}</td>
+                  <td style="padding: 6px 0; font-weight: 600; text-align: right;">${((u.unitPrice * u.quantity) / 100).toFixed(2)} €</td>
+                </tr>`;
+              }).join("")}
+            </table>` : ""}
 
             <div style="background: #f1f5f9; border-radius: 8px; padding: 16px; text-align: center;">
               <p style="margin: 0; color: #64748b; font-size: 14px;">Total payé</p>

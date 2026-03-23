@@ -9,7 +9,10 @@ import {
 } from "@/lib/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { getOrCreateSession } from "@/lib/session";
-import { calculateTotal, BookingFormData } from "@/types";
+import { calculateTotal, BookingFormData, UPSELL_OPTIONS } from "@/types";
+
+// Grace period after reservation creation to cover Stripe checkout duration
+const CHECKOUT_GRACE_MS = 45 * 60 * 1000; // 45 minutes
 
 export async function POST(request: NextRequest) {
   const sessionId = await getOrCreateSession();
@@ -69,6 +72,13 @@ export async function POST(request: NextRequest) {
 
   const totalAmount = calculateTotal(body);
 
+  // Extend hold expiry to cover Stripe checkout window (prevents seat sniping)
+  const checkoutExpiry = new Date(Date.now() + CHECKOUT_GRACE_MS);
+  await db
+    .update(holds)
+    .set({ expiresAt: checkoutExpiry })
+    .where(eq(holds.sessionId, sessionId));
+
   // Create reservation
   const [reservation] = await db
     .insert(reservations)
@@ -82,7 +92,7 @@ export async function POST(request: NextRequest) {
     })
     .returning();
 
-  // Create reservation seats
+  // Create reservation seats (VIP tables always include dessert)
   for (const guest of guests) {
     await db.insert(reservationSeats).values({
       reservationId: reservation.id,
@@ -90,7 +100,7 @@ export async function POST(request: NextRequest) {
       firstName: guest.firstName,
       lastName: guest.lastName,
       mealChoice: guest.mealChoice,
-      hasDessert: guest.hasDessert,
+      hasDessert: isVip ? true : guest.hasDessert,
     });
   }
 
@@ -98,9 +108,7 @@ export async function POST(request: NextRequest) {
   if (upsells && upsells.length > 0) {
     for (const upsell of upsells) {
       if (upsell.quantity > 0) {
-        const option = (await import("@/types")).UPSELL_OPTIONS.find(
-          (o) => o.type === upsell.type
-        );
+        const option = UPSELL_OPTIONS.find((o) => o.type === upsell.type);
         if (option) {
           await db.insert(reservationUpsells).values({
             reservationId: reservation.id,

@@ -86,6 +86,7 @@ export function ReservationClient({ event }: { event: EventData }) {
   const accentColor = isPlus12 ? "#3b82f6" : "#f43f5e";
 
   if (loading) return (
+
     <div className="flex items-center justify-center min-h-screen bg-[#0d0d1a]">
       <div className="w-6 h-6 border-2 border-white/10 border-t-purple-400 rounded-full animate-spin" />
     </div>
@@ -101,7 +102,7 @@ export function ReservationClient({ event }: { event: EventData }) {
           <div className="flex items-center gap-3 min-w-0">
             <Link
               href="/"
-              className="flex-shrink-0 w-8 h-8 rounded-full bg-white/8 flex items-center justify-center text-white/40 hover:bg-white/15 hover:text-white/70 transition"
+              className="shrink-0 w-8 h-8 rounded-full bg-white/8 flex items-center justify-center text-white/40 hover:bg-white/15 hover:text-white/70 transition"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -109,7 +110,7 @@ export function ReservationClient({ event }: { event: EventData }) {
             </Link>
 
             {/* Mini calendar */}
-            <div className="flex-shrink-0 w-10 text-center rounded-lg overflow-hidden shadow-sm shadow-black/30">
+            <div className="shrink-0 w-10 text-center rounded-lg overflow-hidden shadow-sm shadow-black/30">
               <div className="py-0.5 text-white text-[9px] font-black uppercase tracking-wider" style={{ background: accentColor }}>
                 {monthName}
               </div>
@@ -132,7 +133,7 @@ export function ReservationClient({ event }: { event: EventData }) {
                 <span className="text-white/80 text-[13px] font-semibold capitalize truncate">{dayName}</span>
               </div>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <svg className="w-3 h-3 flex-shrink-0" style={{ color: accentColor }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-3 h-3 shrink-0" style={{ color: accentColor }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span className="text-white font-bold text-sm tabular-nums">{event.timeInfo}</span>
@@ -141,7 +142,7 @@ export function ReservationClient({ event }: { event: EventData }) {
           </div>
 
           {/* Right: spinner + timer */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             {holding && (
               <div className="w-3.5 h-3.5 border-2 border-white/10 border-t-white/50 rounded-full animate-spin" />
             )}
@@ -154,10 +155,38 @@ export function ReservationClient({ event }: { event: EventData }) {
       <section className="bg-[#0f0c1d]">
         <div className="max-w-6xl mx-auto px-2 sm:px-4 py-3">
           {!has && (
-            <div className="flex items-center justify-center gap-4 mb-2 text-[10px] text-violet-300/30">
-              <span><span className="text-amber-400/80 font-bold">VIP</span> · cliquer sur la table · 280€</span>
-              <span className="w-px h-3 bg-violet-800/50" />
-              <span><span className="text-emerald-400/80 font-bold">Normal</span> · cliquer sur les sièges · dès 28€</span>
+            <div className="mb-4 px-3 pt-2 pb-1">
+
+              {/* Steps — connected timeline */}
+              <div className="relative flex items-start justify-center gap-0 mb-4">
+                {/* Connecting line (desktop) */}
+                <div className="absolute top-[18px] left-1/2 -translate-x-1/2 w-[calc(100%-80px)] h-px bg-white/8 hidden sm:block pointer-events-none" />
+
+                <Step n="1" label="Choisissez" sub="Cliquez sur une place" />
+                <div className="w-8 sm:w-12 shrink-0" />
+                <Step n="2" label="Complétez" sub="Infos et repas de chaque convive" />
+                <div className="w-8 sm:w-12 shrink-0" />
+                <Step n="3" label="Payez" sub="Paiement sécurisé en ligne" />
+              </div>
+
+              {/* Place type pills */}
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <div className="flex items-center gap-2 rounded-lg px-3 py-1.5 border border-white/10 bg-white/5 backdrop-blur-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                  <span className="text-[11px] font-bold text-amber-300 tracking-wide">VIP</span>
+                  <span className="w-px h-3 bg-white/10" />
+                  <span className="text-[11px] text-white/40">Cliquer sur la table</span>
+                  <span className="text-[11px] font-semibold text-white/60">280€</span>
+                </div>
+                <div className="flex items-center gap-2 rounded-lg px-3 py-1.5 border border-white/10 bg-white/5 backdrop-blur-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                  <span className="text-[11px] font-bold text-emerald-300 tracking-wide">Normal</span>
+                  <span className="w-px h-3 bg-white/10" />
+                  <span className="text-[11px] text-white/40">Cliquer sur les sièges</span>
+                  <span className="text-[11px] font-semibold text-white/60">dès 28€</span>
+                </div>
+              </div>
+
             </div>
           )}
           <SeatingPlan
@@ -197,5 +226,19 @@ export function ReservationClient({ event }: { event: EventData }) {
         )}
       </AnimatePresence>
     </main>
+  );
+}
+
+function Step({ n, label, sub }: { n: string; label: string; sub: string }) {
+  return (
+    <div className="relative flex flex-col items-center gap-2 text-center z-10">
+      <div className="w-9 h-9 rounded-full bg-white/10 border border-white/20 flex items-center justify-center shadow-lg shadow-black/30 backdrop-blur-sm">
+        <span className="text-[13px] font-black text-white/80">{n}</span>
+      </div>
+      <div>
+        <p className="text-[12px] font-bold text-white/80 leading-tight">{label}</p>
+        <p className="text-[10px] text-white/35 mt-0.5 max-w-[90px] leading-tight">{sub}</p>
+      </div>
+    </div>
   );
 }

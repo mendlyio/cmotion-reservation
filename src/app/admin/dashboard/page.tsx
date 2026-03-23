@@ -5,13 +5,16 @@ import {
   seats,
   reservations,
   reservationSeats,
-  reservationUpsells,
 } from "@/lib/db/schema";
-import { eq, sql, and, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { verifyAdmin } from "@/lib/admin";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { MEAL_OPTIONS } from "@/types";
+import {
+  ClientListSection,
+  type ClientReservation,
+} from "@/components/admin/ClientListSection";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +25,7 @@ export default async function AdminDashboardPage() {
   const allEvents = await db.select().from(events);
 
   const stats = [];
+  const allClientReservations: ClientReservation[] = [];
 
   for (const event of allEvents) {
     const eventTables = await db
@@ -59,9 +63,8 @@ export default async function AdminDashboardPage() {
       0
     );
 
-    // Meal counts
     const resIds = paidReservations.map((r) => r.id);
-    let mealCounts: Record<string, number> = {};
+    const mealCounts: Record<string, number> = {};
     let dessertCount = 0;
     let guestCount = 0;
 
@@ -96,13 +99,108 @@ export default async function AdminDashboardPage() {
       dessertCount,
       guestCount,
     });
+
+    // Build client reservation data for client list
+    const allResIds = eventReservations.map((r) => r.id);
+    let allResGuests: (typeof reservationSeats.$inferSelect)[] = [];
+    if (allResIds.length > 0) {
+      allResGuests = await db
+        .select()
+        .from(reservationSeats)
+        .where(inArray(reservationSeats.reservationId, allResIds));
+    }
+
+    const resSeatIds = allResGuests.map((g) => g.seatId);
+    const seatMap: Record<number, { seatNumber: number; tableId: number }> = {};
+    const tableMap: Record<
+      number,
+      { rowNumber: number; tableNumber: number; isVip: boolean }
+    > = {};
+
+    if (resSeatIds.length > 0) {
+      const seatDetails = await db
+        .select({ id: seats.id, seatNumber: seats.seatNumber, tableId: seats.tableId })
+        .from(seats)
+        .where(inArray(seats.id, resSeatIds));
+
+      for (const s of seatDetails) {
+        seatMap[s.id] = { seatNumber: s.seatNumber, tableId: s.tableId };
+      }
+
+      const uniqueTableIds = [...new Set(seatDetails.map((s) => s.tableId))];
+      if (uniqueTableIds.length > 0) {
+        const tableDetails = await db
+          .select({
+            id: tables.id,
+            rowNumber: tables.rowNumber,
+            tableNumber: tables.tableNumber,
+            isVip: tables.isVip,
+          })
+          .from(tables)
+          .where(inArray(tables.id, uniqueTableIds));
+
+        for (const t of tableDetails) {
+          tableMap[t.id] = {
+            rowNumber: t.rowNumber,
+            tableNumber: t.tableNumber,
+            isVip: t.isVip,
+          };
+        }
+      }
+    }
+
+    for (const r of eventReservations) {
+      const rGuests = allResGuests.filter((g) => g.reservationId === r.id);
+      const firstSeat = rGuests[0] ? seatMap[rGuests[0].seatId] : null;
+      const table = firstSeat ? tableMap[firstSeat.tableId] : null;
+
+      allClientReservations.push({
+        id: r.id,
+        referentStudent: r.referentStudent,
+        email: r.email,
+        phone: r.phone,
+        totalAmount: r.totalAmount,
+        stripeStatus: r.stripeStatus || "pending",
+        createdAt: r.createdAt ? r.createdAt.toISOString() : null,
+        adminNotes: r.adminNotes,
+        eventId: event.id,
+        eventName: event.name,
+        eventDate: event.eventDate,
+        timeInfo: event.timeInfo,
+        tableInfo: table
+          ? `${table.rowNumber}-${table.tableNumber}`
+          : "—",
+        isVip: table?.isVip ?? false,
+        guests: rGuests.map((g) => {
+          const seat = seatMap[g.seatId];
+          return {
+            id: g.id,
+            seatId: g.seatId,
+            seatNumber: seat?.seatNumber ?? 0,
+            firstName: g.firstName,
+            lastName: g.lastName,
+            mealChoice: g.mealChoice,
+            hasDessert: g.hasDessert,
+            adminNotes: g.adminNotes,
+          };
+        }),
+      });
+    }
   }
+
+  allClientReservations.sort((a, b) => {
+    const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const db_ = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return db_ - da;
+  });
 
   const globalRevenue = stats.reduce((sum, s) => sum + s.totalRevenue, 0);
   const globalSeats = stats.reduce((sum, s) => sum + s.totalSeats, 0);
   const globalReserved = stats.reduce((sum, s) => sum + s.reservedSeats, 0);
   const globalOccupancy =
     globalSeats > 0 ? Math.round((globalReserved / globalSeats) * 100) : 0;
+
+  const eventList = allEvents.map((e) => ({ id: e.id, name: e.name }));
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -195,7 +293,6 @@ export default async function AdminDashboardPage() {
                 />
               </div>
 
-              {/* Caterer / meal summary */}
               <h3 className="font-semibold text-slate-700 mb-3">
                 Liste traiteur
               </h3>
@@ -218,16 +315,18 @@ export default async function AdminDashboardPage() {
                   </p>
                 </div>
               </div>
-
-              {/* Recent reservations */}
-              <h3 className="font-semibold text-slate-700 mb-3">
-                Dernières réservations
-              </h3>
-              <ReservationList eventId={s.event.id} />
             </div>
           </div>
         );
       })}
+
+      {/* Full client list with inline editing */}
+      <div className="mt-8">
+        <ClientListSection
+          reservations={allClientReservations}
+          events={eventList}
+        />
+      </div>
     </div>
   );
 }
@@ -256,90 +355,5 @@ function MiniStat({ label, value }: { label: string; value: string }) {
       <p className="text-xs text-slate-500">{label}</p>
       <p className="text-xl font-bold text-slate-800">{value}</p>
     </div>
-  );
-}
-
-async function ReservationList({ eventId }: { eventId: number }) {
-  const resList = await db
-    .select()
-    .from(reservations)
-    .where(eq(reservations.eventId, eventId))
-    .orderBy(sql`${reservations.createdAt} DESC`)
-    .limit(10);
-
-  if (resList.length === 0) {
-    return (
-      <p className="text-sm text-slate-400">Aucune réservation pour le moment.</p>
-    );
-  }
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-slate-500 border-b">
-            <th className="pb-2 font-medium">ID</th>
-            <th className="pb-2 font-medium">Référent</th>
-            <th className="pb-2 font-medium">Email</th>
-            <th className="pb-2 font-medium">Montant</th>
-            <th className="pb-2 font-medium">Statut</th>
-            <th className="pb-2 font-medium">Date</th>
-            <th className="pb-2 font-medium"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {resList.map((r) => (
-            <tr key={r.id} className="border-b last:border-0">
-              <td className="py-2 font-mono text-xs">#{r.id}</td>
-              <td className="py-2">{r.referentStudent}</td>
-              <td className="py-2 text-slate-500">{r.email}</td>
-              <td className="py-2 font-medium">
-                {(r.totalAmount / 100).toFixed(2)}€
-              </td>
-              <td className="py-2">
-                <StatusBadge status={r.stripeStatus || "pending"} />
-              </td>
-              <td className="py-2 text-slate-500">
-                {r.createdAt
-                  ? new Date(r.createdAt).toLocaleDateString("fr-FR")
-                  : "—"}
-              </td>
-              <td className="py-2">
-                <Link
-                  href={`/admin/reservations/${r.id}`}
-                  className="text-blue-600 hover:text-blue-800 text-xs"
-                >
-                  Détails →
-                </Link>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    paid: "bg-green-100 text-green-700",
-    pending: "bg-amber-100 text-amber-700",
-    failed: "bg-red-100 text-red-700",
-    refunded: "bg-slate-100 text-slate-700",
-  };
-
-  const labels: Record<string, string> = {
-    paid: "Payé",
-    pending: "En attente",
-    failed: "Échoué",
-    refunded: "Remboursé",
-  };
-
-  return (
-    <span
-      className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${styles[status] || styles.pending}`}
-    >
-      {labels[status] || status}
-    </span>
   );
 }

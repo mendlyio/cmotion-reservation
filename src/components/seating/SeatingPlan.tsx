@@ -58,8 +58,24 @@ export function SeatingPlan({
   const rows = groupByRow(tables);
   const maxT = Math.max(...Object.values(rows).map((r) => r.length), 1);
   const totalR = Object.keys(rows).length;
+
+  // Extra space between VIP and Normal sections
+  const hasVipRows = Object.values(rows).some((r) => r[0]?.isVip);
+  const hasNormRows = Object.values(rows).some((r) => !r[0]?.isVip);
+  const hasSep = hasVipRows && hasNormRows;
+  const SEP_EXTRA = hasSep ? 22 : 0;
+  const firstNormRowNum = hasSep
+    ? Math.min(...Object.entries(rows).filter(([, r]) => !r[0]?.isVip).map(([n]) => parseInt(n)))
+    : Infinity;
+
+  const getCy = (rowNum: number) => {
+    const ri = rowNum - 1;
+    const base = PT + SH + SGA + CR + ri * (CD + RG);
+    return rowNum >= firstNormRowNum ? base + SEP_EXTRA : base;
+  };
+
   const W = maxT * CS - CG + PX * 2;
-  const H = PT + SH + SGA + totalR * (CD + RG) - RG + PT + 8;
+  const H = PT + SH + SGA + totalR * (CD + RG) - RG + PT + 8 + SEP_EXTRA;
 
   const onTClick = useCallback((t: TableWithSeats) => {
     if (readOnly || !t.isVip) return;
@@ -133,16 +149,23 @@ export function SeatingPlan({
           </text>
 
           {/* Séparateur VIP / Normal */}
-          {(() => {
-            const vipRows = Object.entries(rows).filter(([, rt]) => rt[0]?.isVip);
-            const normRows = Object.entries(rows).filter(([, rt]) => !rt[0]?.isVip);
-            if (vipRows.length === 0 || normRows.length === 0) return null;
-            const lastVipIdx = parseInt(vipRows[vipRows.length - 1][0]) - 1;
-            const sepY = PT + SH + SGA + CR + lastVipIdx * (CD + RG) + CR + RG / 2;
+          {hasSep && (() => {
+            const lastVipRowNum = Math.max(
+              ...Object.entries(rows).filter(([, r]) => r[0]?.isVip).map(([n]) => parseInt(n))
+            );
+            const vipBottom = getCy(lastVipRowNum) + CR;
+            const normTop = getCy(firstNormRowNum) - CR;
+            const sepY = (vipBottom + normTop) / 2;
             return (
               <g>
-                <line x1={PX + 10} y1={sepY} x2={W - PX - 10} y2={sepY} stroke="#d97706" strokeWidth="0.5" strokeDasharray="5 5" opacity="0.3" />
-                <text x={W / 2} y={sepY - 4} textAnchor="middle" fill="#fbbf24" fontSize={7} fontWeight="700" opacity="0.4" fontFamily="system-ui" letterSpacing="3">
+                <line x1={PX + 12} y1={sepY} x2={W / 2 - 26} y2={sepY}
+                  stroke="#d97706" strokeWidth="1" strokeDasharray="4 4" opacity="0.55" />
+                <line x1={W / 2 + 26} y1={sepY} x2={W - PX - 12} y2={sepY}
+                  stroke="#d97706" strokeWidth="1" strokeDasharray="4 4" opacity="0.55" />
+                <rect x={W / 2 - 22} y={sepY - 7} width={44} height={14} rx={7}
+                  fill="#1a1530" stroke="#d97706" strokeWidth="0.8" opacity="0.95" />
+                <text x={W / 2} y={sepY} textAnchor="middle" dominantBaseline="central"
+                  fill="#fbbf24" fontSize={7} fontWeight="800" fontFamily="system-ui" letterSpacing="3">
                   VIP
                 </text>
               </g>
@@ -151,8 +174,7 @@ export function SeatingPlan({
 
           {/* Rangées */}
           {Object.entries(rows).map(([rn, rt]) => {
-            const ri = parseInt(rn) - 1;
-            const cy = PT + SH + SGA + CR + ri * (CD + RG);
+            const cy = getCy(parseInt(rn));
             const tw = rt.length * CS - CG;
             const sx = (W - tw) / 2 + CR;
             return (
