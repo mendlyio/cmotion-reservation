@@ -78,7 +78,12 @@ export function ReservationClient({ event }: { event: EventData }) {
   const cancel = async () => { await release(); setSelTable(null); setSelSeats([]); await fetch_(); };
   const expired = async () => { toast.error("Réservation expirée"); await cancel(); };
 
-  const d = new Date(event.eventDate).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  const dateObj = new Date(event.eventDate);
+  const dayName = dateObj.toLocaleDateString("fr-FR", { weekday: "long" });
+  const dayNum = dateObj.toLocaleDateString("fr-FR", { day: "numeric" });
+  const monthName = dateObj.toLocaleDateString("fr-FR", { month: "long" });
+  const isPlus12 = event.ageGroup === "+12";
+  const accentColor = isPlus12 ? "#3b82f6" : "#f43f5e";
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen bg-[#0d0d1a]">
@@ -89,25 +94,57 @@ export function ReservationClient({ event }: { event: EventData }) {
   return (
     <main className="min-h-screen bg-[#fafafa]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#0f0c1d]/95 backdrop-blur-md border-b border-violet-900/40">
-        <div className="max-w-6xl mx-auto px-4 h-12 flex items-center justify-between">
+      <header className="sticky top-0 z-40 bg-[#0f0c1d]/95 backdrop-blur-md border-b border-white/5">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+
+          {/* Back + Event info */}
           <div className="flex items-center gap-3 min-w-0">
-            <Link href="/" className="w-7 h-7 rounded-full bg-violet-500/15 flex items-center justify-center text-violet-300/60 hover:bg-violet-500/25 hover:text-violet-200 transition">
+            <Link
+              href="/"
+              className="flex-shrink-0 w-8 h-8 rounded-full bg-white/8 flex items-center justify-center text-white/40 hover:bg-white/15 hover:text-white/70 transition"
+            >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
             </Link>
+
+            {/* Mini calendar */}
+            <div className="flex-shrink-0 w-10 text-center rounded-lg overflow-hidden shadow-sm shadow-black/30">
+              <div className="py-0.5 text-white text-[9px] font-black uppercase tracking-wider" style={{ background: accentColor }}>
+                {monthName}
+              </div>
+              <div className="bg-white/90 py-0.5">
+                <div className="text-base font-extrabold leading-tight" style={{ color: accentColor }}>
+                  {dayNum}
+                </div>
+              </div>
+            </div>
+
+            {/* Text info */}
             <div className="min-w-0">
-              <h1 className="text-sm font-bold text-white/90 truncate">{event.name}</h1>
-              <p className="text-[11px] text-white/40 truncate">
-                <span className="capitalize">{d}</span>
-                <span className="mx-1 text-violet-500/60">·</span>
-                <span className="text-white/60 font-semibold">{event.timeInfo}</span>
-              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span
+                  className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full text-white"
+                  style={{ background: accentColor }}
+                >
+                  {isPlus12 ? "+12 ans" : "−12 ans"}
+                </span>
+                <span className="text-white/80 text-[13px] font-semibold capitalize truncate">{dayName}</span>
+              </div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <svg className="w-3 h-3 flex-shrink-0" style={{ color: accentColor }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-white font-bold text-sm tabular-nums">{event.timeInfo}</span>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {holding && <div className="w-3.5 h-3.5 border-2 border-violet-900 border-t-violet-400 rounded-full animate-spin" />}
+
+          {/* Right: spinner + timer */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {holding && (
+              <div className="w-3.5 h-3.5 border-2 border-white/10 border-t-white/50 rounded-full animate-spin" />
+            )}
             {holdExp && <CountdownTimer expiresAt={holdExp} onExpired={expired} />}
           </div>
         </div>
