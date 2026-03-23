@@ -88,18 +88,18 @@ export function SeatingPlan({
   }, []);
 
   return (
-    <div ref={ref} className="relative w-full plan-bg rounded-2xl overflow-hidden">
+    <div ref={ref} className="relative w-full">
       {/* Legend */}
-      <div className="flex items-center justify-center gap-4 pt-3 pb-1 px-3">
+      <div className="flex items-center justify-center gap-4 pb-2">
         {[
           { c: "#34d399", l: "Libre" },
           { c: "#60a5fa", l: "Votre choix" },
           { c: "#a78bfa", l: "En cours" },
-          { c: "#475569", l: "Réservé" },
+          { c: "#334155", l: "Réservé" },
         ].map((i) => (
           <div key={i.l} className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full" style={{ background: i.c }} />
-            <span className="text-[10px] text-white/40">{i.l}</span>
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: i.c }} />
+            <span className="text-[10px] font-medium" style={{ color: "rgba(255,255,255,0.3)" }}>{i.l}</span>
           </div>
         ))}
       </div>

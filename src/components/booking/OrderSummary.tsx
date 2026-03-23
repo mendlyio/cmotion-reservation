@@ -37,9 +37,9 @@ export function OrderSummary({ data }: { data: BookingFormData }) {
         })}
       </div>
 
-      <div className="px-4 py-3 bg-gradient-to-r from-slate-900 to-slate-800 flex justify-between items-center">
-        <span className="text-sm text-white/50">Total</span>
-        <span className="text-xl font-extrabold text-white tabular-nums">{(total / 100).toFixed(2)}€</span>
+      <div className="px-4 py-3 flex justify-between items-center" style={{ background: "#0a0a14" }}>
+        <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.35)" }}>Total</span>
+        <span className="text-xl font-extrabold tabular-nums" style={{ color: "#c084fc" }}>{(total / 100).toFixed(2)}€</span>
       </div>
     </div>
   );

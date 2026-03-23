@@ -69,21 +69,39 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
   ];
 
   return (
-    <div>
-      {/* Header bar */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-5 py-4 flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-white font-bold text-sm">Table {table.rowNumber}-{table.tableNumber}</span>
-            {vip && <span className="bg-purple-500/20 text-purple-300 text-[10px] font-bold px-2 py-0.5 rounded-full">VIP</span>}
+    <div className="bg-white">
+      {/* Header — same #0a0a14 as the page, seamless */}
+      <div
+        className="px-5 py-4 flex items-center justify-between"
+        style={{ background: "#0a0a14", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+      >
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-white font-bold text-sm">
+              Table {table.rowNumber}-{table.tableNumber}
+            </span>
+            {vip && (
+              <span
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                style={{ background: "rgba(192,132,252,0.15)", color: "#c084fc" }}
+              >
+                VIP
+              </span>
+            )}
           </div>
-          <p className="text-white/40 text-[11px] mt-0.5">
-            {vip ? "8 places · 280€ tout inclus" : `${ids.length} siège(s) sélectionné(s)`}
+          <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+            {vip ? "8 places · 280€ tout inclus" : `${ids.length} siège(s) · remontez pour en ajouter`}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-white font-extrabold text-lg tabular-nums">{(total / 100).toFixed(2)}€</span>
-          <button onClick={onCancel} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white/50 hover:bg-red-500/20 hover:text-red-300 transition">
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <span className="font-extrabold text-lg tabular-nums" style={{ color: "#c084fc" }}>
+            {(total / 100).toFixed(2)}€
+          </span>
+          <button
+            onClick={onCancel}
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+            style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.35)" }}
+          >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -91,21 +109,30 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
         </div>
       </div>
 
-      {/* Step tabs */}
+      {/* Step tabs — white with slate accents */}
       <div className="flex border-b border-slate-100">
-        {STEPS.map((s, i) => (
-          <button
-            key={i}
-            onClick={() => setStep(i as Step)}
-            className={`flex-1 py-2.5 text-center text-xs font-semibold transition-all relative ${
-              step === i ? "text-slate-900" : s.done && i < step ? "text-emerald-600" : "text-slate-300"
-            }`}
-          >
-            <span className="mr-1">{s.done && i < step ? "✓" : s.emoji}</span>
-            {s.label}
-            {step === i && <motion.div layoutId="tab" className="absolute bottom-0 left-2 right-2 h-0.5 bg-slate-900 rounded-full" />}
-          </button>
-        ))}
+        {STEPS.map((s, i) => {
+          const active = step === i;
+          const done = s.done && i < step;
+          return (
+            <button
+              key={i}
+              onClick={() => setStep(i as Step)}
+              className="flex-1 py-3 text-center text-[11px] font-bold uppercase tracking-wider transition-colors relative"
+              style={{ color: active ? "#1e293b" : done ? "#10b981" : "#cbd5e1" }}
+            >
+              <span className="mr-1">{done ? "✓" : s.emoji}</span>
+              {s.label}
+              {active && (
+                <motion.div
+                  layoutId="tab-ind"
+                  className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full"
+                  style={{ background: "#c084fc" }}
+                />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Content */}
@@ -164,14 +191,16 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
           <button
             onClick={() => setStep((step + 1) as Step)}
             disabled={step === 0 ? !gOk : !cOk}
-            className="w-full h-12 bg-slate-900 text-white text-sm font-bold rounded-xl disabled:opacity-20 active:scale-[0.98] transition-all"
+            className="w-full h-12 text-white text-sm font-bold rounded-xl disabled:opacity-20 active:scale-[0.98] transition-all"
+            style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)" }}
           >
             Continuer
           </button>
         ) : (
           <div className="flex gap-2">
             <button onClick={() => pay(false)} disabled={!cOk || loading}
-              className="flex-1 h-12 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-bold rounded-xl disabled:opacity-20 active:scale-[0.98] transition-all shadow-lg shadow-purple-500/20">
+              className="flex-1 h-12 text-white text-sm font-bold rounded-xl disabled:opacity-20 active:scale-[0.98] transition-all"
+              style={{ background: "linear-gradient(135deg, #7c3aed, #2563eb)", boxShadow: "0 8px 24px rgba(124,58,237,0.3)" }}>
               {loading ? "Traitement…" : `Payer ${(total / 100).toFixed(2)}€`}
             </button>
             <button onClick={() => pay(true)} disabled={!cOk || loading}
