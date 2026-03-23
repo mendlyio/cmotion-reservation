@@ -12,119 +12,122 @@ export default async function HomePage() {
     .where(eq(events.isActive, true));
 
   return (
-    <main className="flex-1">
-      <div className="max-w-4xl mx-auto px-4 py-16">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-slate-900 mb-4 tracking-tight">
+    <main className="flex-1 flex flex-col">
+      {/* Hero */}
+      <section className="relative bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(148,163,184,0.15),transparent_70%)]" />
+        <div className="relative max-w-lg mx-auto px-5 pt-14 pb-10 sm:pt-20 sm:pb-14 text-center">
+          <p className="text-xs font-semibold tracking-[0.25em] uppercase text-slate-400 mb-3">
+            Spectacles de danse
+          </p>
+          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-3 bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
             Cmotion
           </h1>
-          <p className="text-xl text-slate-500">
-            Réservez vos places pour nos spectacles de danse
+          <p className="text-base text-slate-400 max-w-xs mx-auto">
+            Réservez vos places en quelques clics
           </p>
         </div>
+      </section>
 
-        {activeEvents.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-2xl border">
-            <p className="text-slate-500">
-              Aucun spectacle disponible pour le moment.
-            </p>
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-6">
-            {activeEvents.map((event) => {
-              const date = new Date(event.eventDate).toLocaleDateString(
-                "fr-FR",
-                {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                }
-              );
-              const isPlus12 = event.ageGroup === "+12";
-
-              return (
-                <Link
-                  key={event.id}
-                  href={`/reservation/${event.id}`}
-                  className="group"
-                >
-                  <div
-                    className={`relative overflow-hidden rounded-2xl border-2 p-8 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
-                      isPlus12
-                        ? "border-blue-200 bg-gradient-to-br from-blue-50 to-white hover:border-blue-400"
-                        : "border-pink-200 bg-gradient-to-br from-pink-50 to-white hover:border-pink-400"
-                    }`}
-                  >
-                    <div
-                      className={`inline-block px-3 py-1 rounded-full text-xs font-semibold mb-4 ${
-                        isPlus12
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-pink-100 text-pink-700"
-                      }`}
-                    >
-                      {event.ageGroup === "+12"
-                        ? "Élèves +12 ans"
-                        : "Élèves -12 ans"}
-                    </div>
-
-                    <h2 className="text-2xl font-bold text-slate-800 mb-2">
-                      {event.name}
-                    </h2>
-
-                    <p className="text-slate-600 mb-1 capitalize">{date}</p>
-                    <p className="text-slate-500 text-sm mb-4">
-                      Horaires : {event.timeInfo}
-                    </p>
-
-                    {event.description && (
-                      <p className="text-slate-500 text-sm mb-6">
-                        {event.description}
-                      </p>
-                    )}
-
-                    <div
-                      className={`inline-flex items-center gap-2 font-semibold text-sm transition-colors ${
-                        isPlus12
-                          ? "text-blue-600 group-hover:text-blue-800"
-                          : "text-pink-600 group-hover:text-pink-800"
-                      }`}
-                    >
-                      Réserver mes places
-                      <svg
-                        className="w-4 h-4 transition-transform group-hover:translate-x-1"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M17 8l4 4m0 0l-4 4m4-4H3"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        )}
-
-        <div className="mt-12 text-center">
-          <div className="inline-flex gap-6 text-sm text-slate-400">
-            <div>
-              <span className="font-semibold text-slate-600">VIP</span> — 280€
-              / table de 8
+      {/* Events */}
+      <section className="flex-1 -mt-4 relative z-10">
+        <div className="max-w-lg mx-auto px-4 pb-10">
+          {activeEvents.length === 0 ? (
+            <div className="text-center py-16 bg-white rounded-2xl shadow-sm border">
+              <p className="text-slate-400 text-sm">
+                Aucun spectacle disponible pour le moment.
+              </p>
             </div>
-            <div>
-              <span className="font-semibold text-slate-600">Normal</span> — à
-              partir de 28€ / siège
+          ) : (
+            <div className="space-y-4">
+              {activeEvents.map((event) => {
+                const date = new Date(event.eventDate).toLocaleDateString(
+                  "fr-FR",
+                  { weekday: "long", day: "numeric", month: "long" }
+                );
+                const isPlus12 = event.ageGroup === "+12";
+
+                return (
+                  <Link
+                    key={event.id}
+                    href={`/reservation/${event.id}`}
+                    className="block group"
+                  >
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 sm:p-6 transition-all duration-200 active:scale-[0.98] hover:shadow-md hover:border-slate-300">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide mb-3 ${
+                              isPlus12
+                                ? "bg-blue-50 text-blue-600"
+                                : "bg-rose-50 text-rose-600"
+                            }`}
+                          >
+                            {isPlus12 ? "+12 ans" : "-12 ans"}
+                          </div>
+
+                          <h2 className="text-lg font-bold text-slate-900 mb-1">
+                            {event.name}
+                          </h2>
+
+                          <p className="text-sm text-slate-500 capitalize">
+                            {date}
+                          </p>
+                          <p className="text-sm text-slate-400">
+                            {event.timeInfo}
+                          </p>
+                        </div>
+
+                        <div
+                          className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                            isPlus12
+                              ? "bg-blue-50 text-blue-600 group-hover:bg-blue-100"
+                              : "bg-rose-50 text-rose-600 group-hover:bg-rose-100"
+                          }`}
+                        >
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M9 5l7 7-7 7"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Pricing hint */}
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <div className="bg-white rounded-xl border p-4 text-center">
+              <div className="text-amber-500 text-lg font-bold mb-0.5">
+                VIP
+              </div>
+              <div className="text-xs text-slate-400">
+                280€ / table de 8
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border p-4 text-center">
+              <div className="text-slate-800 text-lg font-bold mb-0.5">
+                Normal
+              </div>
+              <div className="text-xs text-slate-400">
+                dès 28€ / siège
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
     </main>
   );
 }

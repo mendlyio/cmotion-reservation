@@ -1,29 +1,28 @@
 "use client";
 
 const LEGEND_ITEMS = [
-  { color: "#22c55e", label: "Disponible" },
-  { color: "#3b82f6", label: "Sélectionné" },
-  { color: "#a855f7", label: "En cours de réservation" },
+  { color: "#22c55e", label: "Libre" },
+  { color: "#3b82f6", label: "Votre sélection" },
+  { color: "#a855f7", label: "En cours" },
   { color: "#ef4444", label: "Réservé" },
-  { color: "#d97706", label: "VIP", isStroke: true },
 ];
 
 export function SeatingLegend() {
   return (
-    <div className="flex flex-wrap gap-4 justify-center mb-4 p-3 bg-slate-50 rounded-lg">
+    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mb-3">
       {LEGEND_ITEMS.map((item) => (
-        <div key={item.label} className="flex items-center gap-2 text-sm">
-          {item.isStroke ? (
-            <div className="w-4 h-4 rounded-full border-2 border-amber-500 bg-white" />
-          ) : (
-            <div
-              className="w-4 h-4 rounded-full"
-              style={{ backgroundColor: item.color }}
-            />
-          )}
-          <span className="text-slate-600">{item.label}</span>
+        <div key={item.label} className="flex items-center gap-1.5">
+          <div
+            className="w-2.5 h-2.5 rounded-full ring-1 ring-black/5"
+            style={{ backgroundColor: item.color }}
+          />
+          <span className="text-[11px] text-slate-500">{item.label}</span>
         </div>
       ))}
+      <div className="flex items-center gap-1.5">
+        <div className="w-2.5 h-2.5 rounded-full border-[1.5px] border-amber-500 bg-white" />
+        <span className="text-[11px] text-slate-500">VIP</span>
+      </div>
     </div>
   );
 }

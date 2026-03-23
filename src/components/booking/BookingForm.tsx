@@ -2,9 +2,6 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { GuestForm } from "./GuestForm";
 import { UpsellSection } from "./UpsellSection";
 import { OrderSummary } from "./OrderSummary";
@@ -73,7 +70,6 @@ export function BookingForm({
     setError(null);
 
     try {
-      // Create reservation
       const resResponse = await fetch("/api/reservation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -87,13 +83,11 @@ export function BookingForm({
 
       const { reservationId, totalAmount } = await resResponse.json();
 
-      // For testing: simple pay button
       if (totalAmount === 0) {
         window.location.href = `/confirmation/${reservationId}`;
         return;
       }
 
-      // Create Stripe checkout session
       const stripeResponse = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -106,9 +100,7 @@ export function BookingForm({
       }
 
       const { url } = await stripeResponse.json();
-      if (url) {
-        window.location.href = url;
-      }
+      if (url) window.location.href = url;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue");
     } finally {
@@ -135,7 +127,6 @@ export function BookingForm({
 
       const { reservationId } = await resResponse.json();
 
-      // Simulate payment success
       const payResponse = await fetch("/api/stripe/simulate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -154,32 +145,45 @@ export function BookingForm({
     }
   };
 
+  const total = calculateTotal(bookingData);
+
   return (
     <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
       className="space-y-4"
     >
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-slate-800">
-          {isVip
-            ? `Table VIP ${table.rowNumber}-${table.tableNumber}`
-            : `Table ${table.rowNumber}-${table.tableNumber} — ${seatIds.length} siège(s)`}
-        </h2>
-        <Button variant="outline" size="sm" onClick={onCancel}>
+        <div>
+          <h2 className="text-lg font-bold text-slate-900">
+            {isVip
+              ? `Table VIP ${table.rowNumber}-${table.tableNumber}`
+              : `Table ${table.rowNumber}-${table.tableNumber}`}
+          </h2>
+          <p className="text-xs text-slate-400">
+            {isVip ? "8 places — 280€" : `${seatIds.length} siège(s)`}
+          </p>
+        </div>
+        <button
+          onClick={onCancel}
+          className="text-xs text-slate-400 hover:text-red-500 transition-colors py-1 px-3 rounded-lg border border-slate-200 active:bg-slate-50"
+        >
           Annuler
-        </Button>
+        </button>
       </div>
 
       {isVip && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
-          ★ Table VIP : 280€ pour 8 personnes — Inclus verre de bulles,
-          zakouski et dessert
+        <div className="flex items-center gap-2 px-3 py-2.5 bg-amber-50 rounded-lg border border-amber-100">
+          <span className="text-amber-500">★</span>
+          <span className="text-xs text-amber-800 font-medium">
+            Table VIP — Bulles, zakouski et dessert inclus
+          </span>
         </div>
       )}
 
+      {/* Guest forms */}
       <div className="space-y-3">
-        <h3 className="font-semibold text-slate-700">Informations des convives</h3>
         {guests.map((guest, i) => {
           const seat = table.seats.find((s) => s.id === guest.seatId);
           return (
@@ -202,71 +206,83 @@ export function BookingForm({
 
       <UpsellSection upsells={upsells} onChange={setUpsells} />
 
-      <div className="border rounded-lg p-4 bg-white space-y-3">
-        <h3 className="font-semibold text-slate-700">Informations de contact</h3>
-        <div>
-          <Label htmlFor="referent" className="text-xs">
-            Nom de l&apos;élève référent *
-          </Label>
-          <Input
-            id="referent"
-            value={referentStudent}
-            onChange={(e) => setReferentStudent(e.target.value)}
-            placeholder="Nom de l'élève"
-            required
-          />
+      {/* Contact */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+          <span className="text-sm font-semibold text-slate-700">
+            Contact
+          </span>
         </div>
-        <div>
-          <Label htmlFor="email" className="text-xs">
-            Email *
-          </Label>
-          <Input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="votre@email.com"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="phone" className="text-xs">
-            Téléphone
-          </Label>
-          <Input
-            id="phone"
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="06 12 34 56 78"
-          />
+        <div className="p-4 space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">
+              Nom de l&apos;élève référent *
+            </label>
+            <input
+              type="text"
+              value={referentStudent}
+              onChange={(e) => setReferentStudent(e.target.value)}
+              placeholder="Nom de l'élève"
+              className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-shadow"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">
+              Email *
+            </label>
+            <input
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="votre@email.com"
+              className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-shadow"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">
+              Téléphone
+            </label>
+            <input
+              type="tel"
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="06 12 34 56 78"
+              className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-shadow"
+            />
+          </div>
         </div>
       </div>
 
       <OrderSummary data={bookingData} />
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+        <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
           {error}
         </div>
       )}
 
-      <div className="flex gap-3">
-        <Button
-          onClick={handleSubmit}
-          disabled={!isValid || loading}
-          className="flex-1 h-12 text-base font-semibold"
-        >
-          {loading ? "Traitement en cours..." : `Payer ${(calculateTotal(bookingData) / 100).toFixed(2)}€`}
-        </Button>
-        <Button
-          onClick={handleSimplePay}
-          disabled={!isValid || loading}
-          variant="outline"
-          className="h-12 text-sm"
-        >
-          Payer (test)
-        </Button>
+      {/* Sticky CTA on mobile */}
+      <div className="sticky bottom-0 -mx-4 px-4 pb-4 pt-3 bg-gradient-to-t from-white via-white to-white/0 sm:static sm:mx-0 sm:px-0 sm:pb-0 sm:pt-0 sm:bg-transparent">
+        <div className="flex gap-2.5">
+          <button
+            onClick={handleSubmit}
+            disabled={!isValid || loading}
+            className="flex-1 h-[52px] bg-slate-900 text-white text-[15px] font-bold rounded-xl hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all shadow-lg shadow-slate-900/10"
+          >
+            {loading
+              ? "Traitement…"
+              : `Payer ${(total / 100).toFixed(2)}€`}
+          </button>
+          <button
+            onClick={handleSimplePay}
+            disabled={!isValid || loading}
+            className="h-[52px] px-4 border border-slate-200 text-slate-500 text-xs font-semibold rounded-xl hover:bg-slate-50 disabled:opacity-40 active:scale-[0.98] transition-all"
+          >
+            Test
+          </button>
+        </div>
       </div>
     </motion.div>
   );

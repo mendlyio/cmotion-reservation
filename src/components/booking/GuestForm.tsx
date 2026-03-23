@@ -1,14 +1,5 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { MEAL_OPTIONS, DESSERT_PRICE, MealChoice, SeatFormData } from "@/types";
 
 interface GuestFormProps {
@@ -29,83 +20,114 @@ export function GuestForm({
   onChange,
 }: GuestFormProps) {
   return (
-    <div className="border rounded-lg p-4 bg-white">
-      <h4 className="font-semibold text-sm text-slate-700 mb-3">
-        Convive {index + 1}{" "}
-        <span className="text-slate-400 font-normal">— {seatLabel}</span>
-      </h4>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label htmlFor={`first-${seatId}`} className="text-xs">
-            Prénom
-          </Label>
-          <Input
-            id={`first-${seatId}`}
-            value={data.firstName}
-            onChange={(e) => onChange({ ...data, firstName: e.target.value })}
-            placeholder="Prénom"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor={`last-${seatId}`} className="text-xs">
-            Nom
-          </Label>
-          <Input
-            id={`last-${seatId}`}
-            value={data.lastName}
-            onChange={(e) => onChange({ ...data, lastName: e.target.value })}
-            placeholder="Nom"
-            required
-          />
-        </div>
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+        <span className="text-sm font-semibold text-slate-700">
+          Convive {index + 1}
+        </span>
+        <span className="text-xs text-slate-400">{seatLabel}</span>
       </div>
 
-      <div className="mt-3">
-        <Label className="text-xs">Choix du plat</Label>
-        <Select
-          value={data.mealChoice}
-          onValueChange={(v) =>
-            onChange({ ...data, mealChoice: v as MealChoice })
-          }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Choisir un plat" />
-          </SelectTrigger>
-          <SelectContent>
-            {MEAL_OPTIONS.map((meal) => (
-              <SelectItem key={meal.value} value={meal.value}>
-                {meal.label} — {(meal.price / 100).toFixed(0)}€
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {!isVip && (
-        <div className="mt-3">
-          <label className="flex items-center gap-2 cursor-pointer">
+      <div className="p-4 space-y-3">
+        {/* Name fields — stacked on tiny screens, side by side otherwise */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label
+              htmlFor={`first-${seatId}`}
+              className="block text-xs font-medium text-slate-500 mb-1"
+            >
+              Prénom
+            </label>
             <input
-              type="checkbox"
-              checked={data.hasDessert}
+              id={`first-${seatId}`}
+              type="text"
+              autoComplete="given-name"
+              value={data.firstName}
               onChange={(e) =>
-                onChange({ ...data, hasDessert: e.target.checked })
+                onChange({ ...data, firstName: e.target.value })
               }
-              className="rounded border-slate-300"
+              placeholder="Prénom"
+              className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-shadow"
             />
+          </div>
+          <div>
+            <label
+              htmlFor={`last-${seatId}`}
+              className="block text-xs font-medium text-slate-500 mb-1"
+            >
+              Nom
+            </label>
+            <input
+              id={`last-${seatId}`}
+              type="text"
+              autoComplete="family-name"
+              value={data.lastName}
+              onChange={(e) =>
+                onChange({ ...data, lastName: e.target.value })
+              }
+              placeholder="Nom"
+              className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-shadow"
+            />
+          </div>
+        </div>
+
+        {/* Meal choice — native select for perfect mobile UX */}
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">
+            Choix du plat
+          </label>
+          <select
+            value={data.mealChoice}
+            onChange={(e) =>
+              onChange({
+                ...data,
+                mealChoice: e.target.value as MealChoice,
+              })
+            }
+            className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-shadow"
+          >
+            {MEAL_OPTIONS.map((meal) => (
+              <option key={meal.value} value={meal.value}>
+                {meal.label} — {(meal.price / 100).toFixed(0)}€
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Dessert toggle */}
+        {!isVip && (
+          <label className="flex items-center gap-3 py-2 cursor-pointer active:opacity-70">
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={data.hasDessert}
+                onChange={(e) =>
+                  onChange({ ...data, hasDessert: e.target.checked })
+                }
+                className="sr-only peer"
+              />
+              <div className="w-10 h-6 bg-slate-200 rounded-full peer-checked:bg-blue-600 transition-colors" />
+              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform peer-checked:translate-x-4" />
+            </div>
             <span className="text-sm text-slate-700">
-              Tiramisu (+{(DESSERT_PRICE / 100).toFixed(2)}€)
+              Tiramisu{" "}
+              <span className="text-slate-400">
+                (+{(DESSERT_PRICE / 100).toFixed(2)}€)
+              </span>
             </span>
           </label>
-        </div>
-      )}
+        )}
 
-      {isVip && (
-        <p className="text-xs text-amber-600 mt-2">
-          ★ VIP : Verre de bulles, zakouski et dessert inclus
-        </p>
-      )}
+        {isVip && (
+          <div className="flex items-center gap-2 py-1">
+            <span className="text-amber-500">★</span>
+            <span className="text-xs text-amber-700">
+              Bulles, zakouski et dessert inclus
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

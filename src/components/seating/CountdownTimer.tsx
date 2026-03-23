@@ -30,36 +30,46 @@ export function CountdownTimer({ expiresAt, onExpired }: CountdownTimerProps) {
   const minutes = Math.floor(timeLeft / 60000);
   const seconds = Math.floor((timeLeft % 60000) / 1000);
   const isLow = timeLeft < 60000;
+  const progress = timeLeft / (5 * 60 * 1000);
 
   if (timeLeft <= 0) return null;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`flex items-center gap-2 px-4 py-2 rounded-full font-mono text-sm font-bold ${
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold backdrop-blur-sm ${
         isLow
-          ? "bg-red-100 text-red-700 border border-red-300"
-          : "bg-blue-100 text-blue-700 border border-blue-300"
+          ? "bg-red-500/10 text-red-600 ring-1 ring-red-500/20"
+          : "bg-blue-500/10 text-blue-600 ring-1 ring-blue-500/20"
       }`}
     >
-      <svg
-        className={`w-4 h-4 ${isLow ? "animate-pulse" : ""}`}
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
+      {/* Mini progress ring */}
+      <svg className="w-4 h-4 -rotate-90" viewBox="0 0 20 20">
+        <circle
+          cx="10"
+          cy="10"
+          r="8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          opacity="0.15"
+        />
+        <circle
+          cx="10"
+          cy="10"
+          r="8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
           strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+          strokeDasharray={`${progress * 50.26} 50.26`}
+          className={isLow ? "animate-pulse" : ""}
         />
       </svg>
-      <span>
+      <span className="font-mono tabular-nums">
         {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
       </span>
-      <span className="text-xs font-normal">pour finaliser</span>
     </motion.div>
   );
 }

@@ -44,15 +44,24 @@ export default async function ConfirmationPage({ params }: Props) {
   let seatDetails: { id: number; tableId: number; seatNumber: number }[] = [];
   if (seatIds.length > 0) {
     seatDetails = await db
-      .select({ id: seats.id, tableId: seats.tableId, seatNumber: seats.seatNumber })
+      .select({
+        id: seats.id,
+        tableId: seats.tableId,
+        seatNumber: seats.seatNumber,
+      })
       .from(seats)
       .where(inArray(seats.id, seatIds));
   }
 
   const tableIds = [...new Set(seatDetails.map((s) => s.tableId))];
-  let tableDetails: { id: number; rowNumber: number; tableNumber: number; isVip: boolean }[] = [];
+  let tableDetail: {
+    id: number;
+    rowNumber: number;
+    tableNumber: number;
+    isVip: boolean;
+  } | null = null;
   if (tableIds.length > 0) {
-    tableDetails = await db
+    const [t] = await db
       .select({
         id: tables.id,
         rowNumber: tables.rowNumber,
@@ -61,6 +70,7 @@ export default async function ConfirmationPage({ params }: Props) {
       })
       .from(tables)
       .where(inArray(tables.id, tableIds));
+    tableDetail = t || null;
   }
 
   const upsells = await db
@@ -76,115 +86,135 @@ export default async function ConfirmationPage({ params }: Props) {
     year: "numeric",
   });
 
-  const table = tableDetails[0];
-
   return (
-    <main className="flex-1">
-      <div className="max-w-2xl mx-auto px-4 py-16">
-        <div className="bg-white rounded-2xl border overflow-hidden">
-          <div
-            className={`p-8 text-center ${
-              isPaid
-                ? "bg-gradient-to-br from-green-50 to-emerald-50"
-                : "bg-gradient-to-br from-amber-50 to-yellow-50"
-            }`}
-          >
-            <div
-              className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 ${
-                isPaid ? "bg-green-100" : "bg-amber-100"
-              }`}
+    <main className="flex-1 flex flex-col">
+      {/* Status header */}
+      <div
+        className={`pt-12 pb-8 px-5 text-center ${
+          isPaid
+            ? "bg-gradient-to-b from-emerald-500 to-emerald-600"
+            : "bg-gradient-to-b from-amber-400 to-amber-500"
+        }`}
+      >
+        <div
+          className={`inline-flex items-center justify-center w-14 h-14 rounded-full mb-4 ${
+            isPaid ? "bg-white/20" : "bg-white/20"
+          }`}
+        >
+          {isPaid ? (
+            <svg
+              className="w-7 h-7 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
             >
-              {isPaid ? (
-                <svg
-                  className="w-8 h-8 text-green-600"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  className="w-8 h-8 text-amber-600"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              )}
-            </div>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          ) : (
+            <svg
+              className="w-7 h-7 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          )}
+        </div>
 
-            <h1 className="text-2xl font-bold text-slate-900 mb-1">
-              {isPaid ? "Réservation confirmée !" : "Paiement en attente"}
-            </h1>
-            <p className="text-slate-600">
-              Réservation #{reservation.id}
-            </p>
-          </div>
+        <h1 className="text-xl font-extrabold text-white mb-1">
+          {isPaid ? "Réservation confirmée" : "Paiement en attente"}
+        </h1>
+        <p className="text-sm text-white/70">
+          #{reservation.id}
+        </p>
+      </div>
 
-          <div className="p-8 space-y-6">
-            <div>
-              <h2 className="font-semibold text-slate-800 mb-2">Événement</h2>
-              <p className="text-slate-700">{event.name}</p>
-              <p className="text-slate-500 text-sm capitalize">{date}</p>
-              <p className="text-slate-500 text-sm">
-                Horaires : {event.timeInfo}
-              </p>
-            </div>
-
-            {table && (
+      {/* Content */}
+      <div className="flex-1 -mt-3 relative z-10">
+        <div className="max-w-lg mx-auto px-4 pb-10">
+          <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+            {/* Event info */}
+            <div className="p-5 space-y-3">
               <div>
-                <h2 className="font-semibold text-slate-800 mb-2">
-                  Emplacement
-                </h2>
-                <p className="text-slate-700">
-                  Table {table.rowNumber}-{table.tableNumber}
-                  {table.isVip && (
-                    <span className="ml-2 text-amber-600 text-sm font-semibold">
-                      ★ VIP
-                    </span>
-                  )}
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1">
+                  Événement
+                </p>
+                <p className="text-base font-bold text-slate-900">
+                  {event.name}
+                </p>
+                <p className="text-sm text-slate-500 capitalize">{date}</p>
+                <p className="text-sm text-slate-400">{event.timeInfo}</p>
+              </div>
+
+              {tableDetail && (
+                <div>
+                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1">
+                    Emplacement
+                  </p>
+                  <p className="text-sm font-semibold text-slate-800">
+                    Table {tableDetail.rowNumber}-{tableDetail.tableNumber}
+                    {tableDetail.isVip && (
+                      <span className="ml-1.5 text-amber-500">★ VIP</span>
+                    )}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1">
+                  Contact
+                </p>
+                <p className="text-sm text-slate-700">
+                  {reservation.referentStudent}
+                </p>
+                <p className="text-sm text-slate-500">{reservation.email}</p>
+              </div>
+            </div>
+
+            {/* Guests */}
+            <div className="border-t">
+              <div className="px-5 py-2.5 bg-slate-50">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Convives
                 </p>
               </div>
-            )}
-
-            <div>
-              <h2 className="font-semibold text-slate-800 mb-2">Convives</h2>
-              <div className="space-y-2">
+              <div className="divide-y divide-slate-100">
                 {resSeats.map((guest) => {
-                  const seat = seatDetails.find((s) => s.id === guest.seatId);
+                  const seat = seatDetails.find(
+                    (s) => s.id === guest.seatId
+                  );
                   const meal = MEAL_OPTIONS.find(
                     (m) => m.value === guest.mealChoice
                   );
                   return (
                     <div
                       key={guest.id}
-                      className="flex items-center justify-between text-sm border-b pb-2 last:border-0"
+                      className="px-5 py-3 flex items-center justify-between"
                     >
                       <div>
-                        <span className="font-medium">
+                        <p className="text-sm font-medium text-slate-800">
                           {guest.firstName} {guest.lastName}
-                        </span>
-                        {seat && (
-                          <span className="text-slate-400 ml-2">
-                            (Siège {seat.seatNumber})
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-slate-500">
-                        {meal?.label || guest.mealChoice}
-                        {guest.hasDessert && " + Tiramisu"}
+                          {seat && (
+                            <span className="text-slate-300 ml-1.5 text-xs">
+                              S{seat.seatNumber}
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          {meal?.label || guest.mealChoice}
+                          {guest.hasDessert && " + Tiramisu"}
+                        </p>
                       </div>
                     </div>
                   );
@@ -192,9 +222,9 @@ export default async function ConfirmationPage({ params }: Props) {
               </div>
             </div>
 
+            {/* Upsells */}
             {upsells.length > 0 && (
-              <div>
-                <h2 className="font-semibold text-slate-800 mb-2">Extras</h2>
+              <div className="border-t px-5 py-3 space-y-1">
                 {upsells.map((u) => {
                   const option = UPSELL_OPTIONS.find(
                     (o) => o.type === u.upsellType
@@ -204,10 +234,10 @@ export default async function ConfirmationPage({ params }: Props) {
                       key={u.id}
                       className="flex justify-between text-sm"
                     >
-                      <span>
+                      <span className="text-slate-600">
                         {option?.label || u.upsellType} ×{u.quantity}
                       </span>
-                      <span>
+                      <span className="text-slate-800 font-medium">
                         {((u.unitPrice * u.quantity) / 100).toFixed(2)}€
                       </span>
                     </div>
@@ -216,34 +246,33 @@ export default async function ConfirmationPage({ params }: Props) {
               </div>
             )}
 
-            <div>
-              <h2 className="font-semibold text-slate-800 mb-2">Contact</h2>
-              <p className="text-sm text-slate-600">
-                Élève référent : {reservation.referentStudent}
-              </p>
-              <p className="text-sm text-slate-600">
-                Email : {reservation.email}
-              </p>
-              {reservation.phone && (
-                <p className="text-sm text-slate-600">
-                  Tél : {reservation.phone}
-                </p>
-              )}
-            </div>
-
-            <div className="bg-slate-50 rounded-lg p-4 text-center">
-              <p className="text-slate-500 text-sm">Total</p>
-              <p className="text-3xl font-bold text-slate-900">
+            {/* Total */}
+            <div className="px-5 py-4 bg-slate-900 flex justify-between items-center">
+              <span className="text-sm text-slate-400">Total</span>
+              <span className="text-2xl font-extrabold text-white">
                 {(reservation.totalAmount / 100).toFixed(2)}€
-              </p>
+              </span>
             </div>
           </div>
 
-          <div className="p-8 pt-0 text-center">
+          <div className="mt-5 text-center">
             <Link
               href="/"
-              className="text-sm text-blue-600 hover:text-blue-800"
+              className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors"
             >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
               Retour à l&apos;accueil
             </Link>
           </div>

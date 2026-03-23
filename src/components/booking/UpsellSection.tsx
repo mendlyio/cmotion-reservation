@@ -1,7 +1,6 @@
 "use client";
 
 import { UPSELL_OPTIONS } from "@/types";
-import { Button } from "@/components/ui/button";
 
 interface UpsellSectionProps {
   upsells: { type: string; quantity: number }[];
@@ -21,48 +20,51 @@ export function UpsellSection({ upsells, onChange }: UpsellSectionProps) {
   };
 
   return (
-    <div className="border rounded-lg p-4 bg-white">
-      <h3 className="font-semibold text-slate-800 mb-4">
-        Extras (optionnel)
-      </h3>
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+        <span className="text-sm font-semibold text-slate-700">
+          Extras
+        </span>
+        <span className="text-xs text-slate-400 ml-1">optionnel</span>
+      </div>
 
-      <div className="space-y-3">
+      <div className="divide-y divide-slate-100">
         {UPSELL_OPTIONS.map((option) => {
           const qty = getQuantity(option.type);
           return (
             <div
               key={option.type}
-              className="flex items-center justify-between"
+              className="flex items-center justify-between px-4 py-3"
             >
               <div>
-                <p className="font-medium text-sm">{option.label}</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-sm font-medium text-slate-800">
+                  {option.label}
+                </p>
+                <p className="text-xs text-slate-400">
                   {(option.price / 100).toFixed(2)}€ / unité
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
+              <div className="flex items-center gap-0">
+                <button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setQuantity(option.type, Math.max(0, qty - 1))}
+                  onClick={() =>
+                    setQuantity(option.type, Math.max(0, qty - 1))
+                  }
                   disabled={qty === 0}
-                  className="h-8 w-8 p-0"
+                  className="w-10 h-10 flex items-center justify-center rounded-l-lg border border-r-0 border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30 active:bg-slate-100 text-lg"
                 >
                   −
-                </Button>
-                <span className="w-8 text-center font-mono text-sm">
+                </button>
+                <div className="w-10 h-10 flex items-center justify-center border-y border-slate-200 font-mono text-sm font-semibold text-slate-800 bg-white">
                   {qty}
-                </span>
-                <Button
+                </div>
+                <button
                   type="button"
-                  variant="outline"
-                  size="sm"
                   onClick={() => setQuantity(option.type, qty + 1)}
-                  className="h-8 w-8 p-0"
+                  className="w-10 h-10 flex items-center justify-center rounded-r-lg border border-l-0 border-slate-200 text-slate-600 hover:bg-slate-50 active:bg-slate-100 text-lg"
                 >
                   +
-                </Button>
+                </button>
               </div>
             </div>
           );
