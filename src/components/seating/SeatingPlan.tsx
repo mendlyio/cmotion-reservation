@@ -87,29 +87,29 @@ export function SeatingPlan({
     setTooltip({ x: e.clientX - rc.left, y: e.clientY - rc.top - 8, text });
   }, []);
 
-  // Palette unifiée
   const LEGEND = [
-    { c: "#34d399", l: "Libre" },        // émeraude — disponible
-    { c: "#818cf8", l: "Ma sélection" }, // indigo — sélectionné (même violet que le plan)
-    { c: "#a78bfa", l: "En cours" },     // violet clair — held
-    { c: "#334155", l: "Réservé" },      // slate sombre — réservé
+    { c: "#34d399", l: "Libre", filled: true },
+    { c: "#818cf8", l: "Ma sélection", filled: true },
+    { c: "#fbbf24", l: "En cours", filled: true },
+    { c: "#64748b", l: "Réservé", filled: true },
+    { c: "#d97706", l: "VIP", filled: false },
   ];
 
   return (
     <div ref={ref} className="relative w-full rounded-2xl overflow-hidden" style={{ background: "#0f0c1d" }}>
-      {/* Legend — alignée sur la palette du plan */}
-      <div className="flex items-center justify-center gap-5 pt-3 pb-1 px-3">
+      <div className="flex items-center justify-center gap-4 sm:gap-5 pt-3 pb-1 px-3 flex-wrap">
         {LEGEND.map((i) => (
           <div key={i.l} className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full ring-1 ring-black/20" style={{ background: i.c }} />
-            <span className="text-[10px] text-violet-300/50 font-medium">{i.l}</span>
+            <div
+              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              style={i.filled
+                ? { background: i.c }
+                : { background: "transparent", boxShadow: `inset 0 0 0 1.5px ${i.c}` }
+              }
+            />
+            <span className="text-[10px] text-white/40 font-medium">{i.l}</span>
           </div>
         ))}
-        {/* VIP dot */}
-        <div className="flex items-center gap-1.5">
-          <div className="w-2 h-2 rounded-full ring-1 ring-amber-500/50" style={{ background: "transparent", outline: "1.5px solid #f59e0b" }} />
-          <span className="text-[10px] text-violet-300/50 font-medium">VIP</span>
-        </div>
       </div>
 
       <div className="overflow-x-auto pb-3">
@@ -141,8 +141,8 @@ export function SeatingPlan({
             const sepY = PT + SH + SGA + CR + lastVipIdx * (CD + RG) + CR + RG / 2;
             return (
               <g>
-                <line x1={PX + 10} y1={sepY} x2={W - PX - 10} y2={sepY} stroke="#7c3aed" strokeWidth="0.5" strokeDasharray="5 5" opacity="0.35" />
-                <text x={W / 2} y={sepY - 4} textAnchor="middle" fill="#a78bfa" fontSize={7} fontWeight="700" opacity="0.45" fontFamily="system-ui" letterSpacing="3">
+                <line x1={PX + 10} y1={sepY} x2={W - PX - 10} y2={sepY} stroke="#d97706" strokeWidth="0.5" strokeDasharray="5 5" opacity="0.3" />
+                <text x={W / 2} y={sepY - 4} textAnchor="middle" fill="#fbbf24" fontSize={7} fontWeight="700" opacity="0.4" fontFamily="system-ui" letterSpacing="3">
                   VIP
                 </text>
               </g>
@@ -157,8 +157,7 @@ export function SeatingPlan({
             const sx = (W - tw) / 2 + CR;
             return (
               <g key={rn}>
-                {/* Numéro de rang — violet pour VIP, quasi invisible pour normal */}
-                <text x={10} y={cy + 3} fontSize={7} fill={rt[0]?.isVip ? "#a78bfa" : "rgba(139,92,246,0.15)"} fontWeight="900" fontFamily="system-ui">
+                <text x={10} y={cy + 3} fontSize={7} fill={rt[0]?.isVip ? "#d97706" : "rgba(255,255,255,0.12)"} fontWeight="900" fontFamily="system-ui">
                   {rn}
                 </text>
                 {rt.map((t, ti) => (
