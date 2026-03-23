@@ -1,107 +1,55 @@
 "use client";
 
-import {
-  BookingFormData,
-  calculateTotal,
-  getMealPrice,
-  MEAL_OPTIONS,
-  DESSERT_PRICE,
-  VIP_TABLE_PRICE,
-  UPSELL_OPTIONS,
-} from "@/types";
+import { BookingFormData, calculateTotal, getMealPrice, MEAL_OPTIONS, DESSERT_PRICE, VIP_TABLE_PRICE, UPSELL_OPTIONS } from "@/types";
 
-interface OrderSummaryProps {
-  data: BookingFormData;
-}
-
-export function OrderSummary({ data }: OrderSummaryProps) {
+export function OrderSummary({ data }: { data: BookingFormData }) {
   const total = calculateTotal(data);
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100">
-        <span className="text-sm font-semibold text-slate-700">
-          Récapitulatif
-        </span>
+    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      <div className="px-4 py-3 border-b border-slate-100">
+        <p className="text-xs font-bold text-slate-900 uppercase tracking-wider">Récapitulatif</p>
       </div>
 
-      <div className="p-4 space-y-2">
+      <div className="p-4 space-y-2 text-sm">
         {data.isVip ? (
           <>
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-600">
-                Table VIP complète (8 pers.)
-              </span>
-              <span className="font-semibold text-slate-900">
-                {(VIP_TABLE_PRICE / 100).toFixed(2)}€
-              </span>
-            </div>
-            <p className="text-[11px] text-amber-600">
-              ★ Inclus : bulles, zakouski, dessert
-            </p>
+            <Row left="Table VIP · 8 pers." right={`${(VIP_TABLE_PRICE / 100).toFixed(2)}€`} />
+            <p className="text-[11px] text-purple-500">★ Bulles, zakouski, dessert inclus</p>
           </>
         ) : (
-          <>
-            {data.guests.map((guest, i) => {
-              const meal = MEAL_OPTIONS.find(
-                (m) => m.value === guest.mealChoice
-              );
-              const mealPrice = getMealPrice(guest.mealChoice);
-              return (
-                <div key={i}>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-600 truncate mr-2">
-                      {guest.firstName || `Convive ${i + 1}`} —{" "}
-                      {meal?.label || "Repas"}
-                    </span>
-                    <span className="flex-shrink-0 font-medium text-slate-800">
-                      {(mealPrice / 100).toFixed(2)}€
-                    </span>
-                  </div>
-                  {guest.hasDessert && (
-                    <div className="flex justify-between text-xs text-slate-400 ml-3">
-                      <span>+ Tiramisu</span>
-                      <span>{(DESSERT_PRICE / 100).toFixed(2)}€</span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </>
+          data.guests.map((g, i) => {
+            const m = MEAL_OPTIONS.find((x) => x.value === g.mealChoice);
+            const p = getMealPrice(g.mealChoice);
+            return (
+              <div key={i}>
+                <Row left={`${g.firstName || `Convive ${i + 1}`} · ${m?.label || "—"}`} right={`${(p / 100).toFixed(2)}€`} />
+                {g.hasDessert && <Row left="  + Tiramisu" right={`${(DESSERT_PRICE / 100).toFixed(2)}€`} sub />}
+              </div>
+            );
+          })
         )}
 
-        {data.upsells.length > 0 && (
-          <div className="pt-2 mt-2 border-t border-dashed border-slate-200 space-y-1">
-            {data.upsells.map((upsell) => {
-              const option = UPSELL_OPTIONS.find(
-                (o) => o.type === upsell.type
-              );
-              if (!option || upsell.quantity === 0) return null;
-              return (
-                <div
-                  key={upsell.type}
-                  className="flex justify-between text-sm"
-                >
-                  <span className="text-slate-600">
-                    {option.label} ×{upsell.quantity}
-                  </span>
-                  <span className="font-medium text-slate-800">
-                    {((option.price * upsell.quantity) / 100).toFixed(2)}€
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        {data.upsells.filter((u) => u.quantity > 0).map((u) => {
+          const o = UPSELL_OPTIONS.find((x) => x.type === u.type);
+          if (!o) return null;
+          return <Row key={u.type} left={`${o.label} ×${u.quantity}`} right={`${((o.price * u.quantity) / 100).toFixed(2)}€`} />;
+        })}
       </div>
 
-      {/* Total bar */}
-      <div className="px-4 py-3 bg-slate-900 flex justify-between items-center">
-        <span className="text-sm font-semibold text-slate-300">Total</span>
-        <span className="text-xl font-extrabold text-white tracking-tight">
-          {(total / 100).toFixed(2)}€
-        </span>
+      <div className="px-4 py-3 bg-gradient-to-r from-slate-900 to-slate-800 flex justify-between items-center">
+        <span className="text-sm text-white/50">Total</span>
+        <span className="text-xl font-extrabold text-white tabular-nums">{(total / 100).toFixed(2)}€</span>
       </div>
+    </div>
+  );
+}
+
+function Row({ left, right, sub }: { left: string; right: string; sub?: boolean }) {
+  return (
+    <div className={`flex justify-between ${sub ? "text-[12px] text-slate-400 ml-2" : "text-slate-700"}`}>
+      <span className="truncate mr-2">{left}</span>
+      <span className="flex-shrink-0 font-semibold tabular-nums">{right}</span>
     </div>
   );
 }

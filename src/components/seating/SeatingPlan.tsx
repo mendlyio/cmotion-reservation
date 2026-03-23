@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { TableWithSeats, SeatData } from "@/types";
 import { TableShape } from "./TableShape";
-import { SeatingLegend } from "./SeatingLegend";
 
 interface SeatingPlanProps {
   eventId: number;
@@ -16,192 +15,161 @@ interface SeatingPlanProps {
   readOnly?: boolean;
 }
 
-const TABLE_RADIUS = 26;
-const SEAT_RADIUS = 8;
-const SEAT_GAP = 4;
-const SEAT_DIST = TABLE_RADIUS + SEAT_GAP + SEAT_RADIUS;
-const CELL_RADIUS = SEAT_DIST + SEAT_RADIUS;
-const CELL_DIAMETER = CELL_RADIUS * 2;
-const CELL_GAP = 10;
-const CELL_STEP = CELL_DIAMETER + CELL_GAP;
-const ROW_GAP = 12;
-const PADDING_X = 48;
-const PADDING_TOP = 16;
-const SCENE_HEIGHT = 40;
-const SCENE_GAP = 24;
+const TR = 24;
+const SR = 7;
+const SG = 4;
+const SD = TR + SG + SR;
+const CR = SD + SR;
+const CD = CR * 2;
+const CG = 8;
+const CS = CD + CG;
+const RG = 10;
+const PX = 44;
+const PT = 12;
+const SH = 36;
+const SGA = 20;
 
 export function SeatingPlan({
   eventId,
-  tables: initialTables,
+  tables: init,
   onTableSelect,
   onSeatsSelect,
   selectedTableId,
   selectedSeatIds = [],
   readOnly = false,
 }: SeatingPlanProps) {
-  const [tables, setTables] = useState<TableWithSeats[]>(initialTables);
-  const [tooltip, setTooltip] = useState<{
-    x: number;
-    y: number;
-    content: string;
-  } | null>(null);
-  const [hoveredTable, setHoveredTable] = useState<number | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [tables, setTables] = useState<TableWithSeats[]>(init);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
+  const [hovered, setHovered] = useState<number | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const interval = setInterval(async () => {
+    const iv = setInterval(async () => {
       try {
-        const res = await fetch(`/api/seating/${eventId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setTables(data.tables);
-        }
-      } catch { /* silent */ }
+        const r = await fetch(`/api/seating/${eventId}`);
+        if (r.ok) setTables((await r.json()).tables);
+      } catch { /* */ }
     }, 10000);
-    return () => clearInterval(interval);
+    return () => clearInterval(iv);
   }, [eventId]);
 
-  useEffect(() => {
-    setTables(initialTables);
-  }, [initialTables]);
+  useEffect(() => { setTables(init); }, [init]);
 
   const rows = groupByRow(tables);
-  const maxTablesInRow = Math.max(...Object.values(rows).map((r) => r.length), 1);
-  const totalRows = Object.keys(rows).length;
+  const maxT = Math.max(...Object.values(rows).map((r) => r.length), 1);
+  const totalR = Object.keys(rows).length;
+  const W = maxT * CS - CG + PX * 2;
+  const H = PT + SH + SGA + totalR * (CD + RG) - RG + PT + 8;
 
-  const svgWidth = maxTablesInRow * CELL_STEP - CELL_GAP + PADDING_X * 2;
-  const svgHeight =
-    PADDING_TOP + SCENE_HEIGHT + SCENE_GAP +
-    totalRows * (CELL_DIAMETER + ROW_GAP) - ROW_GAP + PADDING_TOP;
+  const onTClick = useCallback((t: TableWithSeats) => {
+    if (readOnly || !t.isVip) return;
+    if (!t.seats.every((s) => s.status === "available" || selectedSeatIds.includes(s.id))) return;
+    onTableSelect?.(t);
+  }, [readOnly, onTableSelect, selectedSeatIds]);
 
-  const handleTableClick = useCallback(
-    (table: TableWithSeats) => {
-      if (readOnly) return;
-      if (table.isVip) {
-        const allAvailable = table.seats.every(
-          (s) => s.status === "available" || selectedSeatIds.includes(s.id)
-        );
-        if (!allAvailable) return;
-        onTableSelect?.(table);
-      }
-    },
-    [readOnly, onTableSelect, selectedSeatIds]
-  );
+  const onSClick = useCallback((t: TableWithSeats, s: SeatData) => {
+    if (readOnly) return;
+    if (t.isVip) { onTClick(t); return; }
+    if (s.status !== "available" && !selectedSeatIds.includes(s.id)) return;
+    onSeatsSelect?.(t.id, [s.id]);
+  }, [readOnly, onTClick, onSeatsSelect, selectedSeatIds]);
 
-  const handleSeatClick = useCallback(
-    (table: TableWithSeats, seat: SeatData) => {
-      if (readOnly) return;
-      if (table.isVip) { handleTableClick(table); return; }
-      if (seat.status !== "available" && !selectedSeatIds.includes(seat.id)) return;
-      onSeatsSelect?.(table.id, [seat.id]);
-    },
-    [readOnly, handleTableClick, onSeatsSelect, selectedSeatIds]
-  );
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent, table: TableWithSeats, seat?: SeatData) => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      let content = "";
-      if (table.isVip) {
-        const avail = table.seats.filter((s) => s.status === "available").length;
-        const held = table.seats.some((s) => s.status === "held");
-        content = held && avail < 8
-          ? `Table ${table.rowNumber}-${table.tableNumber} VIP — En cours`
-          : avail === 0
-          ? `Table ${table.rowNumber}-${table.tableNumber} VIP — Réservée`
-          : `Table ${table.rowNumber}-${table.tableNumber} VIP — 280€`;
-      } else if (seat) {
-        content = seat.status === "held" && !selectedSeatIds.includes(seat.id)
-          ? `Siège ${seat.seatNumber} — En cours`
-          : seat.status === "reserved"
-          ? `Siège ${seat.seatNumber} — Réservé`
-          : `Siège ${seat.seatNumber} — dès 28€`;
-      }
-      setTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top - 10, content });
-    },
-    [selectedSeatIds]
-  );
+  const onMM = useCallback((e: React.MouseEvent, t: TableWithSeats, s?: SeatData) => {
+    if (!ref.current) return;
+    const rc = ref.current.getBoundingClientRect();
+    let text = "";
+    if (t.isVip) {
+      const a = t.seats.filter((x) => x.status === "available").length;
+      text = a === 0 ? "Réservée" : a < 8 ? "En cours…" : "280€ · 8 places";
+    } else if (s) {
+      text = s.status === "held" ? "En cours…" : s.status === "reserved" ? "Réservé" : "dès 28€";
+    }
+    setTooltip({ x: e.clientX - rc.left, y: e.clientY - rc.top - 8, text });
+  }, []);
 
   return (
-    <div ref={containerRef} className="relative w-full">
-      <SeatingLegend />
+    <div ref={ref} className="relative w-full plan-bg rounded-2xl overflow-hidden">
+      {/* Legend */}
+      <div className="flex items-center justify-center gap-4 pt-3 pb-1 px-3">
+        {[
+          { c: "#34d399", l: "Libre" },
+          { c: "#60a5fa", l: "Votre choix" },
+          { c: "#a78bfa", l: "En cours" },
+          { c: "#475569", l: "Réservé" },
+        ].map((i) => (
+          <div key={i.l} className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full" style={{ background: i.c }} />
+            <span className="text-[10px] text-white/40">{i.l}</span>
+          </div>
+        ))}
+      </div>
 
-      {/* Scrollable SVG — no maxHeight, shows all rows */}
-      <div className="overflow-x-auto -mx-4 px-4 pb-2">
-        <svg
-          viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-          className="w-full h-auto"
-          style={{ minWidth: "600px" }}
-        >
-          {/* Scene */}
+      <div className="overflow-x-auto pb-3">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" style={{ minWidth: 560 }}>
+          {/* Scene glow */}
           <defs>
-            <linearGradient id="sceneG" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#0f172a" />
-              <stop offset="100%" stopColor="#1e293b" />
+            <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#c084fc" stopOpacity="0.6" />
+              <stop offset="100%" stopColor="#7c3aed" stopOpacity="0.2" />
             </linearGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
           </defs>
-          <rect
-            x={PADDING_X}
-            y={PADDING_TOP}
-            width={svgWidth - PADDING_X * 2}
-            height={SCENE_HEIGHT}
-            rx={8}
-            fill="url(#sceneG)"
-          />
-          <text
-            x={svgWidth / 2}
-            y={PADDING_TOP + SCENE_HEIGHT / 2 + 4}
-            textAnchor="middle"
-            fill="#94a3b8"
-            fontSize={11}
-            fontWeight="700"
-            fontFamily="system-ui"
-            letterSpacing="3"
-          >
+
+          {/* Scene */}
+          <rect x={PX + 20} y={PT} width={W - (PX + 20) * 2} height={SH} rx={SH / 2} fill="url(#sg)" filter="url(#glow)" />
+          <text x={W / 2} y={PT + SH / 2 + 4} textAnchor="middle" fill="white" fontSize={10} fontWeight="800" fontFamily="system-ui" letterSpacing="4" opacity="0.9">
             SCÈNE
           </text>
 
-          {/* Rows */}
-          {Object.entries(rows).map(([rowNum, rowTables]) => {
-            const ri = parseInt(rowNum) - 1;
-            const cy = PADDING_TOP + SCENE_HEIGHT + SCENE_GAP + CELL_RADIUS + ri * (CELL_DIAMETER + ROW_GAP);
-            const totalW = rowTables.length * CELL_STEP - CELL_GAP;
-            const startCx = (svgWidth - totalW) / 2 + CELL_RADIUS;
-            const isVip = rowTables[0]?.isVip;
-
+          {/* VIP / Normal separator */}
+          {(() => {
+            const vipRows = Object.entries(rows).filter(([, rt]) => rt[0]?.isVip);
+            const normRows = Object.entries(rows).filter(([, rt]) => !rt[0]?.isVip);
+            if (vipRows.length === 0 || normRows.length === 0) return null;
+            const lastVipIdx = parseInt(vipRows[vipRows.length - 1][0]) - 1;
+            const sepY = PT + SH + SGA + CR + lastVipIdx * (CD + RG) + CR + RG / 2;
             return (
-              <g key={rowNum}>
-                {/* Row label */}
-                <text
-                  x={12}
-                  y={cy + 3}
-                  fontSize={8}
-                  fill={isVip ? "#d97706" : "#94a3b8"}
-                  fontWeight="800"
-                  fontFamily="system-ui"
-                >
-                  R{rowNum}
+              <g>
+                <line x1={PX + 10} y1={sepY} x2={W - PX - 10} y2={sepY} stroke="#c084fc" strokeWidth="0.5" strokeDasharray="4 4" opacity="0.3" />
+                <text x={W / 2} y={sepY - 4} textAnchor="middle" fill="#c084fc" fontSize={7} fontWeight="700" opacity="0.5" fontFamily="system-ui" letterSpacing="2">
+                  VIP
                 </text>
+              </g>
+            );
+          })()}
 
-                {rowTables.map((table, ti) => (
+          {/* Rows */}
+          {Object.entries(rows).map(([rn, rt]) => {
+            const ri = parseInt(rn) - 1;
+            const cy = PT + SH + SGA + CR + ri * (CD + RG);
+            const tw = rt.length * CS - CG;
+            const sx = (W - tw) / 2 + CR;
+            return (
+              <g key={rn}>
+                <text x={10} y={cy + 3} fontSize={7} fill={rt[0]?.isVip ? "#c084fc" : "rgba(255,255,255,0.15)"} fontWeight="900" fontFamily="system-ui">
+                  {rn}
+                </text>
+                {rt.map((t, ti) => (
                   <TableShape
-                    key={table.id}
-                    table={table}
-                    cx={startCx + ti * CELL_STEP}
+                    key={t.id}
+                    table={t}
+                    cx={sx + ti * CS}
                     cy={cy}
-                    tableRadius={TABLE_RADIUS}
-                    seatRadius={SEAT_RADIUS}
-                    seatDist={SEAT_DIST}
-                    isSelected={selectedTableId === table.id}
-                    hasSelectedSeats={table.seats.some((s) => selectedSeatIds.includes(s.id))}
+                    tableRadius={TR}
+                    seatRadius={SR}
+                    seatDist={SD}
+                    isSelected={selectedTableId === t.id}
+                    hasSelectedSeats={t.seats.some((s) => selectedSeatIds.includes(s.id))}
                     selectedSeatIds={selectedSeatIds}
-                    isHovered={hoveredTable === table.id}
-                    onTableClick={() => handleTableClick(table)}
-                    onSeatClick={(seat) => handleSeatClick(table, seat)}
-                    onMouseEnter={() => setHoveredTable(table.id)}
-                    onMouseLeave={() => { setHoveredTable(null); setTooltip(null); }}
-                    onMouseMove={(e, seat) => handleMouseMove(e, table, seat)}
+                    isHovered={hovered === t.id}
+                    onTableClick={() => onTClick(t)}
+                    onSeatClick={(s) => onSClick(t, s)}
+                    onMouseEnter={() => setHovered(t.id)}
+                    onMouseLeave={() => { setHovered(null); setTooltip(null); }}
+                    onMouseMove={(e, s) => onMM(e, t, s)}
                     readOnly={readOnly}
                   />
                 ))}
@@ -217,10 +185,10 @@ export function SeatingPlan({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute pointer-events-none bg-slate-900 text-white text-[11px] px-2.5 py-1.5 rounded-md shadow-lg z-50 whitespace-nowrap hidden sm:block"
-            style={{ left: tooltip.x, top: tooltip.y, transform: "translate(-50%, -100%)" }}
+            className="absolute pointer-events-none bg-black/80 backdrop-blur-sm text-white text-[10px] px-2 py-1 rounded-md z-50 whitespace-nowrap hidden sm:block"
+            style={{ left: tooltip.x, top: tooltip.y, transform: "translate(-50%,-100%)" }}
           >
-            {tooltip.content}
+            {tooltip.text}
           </motion.div>
         )}
       </AnimatePresence>
@@ -229,11 +197,8 @@ export function SeatingPlan({
 }
 
 function groupByRow(tables: TableWithSeats[]): Record<number, TableWithSeats[]> {
-  const rows: Record<number, TableWithSeats[]> = {};
-  for (const t of tables) {
-    if (!rows[t.rowNumber]) rows[t.rowNumber] = [];
-    rows[t.rowNumber].push(t);
-  }
-  for (const r of Object.values(rows)) r.sort((a, b) => a.tableNumber - b.tableNumber);
-  return rows;
+  const r: Record<number, TableWithSeats[]> = {};
+  for (const t of tables) { if (!r[t.rowNumber]) r[t.rowNumber] = []; r[t.rowNumber].push(t); }
+  for (const v of Object.values(r)) v.sort((a, b) => a.tableNumber - b.tableNumber);
+  return r;
 }

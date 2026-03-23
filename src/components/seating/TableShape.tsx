@@ -21,153 +21,72 @@ interface TableShapeProps {
   readOnly: boolean;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  available: "#22c55e",
-  held: "#a855f7",
-  reserved: "#ef4444",
-  selected: "#3b82f6",
+const C: Record<string, string> = {
+  available: "#34d399",
+  held: "#a78bfa",
+  reserved: "#475569",
+  selected: "#60a5fa",
 };
 
 export function TableShape({
-  table,
-  cx,
-  cy,
-  tableRadius,
-  seatRadius,
-  seatDist,
-  isSelected,
-  selectedSeatIds,
-  isHovered,
-  onTableClick,
-  onSeatClick,
-  onMouseEnter,
-  onMouseLeave,
-  onMouseMove,
-  readOnly,
+  table, cx, cy, tableRadius: tr, seatRadius: sr, seatDist: sd,
+  isSelected, selectedSeatIds, isHovered,
+  onTableClick, onSeatClick, onMouseEnter, onMouseLeave, onMouseMove, readOnly,
 }: TableShapeProps) {
-  const allReserved = table.seats.every((s) => s.status === "reserved");
-  const allHeld =
-    table.seats.some((s) => s.status === "held") && !isSelected;
-  const isVip = table.isVip;
+  const allRes = table.seats.every((s) => s.status === "reserved");
+  const anyHeld = table.seats.some((s) => s.status === "held") && !isSelected;
+  const vip = table.isVip;
+  const vipOk = vip && table.seats.every((s) => s.status === "available" || selectedSeatIds.includes(s.id));
+  const canClick = !readOnly && vip && vipOk && !isSelected;
 
-  const isVipAvailable =
-    isVip &&
-    table.seats.every(
-      (s) => s.status === "available" || selectedSeatIds.includes(s.id)
-    );
+  let fill = "rgba(255,255,255,0.04)";
+  if (isSelected) fill = "rgba(96,165,250,0.12)";
+  else if (allRes) fill = "rgba(71,85,105,0.15)";
+  else if (anyHeld) fill = "rgba(167,139,250,0.1)";
 
-  let tableFill = "#f1f5f9";
-  if (isSelected) tableFill = "#dbeafe";
-  else if (allReserved) tableFill = "#fecaca";
-  else if (allHeld) tableFill = "#e9d5ff";
-
-  const strokeColor = isVip ? "#d97706" : "#cbd5e1";
-  const strokeWidth = isVip ? 2.5 : 1.5;
-
-  const canClickTable =
-    !readOnly && isVip && isVipAvailable && !isSelected;
+  const stroke = vip
+    ? (isHovered && canClick ? "#e9d5ff" : "#7c3aed")
+    : (isSelected ? "#60a5fa" : "rgba(255,255,255,0.08)");
 
   return (
     <g onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
-      {/* Table circle */}
-      <circle
-        cx={cx}
-        cy={cy}
-        r={tableRadius}
-        fill={tableFill}
-        stroke={isHovered && canClickTable ? "#2563eb" : strokeColor}
-        strokeWidth={isHovered && canClickTable ? 3 : strokeWidth}
-        className={canClickTable ? "cursor-pointer" : ""}
-        onClick={isVip ? onTableClick : undefined}
-        onMouseMove={(e) => onMouseMove(e)}
-        style={{ transition: "fill 0.2s, stroke 0.2s" }}
-      />
+      {/* Table body */}
+      <circle cx={cx} cy={cy} r={tr} fill={fill} stroke={stroke} strokeWidth={vip ? 1.5 : 0.5}
+        className={canClick ? "cursor-pointer" : ""} onClick={vip ? onTableClick : undefined}
+        onMouseMove={(e) => onMouseMove(e)} style={{ transition: "fill .2s, stroke .2s" }} />
 
-      {/* Table label */}
-      <text
-        x={cx}
-        y={cy + (isVip ? -2 : 1)}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontSize={10}
-        fontWeight="700"
-        fill="#475569"
-        fontFamily="system-ui"
-        pointerEvents="none"
-      >
-        {table.rowNumber}-{table.tableNumber}
+      {/* Label */}
+      <text x={cx} y={cy + (vip ? -1 : 1)} textAnchor="middle" dominantBaseline="middle"
+        fontSize={8} fontWeight="800" fill="rgba(255,255,255,0.35)" fontFamily="system-ui" pointerEvents="none">
+        T{table.tableNumber}
       </text>
-
-      {/* VIP badge */}
-      {isVip && (
-        <text
-          x={cx}
-          y={cy + 10}
-          textAnchor="middle"
-          fontSize={7}
-          fontWeight="bold"
-          fill="#d97706"
-          fontFamily="system-ui"
-          pointerEvents="none"
-        >
+      {vip && (
+        <text x={cx} y={cy + 8} textAnchor="middle" fontSize={5} fontWeight="900"
+          fill="#c084fc" fontFamily="system-ui" pointerEvents="none" letterSpacing="1">
           VIP
         </text>
       )}
 
-      {/* Seats arranged around the table */}
+      {/* Seats */}
       {table.seats.map((seat, i) => {
-        const angle =
-          (i / table.seats.length) * Math.PI * 2 - Math.PI / 2;
-        const sx = cx + Math.cos(angle) * seatDist;
-        const sy = cy + Math.sin(angle) * seatDist;
-
-        const isSelectedSeat = selectedSeatIds.includes(seat.id);
-        let fill = STATUS_COLORS[seat.status] || STATUS_COLORS.available;
-        if (isSelectedSeat) fill = STATUS_COLORS.selected;
-
-        const canClick =
-          !readOnly &&
-          !isVip &&
-          (seat.status === "available" || isSelectedSeat);
+        const a = (i / table.seats.length) * Math.PI * 2 - Math.PI / 2;
+        const sx = cx + Math.cos(a) * sd;
+        const sy = cy + Math.sin(a) * sd;
+        const sel = selectedSeatIds.includes(seat.id);
+        const color = sel ? C.selected : C[seat.status] || C.available;
+        const canClickSeat = !readOnly && !vip && (seat.status === "available" || sel);
 
         return (
           <g key={seat.id}>
-            {/* Invisible bigger hit area for touch */}
-            <circle
-              cx={sx}
-              cy={sy}
-              r={seatRadius + 4}
-              fill="transparent"
-              className={canClick || (isVip && !readOnly) ? "cursor-pointer" : ""}
-              onClick={() => {
-                if (canClick || (isVip && !readOnly)) {
-                  onSeatClick(seat);
-                }
-              }}
-              onMouseMove={(e) => onMouseMove(e, seat)}
-            />
-            {/* Visible seat */}
-            <circle
-              cx={sx}
-              cy={sy}
-              r={seatRadius}
-              fill={fill}
-              stroke={isSelectedSeat ? "#1d4ed8" : "white"}
-              strokeWidth={isSelectedSeat ? 2.5 : 1.5}
-              pointerEvents="none"
-              style={{ transition: "fill 0.2s, stroke 0.2s" }}
-            />
-            <text
-              x={sx}
-              y={sy + 0.5}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontSize={8}
-              fill="white"
-              fontWeight="700"
-              fontFamily="system-ui"
-              pointerEvents="none"
-            >
+            <circle cx={sx} cy={sy} r={sr + 4} fill="transparent"
+              className={canClickSeat || (vip && !readOnly) ? "cursor-pointer" : ""}
+              onClick={() => { if (canClickSeat || (vip && !readOnly)) onSeatClick(seat); }}
+              onMouseMove={(e) => onMouseMove(e, seat)} />
+            <circle cx={sx} cy={sy} r={sr} fill={color}
+              stroke={sel ? "#93c5fd" : "rgba(0,0,0,0.3)"} strokeWidth={sel ? 1.5 : 0.5}
+              pointerEvents="none" style={{ transition: "fill .15s" }} />
+            <text x={sx} y={sy + 0.5} textAnchor="middle" dominantBaseline="middle"
+              fontSize={6} fill="white" fontWeight="800" fontFamily="system-ui" pointerEvents="none" opacity={0.9}>
               {seat.seatNumber}
             </text>
           </g>

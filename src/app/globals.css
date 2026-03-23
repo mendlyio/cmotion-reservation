@@ -139,3 +139,7 @@
     padding-right: 2.5rem;
   }
 }
+
+.plan-bg {
+  background: radial-gradient(ellipse at 50% 0%, #1a1a2e 0%, #0d0d1a 60%, #000 100%);
+}

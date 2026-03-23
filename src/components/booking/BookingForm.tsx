@@ -5,204 +5,131 @@ import { motion, AnimatePresence } from "framer-motion";
 import { GuestForm } from "./GuestForm";
 import { UpsellSection } from "./UpsellSection";
 import { OrderSummary } from "./OrderSummary";
-import {
-  TableWithSeats,
-  SeatFormData,
-  BookingFormData,
-  MealChoice,
-  calculateTotal,
-} from "@/types";
+import { TableWithSeats, SeatFormData, BookingFormData, MealChoice, calculateTotal } from "@/types";
 
-interface BookingFormProps {
+interface Props {
   eventId: number;
   table: TableWithSeats;
   selectedSeatIds: number[];
   onCancel: () => void;
 }
 
-type WizardStep = 0 | 1 | 2;
+type Step = 0 | 1 | 2;
 
-export function BookingForm({
-  eventId,
-  table,
-  selectedSeatIds,
-  onCancel,
-}: BookingFormProps) {
-  const isVip = table.isVip;
-  const seatIds = isVip ? table.seats.map((s) => s.id) : selectedSeatIds;
+export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props) {
+  const vip = table.isVip;
+  const ids = vip ? table.seats.map((s) => s.id) : selectedSeatIds;
+  const map = useRef<Map<number, SeatFormData>>(new Map());
 
-  const guestMapRef = useRef<Map<number, SeatFormData>>(new Map());
-  const [guests, setGuests] = useState<SeatFormData[]>(() =>
-    buildGuestList(seatIds, guestMapRef.current)
-  );
+  const [guests, setGuests] = useState<SeatFormData[]>(() => build(ids, map.current));
   const [upsells, setUpsells] = useState<{ type: string; quantity: number }[]>([]);
-  const [referentStudent, setReferentStudent] = useState("");
+  const [ref, setRef] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState<WizardStep>(0);
+  const [step, setStep] = useState<Step>(0);
 
   useEffect(() => {
-    for (const g of guests) guestMapRef.current.set(g.seatId, g);
-    setGuests(buildGuestList(seatIds, guestMapRef.current));
+    for (const g of guests) map.current.set(g.seatId, g);
+    setGuests(build(ids, map.current));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSeatIds.join(",")]);
 
-  const bookingData: BookingFormData = {
-    eventId, tableId: table.id, seatIds, isVip, guests, upsells,
-    referentStudent, email, phone,
+  const data: BookingFormData = {
+    eventId, tableId: table.id, seatIds: ids, isVip: vip,
+    guests, upsells, referentStudent: ref, email, phone,
   };
+  const gOk = guests.every((g) => g.firstName && g.lastName && g.mealChoice);
+  const cOk = !!ref && !!email;
+  const total = calculateTotal(data);
 
-  const guestsValid = guests.every((g) => g.firstName && g.lastName && g.mealChoice);
-  const contactValid = !!referentStudent && !!email;
-  const total = calculateTotal(bookingData);
-
-  const handlePay = async (simulate: boolean) => {
-    if (!guestsValid || !contactValid) return;
-    setLoading(true);
-    setError(null);
-
+  const pay = async (sim: boolean) => {
+    setLoading(true); setError(null);
     try {
-      const resResponse = await fetch("/api/reservation", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bookingData),
-      });
-      if (!resResponse.ok) {
-        const d = await resResponse.json();
-        throw new Error(d.error || "Erreur lors de la réservation");
+      const rr = await fetch("/api/reservation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      if (!rr.ok) throw new Error((await rr.json()).error);
+      const { reservationId, totalAmount } = await rr.json();
+      if (sim || totalAmount === 0) {
+        if (sim) { const p = await fetch("/api/stripe/simulate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reservationId }) }); if (!p.ok) throw new Error("Erreur"); }
+        window.location.href = `/confirmation/${reservationId}`; return;
       }
-      const { reservationId, totalAmount } = await resResponse.json();
-
-      if (simulate || totalAmount === 0) {
-        if (simulate) {
-          const pr = await fetch("/api/stripe/simulate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ reservationId }),
-          });
-          if (!pr.ok) throw new Error("Erreur paiement simulé");
-        }
-        window.location.href = `/confirmation/${reservationId}`;
-        return;
-      }
-
-      const sr = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reservationId }),
-      });
-      if (!sr.ok) {
-        const d = await sr.json();
-        throw new Error(d.error || "Erreur paiement");
-      }
+      const sr = await fetch("/api/stripe/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reservationId }) });
+      if (!sr.ok) throw new Error((await sr.json()).error);
       const { url } = await sr.json();
       if (url) window.location.href = url;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur");
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { setError(e instanceof Error ? e.message : "Erreur"); }
+    finally { setLoading(false); }
   };
 
   const STEPS = [
-    { label: "Convives", icon: "👤" },
-    { label: "Extras", icon: "✨" },
-    { label: "Paiement", icon: "💳" },
+    { emoji: "👤", label: "Convives", done: gOk },
+    { emoji: "✨", label: "Contact", done: cOk },
+    { emoji: "💳", label: "Payer", done: false },
   ];
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex-shrink-0 px-5 pt-4 pb-3 flex items-center justify-between">
+    <div>
+      {/* Header bar */}
+      <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-5 py-4 flex items-center justify-between">
         <div>
-          <h2 className="text-base font-bold text-slate-900">
-            Table {table.rowNumber}-{table.tableNumber}
-            {isVip && <span className="text-amber-500 ml-1">★</span>}
-          </h2>
-          <p className="text-xs text-slate-400">
-            {isVip ? "VIP · 8 places · 280€" : `${seatIds.length} siège(s) · dès 28€`}
+          <div className="flex items-center gap-2">
+            <span className="text-white font-bold text-sm">Table {table.rowNumber}-{table.tableNumber}</span>
+            {vip && <span className="bg-purple-500/20 text-purple-300 text-[10px] font-bold px-2 py-0.5 rounded-full">VIP</span>}
+          </div>
+          <p className="text-white/40 text-[11px] mt-0.5">
+            {vip ? "8 places · 280€ tout inclus" : `${ids.length} siège(s) sélectionné(s)`}
           </p>
         </div>
-        <button
-          onClick={onCancel}
-          className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Progress bar */}
-      <div className="flex-shrink-0 px-5 pb-4">
-        <div className="flex items-center gap-1">
-          {STEPS.map((s, i) => (
-            <button
-              key={i}
-              onClick={() => setStep(i as WizardStep)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
-                step === i
-                  ? "bg-slate-900 text-white shadow-sm"
-                  : i < step
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "bg-slate-100 text-slate-400"
-              }`}
-            >
-              <span>{s.icon}</span>
-              <span className="hidden sm:inline">{s.label}</span>
-            </button>
-          ))}
+        <div className="flex items-center gap-3">
+          <span className="text-white font-extrabold text-lg tabular-nums">{(total / 100).toFixed(2)}€</span>
+          <button onClick={onCancel} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white/50 hover:bg-red-500/20 hover:text-red-300 transition">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       </div>
 
-      {/* Step content */}
-      <div className="flex-1 overflow-y-auto px-5 pb-4">
+      {/* Step tabs */}
+      <div className="flex border-b border-slate-100">
+        {STEPS.map((s, i) => (
+          <button
+            key={i}
+            onClick={() => setStep(i as Step)}
+            className={`flex-1 py-2.5 text-center text-xs font-semibold transition-all relative ${
+              step === i ? "text-slate-900" : s.done && i < step ? "text-emerald-600" : "text-slate-300"
+            }`}
+          >
+            <span className="mr-1">{s.done && i < step ? "✓" : s.emoji}</span>
+            {s.label}
+            {step === i && <motion.div layoutId="tab" className="absolute bottom-0 left-2 right-2 h-0.5 bg-slate-900 rounded-full" />}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div className="p-5">
         <AnimatePresence mode="wait">
           {step === 0 && (
-            <motion.div
-              key="step0"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.15 }}
-              className="space-y-3"
-            >
-              {isVip && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 rounded-lg text-xs text-amber-800 font-medium">
+            <motion.div key="s0" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.12 }} className="space-y-3">
+              {vip && (
+                <div className="flex items-center gap-2 p-3 bg-purple-50 rounded-xl text-xs text-purple-700 font-medium">
                   <span>★</span> Bulles, zakouski et dessert inclus
                 </div>
               )}
-              {!isVip && (
-                <p className="text-xs text-blue-600 bg-blue-50/70 px-3 py-2 rounded-lg">
-                  Cliquez sur d&apos;autres sièges pour les ajouter
+              {!vip && (
+                <p className="text-[11px] text-blue-500 bg-blue-50 px-3 py-2 rounded-xl">
+                  Vous pouvez encore ajouter des sièges en cliquant sur le plan ci-dessus
                 </p>
               )}
               <AnimatePresence initial={false}>
-                {guests.map((guest, i) => {
-                  const seat = table.seats.find((s) => s.id === guest.seatId);
+                {guests.map((g, i) => {
+                  const seat = table.seats.find((s) => s.id === g.seatId);
                   return (
-                    <motion.div
-                      key={guest.seatId}
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.15 }}
-                    >
-                      <GuestForm
-                        index={i}
-                        seatId={guest.seatId}
-                        seatLabel={`Siège ${seat?.seatNumber || i + 1}`}
-                        data={guest}
-                        isVip={isVip}
-                        onChange={(u) => {
-                          const ng = [...guests];
-                          ng[i] = u;
-                          setGuests(ng);
-                          guestMapRef.current.set(u.seatId, u);
-                        }}
-                      />
+                    <motion.div key={g.seatId} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.12 }}>
+                      <GuestForm index={i} seatId={g.seatId} seatLabel={`S${seat?.seatNumber || i + 1}`} data={g} isVip={vip}
+                        onChange={(u) => { const n = [...guests]; n[i] = u; setGuests(n); map.current.set(u.seatId, u); }} />
                     </motion.div>
                   );
                 })}
@@ -211,84 +138,44 @@ export function BookingForm({
           )}
 
           {step === 1 && (
-            <motion.div
-              key="step1"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.15 }}
-              className="space-y-4"
-            >
+            <motion.div key="s1" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.12 }} className="space-y-4">
               <UpsellSection upsells={upsells} onChange={setUpsells} />
-
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100">
-                  <span className="text-sm font-semibold text-slate-700">Contact</span>
-                </div>
-                <div className="p-4 space-y-3">
-                  <InputField label="Nom de l'élève référent *" type="text" value={referentStudent} onChange={setReferentStudent} placeholder="Nom de l'élève" />
-                  <InputField label="Email *" type="email" value={email} onChange={setEmail} placeholder="votre@email.com" autoComplete="email" />
-                  <InputField label="Téléphone" type="tel" value={phone} onChange={setPhone} placeholder="06 12 34 56 78" autoComplete="tel" />
-                </div>
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-slate-900 uppercase tracking-wider">Contact</p>
+                <Field label="Élève référent" value={ref} set={setRef} placeholder="Nom de l'élève" required />
+                <Field label="Email" value={email} set={setEmail} placeholder="votre@email.com" type="email" required />
+                <Field label="Téléphone" value={phone} set={setPhone} placeholder="06 12 34 56 78" type="tel" />
               </div>
             </motion.div>
           )}
 
           {step === 2 && (
-            <motion.div
-              key="step2"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.15 }}
-              className="space-y-4"
-            >
-              <OrderSummary data={bookingData} />
-
-              {error && (
-                <div className="px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
-                  {error}
-                </div>
-              )}
+            <motion.div key="s2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.12 }} className="space-y-4">
+              <OrderSummary data={data} />
+              {error && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">{error}</div>}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Bottom bar */}
-      <div className="flex-shrink-0 border-t bg-white px-5 py-3 space-y-2">
-        {/* Price always visible */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-slate-400">{seatIds.length} place(s)</span>
-          <span className="text-lg font-extrabold text-slate-900 tabular-nums">
-            {(total / 100).toFixed(2)}€
-          </span>
-        </div>
-
+      {/* Footer CTA */}
+      <div className="px-5 pb-5">
         {step < 2 ? (
           <button
-            onClick={() => setStep((step + 1) as WizardStep)}
-            disabled={step === 0 && !guestsValid}
-            className="w-full h-12 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-slate-800 disabled:opacity-30 active:scale-[0.98] transition-all"
+            onClick={() => setStep((step + 1) as Step)}
+            disabled={step === 0 ? !gOk : !cOk}
+            className="w-full h-12 bg-slate-900 text-white text-sm font-bold rounded-xl disabled:opacity-20 active:scale-[0.98] transition-all"
           >
-            {step === 0
-              ? (guestsValid ? "Continuer — Extras & Contact" : "Remplissez les convives")
-              : (contactValid ? "Voir le récapitulatif" : "Remplissez le contact")}
+            Continuer
           </button>
         ) : (
           <div className="flex gap-2">
-            <button
-              onClick={() => handlePay(false)}
-              disabled={!contactValid || loading}
-              className="flex-1 h-12 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-slate-800 disabled:opacity-30 active:scale-[0.98] transition-all"
-            >
+            <button onClick={() => pay(false)} disabled={!cOk || loading}
+              className="flex-1 h-12 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-bold rounded-xl disabled:opacity-20 active:scale-[0.98] transition-all shadow-lg shadow-purple-500/20">
               {loading ? "Traitement…" : `Payer ${(total / 100).toFixed(2)}€`}
             </button>
-            <button
-              onClick={() => handlePay(true)}
-              disabled={!contactValid || loading}
-              className="h-12 px-3 border border-slate-200 text-slate-400 text-[11px] font-semibold rounded-xl hover:bg-slate-50 disabled:opacity-30 active:scale-[0.98] transition-all"
-            >
+            <button onClick={() => pay(true)} disabled={!cOk || loading}
+              className="h-12 px-4 bg-slate-100 text-slate-500 text-[11px] font-bold rounded-xl disabled:opacity-20 active:scale-[0.98] transition-all">
               Test
             </button>
           </div>
@@ -298,36 +185,21 @@ export function BookingForm({
   );
 }
 
-function InputField({
-  label, type, value, onChange, placeholder, autoComplete,
-}: {
-  label: string; type: string; value: string;
-  onChange: (v: string) => void; placeholder: string; autoComplete?: string;
+function Field({ label, value, set, placeholder, type = "text", required }: {
+  label: string; value: string; set: (v: string) => void; placeholder: string; type?: string; required?: boolean;
 }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-500 mb-1">{label}</label>
-      <input
-        type={type}
-        autoComplete={autoComplete}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-shadow"
-      />
+      <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+        {label} {required && <span className="text-red-400">*</span>}
+      </label>
+      <input type={type} autoComplete={type === "email" ? "email" : type === "tel" ? "tel" : undefined}
+        value={value} onChange={(e) => set(e.target.value)} placeholder={placeholder}
+        className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-400 focus:bg-white transition-all" />
     </div>
   );
 }
 
-function buildGuestList(seatIds: number[], map: Map<number, SeatFormData>): SeatFormData[] {
-  return seatIds.map(
-    (id) =>
-      map.get(id) || {
-        seatId: id,
-        firstName: "",
-        lastName: "",
-        mealChoice: "lasagne" as MealChoice,
-        hasDessert: false,
-      }
-  );
+function build(ids: number[], m: Map<number, SeatFormData>): SeatFormData[] {
+  return ids.map((id) => m.get(id) || { seatId: id, firstName: "", lastName: "", mealChoice: "lasagne" as MealChoice, hasDessert: false });
 }
