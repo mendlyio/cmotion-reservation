@@ -19,16 +19,30 @@ const SEATING_PLAN = [
 
 const EVENTS = [
   {
-    name: "Spectacle +12 ans",
+    name: "Spectacle +12 ans — 11h",
     eventDate: "2026-05-17",
-    timeInfo: "11h et 17h30",
+    timeInfo: "11h",
     ageGroup: "+12",
     description: "Spectacle de danse pour les élèves de +12 ans",
   },
   {
-    name: "Spectacle -12 ans",
+    name: "Spectacle +12 ans — 17h30",
+    eventDate: "2026-05-17",
+    timeInfo: "17h30",
+    ageGroup: "+12",
+    description: "Spectacle de danse pour les élèves de +12 ans",
+  },
+  {
+    name: "Spectacle -12 ans — 11h",
     eventDate: "2026-06-07",
-    timeInfo: "11h et 17h",
+    timeInfo: "11h",
+    ageGroup: "-12",
+    description: "Spectacle de danse pour les élèves de -12 ans",
+  },
+  {
+    name: "Spectacle -12 ans — 17h",
+    eventDate: "2026-06-07",
+    timeInfo: "17h",
     ageGroup: "-12",
     description: "Spectacle de danse pour les élèves de -12 ans",
   },
@@ -64,17 +78,15 @@ async function seed() {
         }));
 
         await db.insert(seats).values(seatValues);
-        console.log(
-          `  Row ${rowConfig.row}, Table ${t} (${rowConfig.isVip ? "VIP" : "Normal"}) - 8 seats`
-        );
       }
     }
+
+    console.log(`  → 55 tables, 440 seats created`);
   }
 
-  console.log("\nSeeding complete!");
-  console.log(
-    `Total: ${EVENTS.length} events, ${SEATING_PLAN.reduce((acc, r) => acc + r.tables, 0) * EVENTS.length} tables, ${SEATING_PLAN.reduce((acc, r) => acc + r.tables * 8, 0) * EVENTS.length} seats`
-  );
+  const totalTables = SEATING_PLAN.reduce((a, r) => a + r.tables, 0) * EVENTS.length;
+  const totalSeats = totalTables * 8;
+  console.log(`\nDone! ${EVENTS.length} events, ${totalTables} tables, ${totalSeats} seats`);
 }
 
 seed().catch(console.error);
