@@ -99,7 +99,11 @@ export function ReservationClient({ event }: { event: EventData }) {
             </Link>
             <div className="min-w-0">
               <h1 className="text-sm font-bold text-white/90 truncate">{event.name}</h1>
-              <p className="text-[10px] text-violet-300/40 truncate capitalize">{d} · {event.timeInfo}</p>
+              <p className="text-[11px] text-white/40 truncate">
+                <span className="capitalize">{d}</span>
+                <span className="mx-1 text-violet-500/60">·</span>
+                <span className="text-white/60 font-semibold">{event.timeInfo}</span>
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">

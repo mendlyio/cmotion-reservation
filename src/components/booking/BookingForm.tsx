@@ -75,10 +75,10 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
         <div>
           <div className="flex items-center gap-2">
             <span className="text-white font-bold text-sm">Table {table.rowNumber}-{table.tableNumber}</span>
-            {vip && <span className="bg-purple-500/20 text-purple-300 text-[10px] font-bold px-2 py-0.5 rounded-full">VIP</span>}
+            {vip && <span className="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full">VIP</span>}
           </div>
           <p className="text-white/40 text-[11px] mt-0.5">
-            {vip ? "8 places · 280€ tout inclus" : `${ids.length} siège(s) sélectionné(s)`}
+            {vip ? "8 places · 280€ tout inclus" : `${ids.length} ${ids.length > 1 ? "sièges sélectionnés" : "siège sélectionné"}`}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -114,7 +114,7 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
           {step === 0 && (
             <motion.div key="s0" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.12 }} className="space-y-3">
               {vip && (
-                <div className="flex items-center gap-2 p-3 bg-purple-50 rounded-xl text-xs text-purple-700 font-medium">
+                <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-xl text-xs text-amber-700 font-medium">
                   <span>★</span> Bulles, zakouski et dessert inclus
                 </div>
               )}

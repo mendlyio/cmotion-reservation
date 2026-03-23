@@ -45,7 +45,7 @@ export function GuestForm({ index, seatId, seatLabel, data, isVip, onChange }: P
           <label className="flex items-center gap-3 py-1 cursor-pointer active:opacity-70 select-none">
             <div className="relative flex-shrink-0">
               <input type="checkbox" checked={data.hasDessert} onChange={(e) => onChange({ ...data, hasDessert: e.target.checked })} className="sr-only peer" />
-              <div className="w-10 h-6 bg-slate-200 rounded-full peer-checked:bg-purple-500 transition-colors" />
+              <div className="w-10 h-6 bg-slate-200 rounded-full peer-checked:bg-indigo-500 transition-colors" />
               <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform peer-checked:translate-x-4" />
             </div>
             <span className="text-sm text-slate-600">Tiramisu <span className="text-slate-400">(+{(DESSERT_PRICE / 100).toFixed(2)}€)</span></span>
@@ -53,7 +53,7 @@ export function GuestForm({ index, seatId, seatLabel, data, isVip, onChange }: P
         )}
 
         {isVip && (
-          <p className="text-[11px] text-purple-500 flex items-center gap-1.5">
+          <p className="text-[11px] text-amber-600 flex items-center gap-1.5">
             <span>★</span> Dessert inclus
           </p>
         )}

@@ -15,7 +15,7 @@ export function OrderSummary({ data }: { data: BookingFormData }) {
         {data.isVip ? (
           <>
             <Row left="Table VIP · 8 pers." right={`${(VIP_TABLE_PRICE / 100).toFixed(2)}€`} />
-            <p className="text-[11px] text-purple-500">★ Bulles, zakouski, dessert inclus</p>
+            <p className="text-[11px] text-amber-600">★ Bulles, zakouski, dessert inclus</p>
           </>
         ) : (
           data.guests.map((g, i) => {
