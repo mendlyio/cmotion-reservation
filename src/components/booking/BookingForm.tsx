@@ -25,10 +25,13 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
   const [upsells, setUpsells] = useState<{ type: string; quantity: number }[]>([]);
   const [ref, setRef] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phonePrefix, setPhonePrefix] = useState("+32");
+  const [phoneLocal, setPhoneLocal] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>(0);
+
+  const phone = phoneLocal.trim() ? `${phonePrefix} ${phoneLocal.trim()}` : "";
 
   useEffect(() => {
     for (const g of guests) map.current.set(g.seatId, g);
@@ -40,8 +43,8 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
     eventId, tableId: table.id, seatIds: ids, isVip: vip,
     guests, upsells, referentStudent: ref, email, phone,
   };
-  const gOk = guests.every((g) => g.firstName && g.lastName && g.mealChoice);
-  const cOk = !!ref && !!email;
+  const gOk = guests.every((g) => g.firstName.trim() && g.lastName.trim() && g.mealChoice);
+  const cOk = !!ref.trim() && !!email.trim() && !!phoneLocal.trim();
   const total = calculateTotal(data);
 
   const pay = async (sim: boolean) => {
@@ -142,9 +145,49 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
               <UpsellSection upsells={upsells} onChange={setUpsells} />
               <div className="space-y-3">
                 <p className="text-xs font-bold text-slate-900 uppercase tracking-wider">Contact</p>
-                <Field label="Élève référent" value={ref} set={setRef} placeholder="Nom de l'élève" required />
-                <Field label="Email" value={email} set={setEmail} placeholder="votre@email.com" type="email" required />
-                <Field label="Téléphone" value={phone} set={setPhone} placeholder="06 12 34 56 78" type="tel" />
+                <Field
+                  label="Élève référent"
+                  value={ref}
+                  set={setRef}
+                  placeholder="Nom de l'élève"
+                  required
+                />
+                <Field
+                  label="Email"
+                  value={email}
+                  set={setEmail}
+                  placeholder="votre@email.com"
+                  type="email"
+                  required
+                />
+                {/* Téléphone avec préfixe pays */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                    Téléphone <span className="text-red-400">*</span>
+                  </label>
+                  <div className={`flex rounded-xl border overflow-hidden transition-all focus-within:ring-2 focus-within:ring-indigo-500/30 focus-within:border-indigo-400 ${
+                    phoneLocal.trim() ? "border-slate-200" : "border-red-300 bg-red-50/20"
+                  }`}>
+                    <select
+                      value={phonePrefix}
+                      onChange={(e) => setPhonePrefix(e.target.value)}
+                      className="h-12 pl-3 pr-2 bg-slate-50 text-sm text-slate-700 font-semibold border-r border-slate-200 focus:outline-none appearance-none cursor-pointer shrink-0"
+                      style={{ backgroundImage: "none" }}
+                    >
+                      <option value="+32">🇧🇪 +32</option>
+                      <option value="+33">🇫🇷 +33</option>
+                      <option value="+352">🇱🇺 +352</option>
+                    </select>
+                    <input
+                      type="tel"
+                      autoComplete="tel"
+                      value={phoneLocal}
+                      onChange={(e) => setPhoneLocal(e.target.value)}
+                      placeholder="470 12 34 56"
+                      className="flex-1 h-12 px-3 bg-white text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none"
+                    />
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}
@@ -188,14 +231,22 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
 function Field({ label, value, set, placeholder, type = "text", required }: {
   label: string; value: string; set: (v: string) => void; placeholder: string; type?: string; required?: boolean;
 }) {
+  const empty = required && value.trim() === "";
   return (
     <div>
       <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
         {label} {required && <span className="text-red-400">*</span>}
       </label>
-      <input type={type} autoComplete={type === "email" ? "email" : type === "tel" ? "tel" : undefined}
-        value={value} onChange={(e) => set(e.target.value)} placeholder={placeholder}
-        className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-400 focus:bg-white transition-all" />
+      <input
+        type={type}
+        autoComplete={type === "email" ? "email" : undefined}
+        value={value}
+        onChange={(e) => set(e.target.value)}
+        placeholder={placeholder}
+        className={`w-full h-12 px-4 rounded-xl border text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 focus:bg-white transition-all ${
+          empty ? "border-red-300 bg-red-50/30" : "border-slate-200 bg-slate-50/50"
+        }`}
+      />
     </div>
   );
 }
