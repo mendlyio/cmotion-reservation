@@ -153,22 +153,60 @@ export default async function HomePage() {
             </div>
           )}
 
-          {/* Pricing hint */}
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <div className="bg-white rounded-xl border p-4 text-center">
-              <div className="text-amber-500 text-lg font-bold mb-0.5">
-                VIP
-              </div>
-              <div className="text-xs text-slate-400">
-                280€ / table de 8
+          {/* Pricing */}
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            {/* VIP */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/60 p-4">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-amber-400/10 rounded-full -translate-y-6 translate-x-6" />
+              <div className="relative">
+                <div className="inline-flex items-center gap-1.5 bg-amber-400 text-white text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full mb-3">
+                  <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                  VIP
+                </div>
+                <div className="text-2xl font-extrabold text-slate-900 leading-none mb-0.5">
+                  280€
+                </div>
+                <div className="text-[11px] text-amber-700/70 font-medium">
+                  table de 8 pers.
+                </div>
+                <div className="mt-2.5 space-y-1">
+                  {["Rangs 1 – 3", "Bulles & zakouski", "Dessert inclus"].map((f) => (
+                    <div key={f} className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                      <span className="text-[11px] text-slate-600">{f}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-            <div className="bg-white rounded-xl border p-4 text-center">
-              <div className="text-slate-800 text-lg font-bold mb-0.5">
-                Normal
-              </div>
-              <div className="text-xs text-slate-400">
-                dès 28€ / siège
+
+            {/* Normal */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200/80 p-4">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-slate-400/8 rounded-full -translate-y-6 translate-x-6" />
+              <div className="relative">
+                <div className="inline-flex items-center gap-1.5 bg-slate-700 text-white text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full mb-3">
+                  <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M17 11H3a1 1 0 000 2h14a1 1 0 000-2zM3 7h18a1 1 0 000-2H3a1 1 0 000 2zm14 8H3a1 1 0 000 2h14a1 1 0 000-2z" />
+                  </svg>
+                  Normal
+                </div>
+                <div className="flex items-baseline gap-0.5 mb-0.5">
+                  <span className="text-[13px] text-slate-400 font-medium">dès</span>
+                  <span className="text-2xl font-extrabold text-slate-900 leading-none ml-1">28€</span>
+                </div>
+                <div className="text-[11px] text-slate-500 font-medium">
+                  par siège
+                </div>
+                <div className="mt-2.5 space-y-1">
+                  {["Rangs 4 – 9", "1 à 8 sièges", "Repas au choix"].map((f) => (
+                    <div key={f} className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-400 flex-shrink-0" />
+                      <span className="text-[11px] text-slate-600">{f}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
