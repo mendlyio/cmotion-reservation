@@ -4,9 +4,11 @@ import { SeatData, TableWithSeats } from "@/types";
 
 interface TableShapeProps {
   table: TableWithSeats;
-  x: number;
-  y: number;
-  size: number;
+  cx: number;
+  cy: number;
+  tableRadius: number;
+  seatRadius: number;
+  seatDist: number;
   isSelected: boolean;
   hasSelectedSeats: boolean;
   selectedSeatIds: number[];
@@ -28,9 +30,11 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function TableShape({
   table,
-  x,
-  y,
-  size,
+  cx,
+  cy,
+  tableRadius,
+  seatRadius,
+  seatDist,
   isSelected,
   selectedSeatIds,
   isHovered,
@@ -41,12 +45,9 @@ export function TableShape({
   onMouseMove,
   readOnly,
 }: TableShapeProps) {
-  const cx = x + size / 2;
-  const cy = y + size / 2;
-  const tableRadius = size / 2 - 4;
-
   const allReserved = table.seats.every((s) => s.status === "reserved");
-  const allHeld = table.seats.some((s) => s.status === "held") && !isSelected;
+  const allHeld =
+    table.seats.some((s) => s.status === "held") && !isSelected;
   const isVip = table.isVip;
 
   const isVipAvailable =
@@ -60,42 +61,36 @@ export function TableShape({
   else if (allReserved) tableFill = "#fecaca";
   else if (allHeld) tableFill = "#e9d5ff";
 
-  const vipStroke = isVip ? "#d97706" : "#cbd5e1";
-  const vipStrokeWidth = isVip ? 2.5 : 1.5;
+  const strokeColor = isVip ? "#d97706" : "#cbd5e1";
+  const strokeWidth = isVip ? 2.5 : 1.5;
 
   const canClickTable =
     !readOnly && isVip && isVipAvailable && !isSelected;
-  const tableStyle = canClickTable ? "cursor-pointer" : readOnly ? "" : "";
 
   return (
-    <g
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-    >
+    <g onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
       {/* Table circle */}
       <circle
         cx={cx}
         cy={cy}
         r={tableRadius}
         fill={tableFill}
-        stroke={isHovered && canClickTable ? "#2563eb" : vipStroke}
-        strokeWidth={isHovered && canClickTable ? 3 : vipStrokeWidth}
-        className={tableStyle}
+        stroke={isHovered && canClickTable ? "#2563eb" : strokeColor}
+        strokeWidth={isHovered && canClickTable ? 3 : strokeWidth}
+        className={canClickTable ? "cursor-pointer" : ""}
         onClick={isVip ? onTableClick : undefined}
         onMouseMove={(e) => onMouseMove(e)}
-        style={{
-          transition: "fill 0.2s, stroke 0.2s",
-        }}
+        style={{ transition: "fill 0.2s, stroke 0.2s" }}
       />
 
       {/* Table label */}
       <text
         x={cx}
-        y={cy + 1}
+        y={cy + (isVip ? -2 : 1)}
         textAnchor="middle"
         dominantBaseline="middle"
         fontSize={10}
-        fontWeight="600"
+        fontWeight="700"
         fill="#475569"
         fontFamily="system-ui"
         pointerEvents="none"
@@ -107,7 +102,7 @@ export function TableShape({
       {isVip && (
         <text
           x={cx}
-          y={cy + 13}
+          y={cy + 10}
           textAnchor="middle"
           fontSize={7}
           fontWeight="bold"
@@ -119,11 +114,10 @@ export function TableShape({
         </text>
       )}
 
-      {/* Seats around the table */}
+      {/* Seats arranged around the table */}
       {table.seats.map((seat, i) => {
-        const angle = (i / table.seats.length) * Math.PI * 2 - Math.PI / 2;
-        const seatRadius = 7;
-        const seatDist = tableRadius + seatRadius + 3;
+        const angle =
+          (i / table.seats.length) * Math.PI * 2 - Math.PI / 2;
         const sx = cx + Math.cos(angle) * seatDist;
         const sy = cy + Math.sin(angle) * seatDist;
 
@@ -138,20 +132,29 @@ export function TableShape({
 
         return (
           <g key={seat.id}>
+            {/* Invisible bigger hit area for touch */}
             <circle
               cx={sx}
               cy={sy}
-              r={seatRadius}
-              fill={fill}
-              stroke={isSelectedSeat ? "#1d4ed8" : "white"}
-              strokeWidth={isSelectedSeat ? 2 : 1.5}
-              className={canClick ? "cursor-pointer" : ""}
+              r={seatRadius + 4}
+              fill="transparent"
+              className={canClick || (isVip && !readOnly) ? "cursor-pointer" : ""}
               onClick={() => {
                 if (canClick || (isVip && !readOnly)) {
                   onSeatClick(seat);
                 }
               }}
               onMouseMove={(e) => onMouseMove(e, seat)}
+            />
+            {/* Visible seat */}
+            <circle
+              cx={sx}
+              cy={sy}
+              r={seatRadius}
+              fill={fill}
+              stroke={isSelectedSeat ? "#1d4ed8" : "white"}
+              strokeWidth={isSelectedSeat ? 2.5 : 1.5}
+              pointerEvents="none"
               style={{ transition: "fill 0.2s, stroke 0.2s" }}
             />
             <text
@@ -159,9 +162,9 @@ export function TableShape({
               y={sy + 0.5}
               textAnchor="middle"
               dominantBaseline="middle"
-              fontSize={7}
+              fontSize={8}
               fill="white"
-              fontWeight="600"
+              fontWeight="700"
               fontFamily="system-ui"
               pointerEvents="none"
             >
