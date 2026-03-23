@@ -51,48 +51,61 @@ export default async function HomePage() {
                   ? { bg: "bg-[#eef4ff]", accent: "#3b82f6", badge: "bg-blue-500 text-white", ring: "hover:ring-blue-300" }
                   : { bg: "bg-[#fff0f3]", accent: "#f43f5e", badge: "bg-rose-500 text-white", ring: "hover:ring-rose-300" };
 
+                // Split "11h et 17h30" into individual time pills
+                const slots = event.timeInfo.split(/\s+et\s+/i).map((s) => s.trim());
+
                 return (
                   <Link key={event.id} href={`/reservation/${event.id}`} className="block group">
                     <div className={`relative overflow-hidden rounded-2xl ${color.bg} ring-1 ring-black/5 hover:ring-2 ${color.ring} transition-all duration-200 active:scale-[0.98] p-5`}>
 
-                      <div className="flex items-center justify-between gap-4">
-                        {/* Left: date block */}
-                        <div className="flex items-center gap-4">
-                          {/* Calendar block */}
-                          <div className="flex-shrink-0 w-14 text-center">
-                            <div className="rounded-xl overflow-hidden shadow-sm">
-                              <div className="py-0.5 text-white text-[10px] font-bold uppercase tracking-wider" style={{ background: color.accent }}>
-                                {month}
-                              </div>
-                              <div className="bg-white py-1">
-                                <div className="text-2xl font-extrabold leading-none" style={{ color: color.accent }}>
-                                  {dayNum}
-                                </div>
-                                <div className="text-[10px] text-slate-400 font-medium">{year}</div>
-                              </div>
+                      <div className="flex items-center gap-4">
+                        {/* Calendar block */}
+                        <div className="flex-shrink-0 w-14 text-center">
+                          <div className="rounded-xl overflow-hidden shadow-sm">
+                            <div className="py-0.5 text-white text-[10px] font-bold uppercase tracking-wider" style={{ background: color.accent }}>
+                              {month}
                             </div>
-                          </div>
-
-                          {/* Info */}
-                          <div className="min-w-0">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mb-1.5 ${color.badge}`}>
-                              {isPlus12 ? "+12 ans" : "−12 ans"}
-                            </span>
-                            <p className="text-[13px] font-semibold text-slate-700 capitalize">{dayName}</p>
-                            <div className="flex items-center gap-1 mt-0.5">
-                              <svg className="w-3 h-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              <p className="text-[12px] text-slate-400">{event.timeInfo}</p>
+                            <div className="bg-white py-1.5">
+                              <div className="text-2xl font-extrabold leading-none" style={{ color: color.accent }}>
+                                {dayNum}
+                              </div>
+                              <div className="text-[10px] text-slate-400 font-medium">{year}</div>
                             </div>
                           </div>
                         </div>
 
-                        {/* Arrow */}
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-white/70 shadow-sm transition-transform group-hover:translate-x-0.5">
-                          <svg className="w-4 h-4" style={{ color: color.accent }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                          </svg>
+                        {/* Info — fills available space */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${color.badge}`}>
+                              {isPlus12 ? "+12 ans" : "−12 ans"}
+                            </span>
+                            <span className="text-[12px] font-semibold text-slate-600 capitalize">{dayName}</span>
+                          </div>
+
+                          {/* Time slots as pills */}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {slots.map((slot) => (
+                              <span
+                                key={slot}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/80 text-[12px] font-bold tabular-nums shadow-sm"
+                                style={{ color: color.accent }}
+                              >
+                                <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                {slot}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* CTA button */}
+                        <div
+                          className="flex-shrink-0 px-4 py-2 rounded-xl text-white text-[12px] font-bold shadow-md transition-all group-hover:shadow-lg group-hover:scale-[1.03] active:scale-[0.97]"
+                          style={{ background: color.accent }}
+                        >
+                          Réserver
                         </div>
                       </div>
 
