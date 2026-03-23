@@ -20,6 +20,8 @@ interface BookingFormProps {
   onCancel: () => void;
 }
 
+type WizardStep = 0 | 1 | 2;
+
 export function BookingForm({
   eventId,
   table,
@@ -29,52 +31,35 @@ export function BookingForm({
   const isVip = table.isVip;
   const seatIds = isVip ? table.seats.map((s) => s.id) : selectedSeatIds;
 
-  // Keep a map of guest data by seatId so data is preserved when seats are added/removed
   const guestMapRef = useRef<Map<number, SeatFormData>>(new Map());
-
   const [guests, setGuests] = useState<SeatFormData[]>(() =>
     buildGuestList(seatIds, guestMapRef.current)
   );
-  const [upsells, setUpsells] = useState<{ type: string; quantity: number }[]>(
-    []
-  );
+  const [upsells, setUpsells] = useState<{ type: string; quantity: number }[]>([]);
   const [referentStudent, setReferentStudent] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState<WizardStep>(0);
 
-  // Sync guests when selectedSeatIds changes (add/remove seats dynamically)
   useEffect(() => {
-    // Save current guest data into the map
-    for (const g of guests) {
-      guestMapRef.current.set(g.seatId, g);
-    }
-    // Rebuild the guest list based on new seatIds, reusing existing data
-    const newGuests = buildGuestList(seatIds, guestMapRef.current);
-    setGuests(newGuests);
+    for (const g of guests) guestMapRef.current.set(g.seatId, g);
+    setGuests(buildGuestList(seatIds, guestMapRef.current));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSeatIds.join(",")]);
 
   const bookingData: BookingFormData = {
-    eventId,
-    tableId: table.id,
-    seatIds,
-    isVip,
-    guests,
-    upsells,
-    referentStudent,
-    email,
-    phone,
+    eventId, tableId: table.id, seatIds, isVip, guests, upsells,
+    referentStudent, email, phone,
   };
 
-  const isValid =
-    guests.every((g) => g.firstName && g.lastName && g.mealChoice) &&
-    referentStudent &&
-    email;
+  const guestsValid = guests.every((g) => g.firstName && g.lastName && g.mealChoice);
+  const contactValid = !!referentStudent && !!email;
+  const total = calculateTotal(bookingData);
 
-  const handleSubmit = async () => {
-    if (!isValid) return;
+  const handlePay = async (simulate: boolean) => {
+    if (!guestsValid || !contactValid) return;
     setLoading(true);
     setError(null);
 
@@ -84,237 +69,261 @@ export function BookingForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(bookingData),
       });
-
       if (!resResponse.ok) {
-        const data = await resResponse.json();
-        throw new Error(data.error || "Erreur lors de la réservation");
+        const d = await resResponse.json();
+        throw new Error(d.error || "Erreur lors de la réservation");
       }
-
       const { reservationId, totalAmount } = await resResponse.json();
 
-      if (totalAmount === 0) {
+      if (simulate || totalAmount === 0) {
+        if (simulate) {
+          const pr = await fetch("/api/stripe/simulate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reservationId }),
+          });
+          if (!pr.ok) throw new Error("Erreur paiement simulé");
+        }
         window.location.href = `/confirmation/${reservationId}`;
         return;
       }
 
-      const stripeResponse = await fetch("/api/stripe/checkout", {
+      const sr = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reservationId }),
       });
-
-      if (!stripeResponse.ok) {
-        const data = await stripeResponse.json();
-        throw new Error(data.error || "Erreur lors du paiement");
+      if (!sr.ok) {
+        const d = await sr.json();
+        throw new Error(d.error || "Erreur paiement");
       }
-
-      const { url } = await stripeResponse.json();
+      const { url } = await sr.json();
       if (url) window.location.href = url;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Une erreur est survenue");
+      setError(err instanceof Error ? err.message : "Erreur");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSimplePay = async () => {
-    if (!isValid) return;
-    setLoading(true);
-    setError(null);
-
-    try {
-      const resResponse = await fetch("/api/reservation", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bookingData),
-      });
-
-      if (!resResponse.ok) {
-        const data = await resResponse.json();
-        throw new Error(data.error || "Erreur lors de la réservation");
-      }
-
-      const { reservationId } = await resResponse.json();
-
-      const payResponse = await fetch("/api/stripe/simulate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reservationId }),
-      });
-
-      if (!payResponse.ok) {
-        throw new Error("Erreur lors du paiement simulé");
-      }
-
-      window.location.href = `/confirmation/${reservationId}`;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Une erreur est survenue");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const total = calculateTotal(bookingData);
+  const STEPS = [
+    { label: "Convives", icon: "👤" },
+    { label: "Extras", icon: "✨" },
+    { label: "Paiement", icon: "💳" },
+  ];
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex-shrink-0 px-5 pt-4 pb-3 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">
-            {isVip
-              ? `Table VIP ${table.rowNumber}-${table.tableNumber}`
-              : `Table ${table.rowNumber}-${table.tableNumber}`}
+          <h2 className="text-base font-bold text-slate-900">
+            Table {table.rowNumber}-{table.tableNumber}
+            {isVip && <span className="text-amber-500 ml-1">★</span>}
           </h2>
           <p className="text-xs text-slate-400">
-            {isVip ? "8 places — 280€" : `${seatIds.length} siège(s) sélectionné(s)`}
+            {isVip ? "VIP · 8 places · 280€" : `${seatIds.length} siège(s) · dès 28€`}
           </p>
         </div>
         <button
           onClick={onCancel}
-          className="text-xs text-slate-400 hover:text-red-500 transition-colors py-1 px-3 rounded-lg border border-slate-200 active:bg-slate-50"
+          className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
         >
-          Annuler
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
       </div>
 
-      {isVip && (
-        <div className="flex items-center gap-2 px-3 py-2.5 bg-amber-50 rounded-lg border border-amber-100">
-          <span className="text-amber-500">★</span>
-          <span className="text-xs text-amber-800 font-medium">
-            Table VIP — Bulles, zakouski et dessert inclus
-          </span>
+      {/* Progress bar */}
+      <div className="flex-shrink-0 px-5 pb-4">
+        <div className="flex items-center gap-1">
+          {STEPS.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => setStep(i as WizardStep)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                step === i
+                  ? "bg-slate-900 text-white shadow-sm"
+                  : i < step
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-slate-100 text-slate-400"
+              }`}
+            >
+              <span>{s.icon}</span>
+              <span className="hidden sm:inline">{s.label}</span>
+            </button>
+          ))}
         </div>
-      )}
+      </div>
 
-      {!isVip && (
-        <p className="text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100">
-          Cliquez sur d&apos;autres sièges de cette table pour les ajouter
-        </p>
-      )}
+      {/* Step content */}
+      <div className="flex-1 overflow-y-auto px-5 pb-4">
+        <AnimatePresence mode="wait">
+          {step === 0 && (
+            <motion.div
+              key="step0"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.15 }}
+              className="space-y-3"
+            >
+              {isVip && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 rounded-lg text-xs text-amber-800 font-medium">
+                  <span>★</span> Bulles, zakouski et dessert inclus
+                </div>
+              )}
+              {!isVip && (
+                <p className="text-xs text-blue-600 bg-blue-50/70 px-3 py-2 rounded-lg">
+                  Cliquez sur d&apos;autres sièges pour les ajouter
+                </p>
+              )}
+              <AnimatePresence initial={false}>
+                {guests.map((guest, i) => {
+                  const seat = table.seats.find((s) => s.id === guest.seatId);
+                  return (
+                    <motion.div
+                      key={guest.seatId}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <GuestForm
+                        index={i}
+                        seatId={guest.seatId}
+                        seatLabel={`Siège ${seat?.seatNumber || i + 1}`}
+                        data={guest}
+                        isVip={isVip}
+                        onChange={(u) => {
+                          const ng = [...guests];
+                          ng[i] = u;
+                          setGuests(ng);
+                          guestMapRef.current.set(u.seatId, u);
+                        }}
+                      />
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </motion.div>
+          )}
 
-      {/* Guest forms — animate in/out as seats are added/removed */}
-      <div className="space-y-3">
-        <AnimatePresence initial={false}>
-          {guests.map((guest, i) => {
-            const seat = table.seats.find((s) => s.id === guest.seatId);
-            return (
-              <motion.div
-                key={guest.seatId}
-                initial={{ opacity: 0, height: 0, overflow: "hidden" }}
-                animate={{ opacity: 1, height: "auto", overflow: "visible" }}
-                exit={{ opacity: 0, height: 0, overflow: "hidden" }}
-                transition={{ duration: 0.2 }}
-              >
-                <GuestForm
-                  index={i}
-                  seatId={guest.seatId}
-                  seatLabel={`Siège ${seat?.seatNumber || i + 1}`}
-                  data={guest}
-                  isVip={isVip}
-                  onChange={(updated) => {
-                    const newGuests = [...guests];
-                    newGuests[i] = updated;
-                    setGuests(newGuests);
-                    guestMapRef.current.set(updated.seatId, updated);
-                  }}
-                />
-              </motion.div>
-            );
-          })}
+          {step === 1 && (
+            <motion.div
+              key="step1"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.15 }}
+              className="space-y-4"
+            >
+              <UpsellSection upsells={upsells} onChange={setUpsells} />
+
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+                  <span className="text-sm font-semibold text-slate-700">Contact</span>
+                </div>
+                <div className="p-4 space-y-3">
+                  <InputField label="Nom de l'élève référent *" type="text" value={referentStudent} onChange={setReferentStudent} placeholder="Nom de l'élève" />
+                  <InputField label="Email *" type="email" value={email} onChange={setEmail} placeholder="votre@email.com" autoComplete="email" />
+                  <InputField label="Téléphone" type="tel" value={phone} onChange={setPhone} placeholder="06 12 34 56 78" autoComplete="tel" />
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 2 && (
+            <motion.div
+              key="step2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.15 }}
+              className="space-y-4"
+            >
+              <OrderSummary data={bookingData} />
+
+              {error && (
+                <div className="px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                  {error}
+                </div>
+              )}
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
 
-      <UpsellSection upsells={upsells} onChange={setUpsells} />
-
-      {/* Contact */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100">
-          <span className="text-sm font-semibold text-slate-700">Contact</span>
+      {/* Bottom bar */}
+      <div className="flex-shrink-0 border-t bg-white px-5 py-3 space-y-2">
+        {/* Price always visible */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-slate-400">{seatIds.length} place(s)</span>
+          <span className="text-lg font-extrabold text-slate-900 tabular-nums">
+            {(total / 100).toFixed(2)}€
+          </span>
         </div>
-        <div className="p-4 space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">
-              Nom de l&apos;élève référent *
-            </label>
-            <input
-              type="text"
-              value={referentStudent}
-              onChange={(e) => setReferentStudent(e.target.value)}
-              placeholder="Nom de l'élève"
-              className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-shadow"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">
-              Email *
-            </label>
-            <input
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="votre@email.com"
-              className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-shadow"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">
-              Téléphone
-            </label>
-            <input
-              type="tel"
-              autoComplete="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="06 12 34 56 78"
-              className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-shadow"
-            />
-          </div>
-        </div>
-      </div>
 
-      <OrderSummary data={bookingData} />
-
-      {error && (
-        <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
-          {error}
-        </div>
-      )}
-
-      {/* Sticky CTA */}
-      <div className="sticky bottom-0 -mx-4 px-4 pb-4 pt-3 bg-gradient-to-t from-white via-white to-white/0 sm:static sm:mx-0 sm:px-0 sm:pb-0 sm:pt-0 sm:bg-transparent">
-        <div className="flex gap-2.5">
+        {step < 2 ? (
           <button
-            onClick={handleSubmit}
-            disabled={!isValid || loading}
-            className="flex-1 h-[52px] bg-slate-900 text-white text-[15px] font-bold rounded-xl hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all shadow-lg shadow-slate-900/10"
+            onClick={() => setStep((step + 1) as WizardStep)}
+            disabled={step === 0 && !guestsValid}
+            className="w-full h-12 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-slate-800 disabled:opacity-30 active:scale-[0.98] transition-all"
           >
-            {loading
-              ? "Traitement…"
-              : `Payer ${(total / 100).toFixed(2)}€`}
+            {step === 0
+              ? (guestsValid ? "Continuer — Extras & Contact" : "Remplissez les convives")
+              : (contactValid ? "Voir le récapitulatif" : "Remplissez le contact")}
           </button>
-          <button
-            onClick={handleSimplePay}
-            disabled={!isValid || loading}
-            className="h-[52px] px-4 border border-slate-200 text-slate-500 text-xs font-semibold rounded-xl hover:bg-slate-50 disabled:opacity-40 active:scale-[0.98] transition-all"
-          >
-            Test
-          </button>
-        </div>
+        ) : (
+          <div className="flex gap-2">
+            <button
+              onClick={() => handlePay(false)}
+              disabled={!contactValid || loading}
+              className="flex-1 h-12 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-slate-800 disabled:opacity-30 active:scale-[0.98] transition-all"
+            >
+              {loading ? "Traitement…" : `Payer ${(total / 100).toFixed(2)}€`}
+            </button>
+            <button
+              onClick={() => handlePay(true)}
+              disabled={!contactValid || loading}
+              className="h-12 px-3 border border-slate-200 text-slate-400 text-[11px] font-semibold rounded-xl hover:bg-slate-50 disabled:opacity-30 active:scale-[0.98] transition-all"
+            >
+              Test
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function buildGuestList(
-  seatIds: number[],
-  existingMap: Map<number, SeatFormData>
-): SeatFormData[] {
+function InputField({
+  label, type, value, onChange, placeholder, autoComplete,
+}: {
+  label: string; type: string; value: string;
+  onChange: (v: string) => void; placeholder: string; autoComplete?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-slate-500 mb-1">{label}</label>
+      <input
+        type={type}
+        autoComplete={autoComplete}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-shadow"
+      />
+    </div>
+  );
+}
+
+function buildGuestList(seatIds: number[], map: Map<number, SeatFormData>): SeatFormData[] {
   return seatIds.map(
-    (seatId) =>
-      existingMap.get(seatId) || {
-        seatId,
+    (id) =>
+      map.get(id) || {
+        seatId: id,
         firstName: "",
         lastName: "",
         mealChoice: "lasagne" as MealChoice,

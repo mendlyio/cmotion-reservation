@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -16,13 +16,11 @@ interface ReservationClientProps {
 export function ReservationClient({ event }: ReservationClientProps) {
   const [tables, setTables] = useState<TableWithSeats[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTable, setSelectedTable] =
-    useState<TableWithSeats | null>(null);
+  const [selectedTable, setSelectedTable] = useState<TableWithSeats | null>(null);
   const [selectedSeatIds, setSelectedSeatIds] = useState<number[]>([]);
   const [holdExpiresAt, setHoldExpiresAt] = useState<string | null>(null);
   const [holdingInProgress, setHoldingInProgress] = useState(false);
-  const formRef = useRef<HTMLDivElement>(null);
-  const hasForm = selectedTable !== null && selectedSeatIds.length > 0;
+  const hasSelection = selectedTable !== null && selectedSeatIds.length > 0;
 
   const fetchSeating = useCallback(async () => {
     try {
@@ -32,15 +30,13 @@ export function ReservationClient({ event }: ReservationClientProps) {
         setTables(data.tables);
       }
     } catch {
-      toast.error("Erreur de chargement du plan");
+      toast.error("Erreur de chargement");
     } finally {
       setLoading(false);
     }
   }, [event.id]);
 
-  useEffect(() => {
-    fetchSeating();
-  }, [fetchSeating]);
+  useEffect(() => { fetchSeating(); }, [fetchSeating]);
 
   const createHold = async (tableId: number, seatIds?: number[]) => {
     setHoldingInProgress(true);
@@ -50,13 +46,11 @@ export function ReservationClient({ event }: ReservationClientProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ eventId: event.id, tableId, seatIds }),
       });
-
       if (!res.ok) {
-        const data = await res.json();
-        toast.error(data.error || "Place indisponible");
+        const d = await res.json();
+        toast.error(d.error || "Place indisponible");
         return false;
       }
-
       const data = await res.json();
       setHoldExpiresAt(data.expiresAt);
       await fetchSeating();
@@ -70,49 +64,34 @@ export function ReservationClient({ event }: ReservationClientProps) {
   };
 
   const releaseHold = async () => {
-    try {
-      await fetch("/api/hold", { method: "DELETE" });
-    } catch {
-      /* silent */
-    }
+    try { await fetch("/api/hold", { method: "DELETE" }); } catch { /* */ }
     setHoldExpiresAt(null);
   };
 
-  const scrollToForm = () => {
-    setTimeout(() => {
-      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 250);
-  };
-
-  // VIP: click table → instant hold + form
   const handleTableSelect = async (table: TableWithSeats) => {
     if (!table.isVip) return;
-    const success = await createHold(table.id);
-    if (success) {
+    const ok = await createHold(table.id);
+    if (ok) {
       setSelectedTable(table);
       setSelectedSeatIds(table.seats.map((s) => s.id));
-      scrollToForm();
     }
   };
 
-  // Normal: click seat → instant hold + form, subsequent clicks add/remove seats
   const handleSeatToggle = async (tableId: number, seatIds: number[]) => {
     const table = tables.find((t) => t.id === tableId);
     if (!table || table.isVip) return;
     const seatId = seatIds[0];
-    const isAlreadySelected = selectedSeatIds.includes(seatId);
 
-    // Clicking a seat on a different table — switch tables
     if (selectedTable && selectedTable.id !== tableId) {
-      toast.error("Vous ne pouvez sélectionner que des sièges d'une même table");
+      toast.error("Même table uniquement");
       return;
     }
 
-    if (isAlreadySelected) {
-      // Deselect seat
+    const isSelected = selectedSeatIds.includes(seatId);
+
+    if (isSelected) {
       const newIds = selectedSeatIds.filter((id) => id !== seatId);
       if (newIds.length === 0) {
-        // Last seat removed — release hold, clear form
         await releaseHold();
         setSelectedTable(null);
         setSelectedSeatIds([]);
@@ -120,22 +99,15 @@ export function ReservationClient({ event }: ReservationClientProps) {
         return;
       }
       setSelectedSeatIds(newIds);
-      // Re-hold with updated seats
       await createHold(tableId, newIds);
     } else {
-      // Add seat
       const newIds = [...selectedSeatIds, seatId];
       setSelectedTable(table);
       setSelectedSeatIds(newIds);
-      const success = await createHold(tableId, newIds);
-      if (!success) {
-        // Revert if hold failed
+      const ok = await createHold(tableId, newIds);
+      if (!ok) {
         setSelectedSeatIds(selectedSeatIds);
         if (selectedSeatIds.length === 0) setSelectedTable(null);
-        return;
-      }
-      if (selectedSeatIds.length === 0) {
-        scrollToForm();
       }
     }
   };
@@ -148,133 +120,121 @@ export function ReservationClient({ event }: ReservationClientProps) {
   };
 
   const handleExpired = async () => {
-    toast.error("Votre réservation a expiré. Les sièges ont été libérés.");
+    toast.error("Votre réservation a expiré");
     await handleCancel();
   };
 
   const date = new Date(event.eventDate).toLocaleDateString("fr-FR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
+    weekday: "long", day: "numeric", month: "long",
   });
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-3">
         <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
-        <p className="text-xs text-slate-400">Chargement du plan…</p>
       </div>
     );
   }
 
   return (
-    <main className="flex-1 flex flex-col">
+    <main className="flex-1 flex flex-col min-h-screen bg-white">
       {/* Top bar */}
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-lg border-b border-slate-200/50">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-100">
+        <div className="max-w-5xl mx-auto px-4 h-12 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
             <Link
               href="/"
-              className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
+              className="flex-shrink-0 w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-200"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15 19l-7-7 7-7"
-                />
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
             </Link>
             <div className="min-w-0">
-              <h1 className="text-sm font-bold text-slate-900 truncate">
-                {event.name}
-              </h1>
-              <p className="text-[11px] text-slate-400 truncate capitalize">
-                {date} — {event.timeInfo}
-              </p>
+              <h1 className="text-sm font-bold text-slate-900 truncate">{event.name}</h1>
+              <p className="text-[10px] text-slate-400 truncate capitalize">{date} — {event.timeInfo}</p>
             </div>
           </div>
-
           <div className="flex items-center gap-2">
             {holdingInProgress && (
-              <div className="w-4 h-4 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin" />
+              <div className="w-3.5 h-3.5 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
             )}
             {holdExpiresAt && (
-              <CountdownTimer
-                expiresAt={holdExpiresAt}
-                onExpired={handleExpired}
-              />
+              <CountdownTimer expiresAt={holdExpiresAt} onExpired={handleExpired} />
             )}
           </div>
         </div>
       </header>
 
-      {/* Main content */}
-      <div className="flex-1 max-w-5xl mx-auto w-full">
-        <div
-          className={`grid gap-0 lg:gap-6 ${
-            hasForm ? "lg:grid-cols-[1fr_380px]" : ""
-          }`}
-        >
-          {/* Seating plan */}
-          <div className="p-4 lg:p-6">
-            <SeatingPlan
-              eventId={event.id}
-              tables={tables}
-              onTableSelect={handleTableSelect}
-              onSeatsSelect={handleSeatToggle}
-              selectedTableId={selectedTable?.id}
-              selectedSeatIds={selectedSeatIds}
-              readOnly={false}
-            />
-
-            {!hasForm && (
-              <div className="mt-3 px-1 space-y-1">
-                <p className="text-xs text-slate-400">
-                  <span className="font-semibold text-amber-600">
-                    VIP (rangs 1-3)
-                  </span>{" "}
-                  — Cliquez sur une table — 280€ / 8 pers.
-                </p>
-                <p className="text-xs text-slate-400">
-                  <span className="font-semibold text-slate-600">
-                    Normal (rangs 4-9)
-                  </span>{" "}
-                  — Cliquez sur les sièges — dès 28€
-                </p>
-              </div>
-            )}
+      {/* Seating plan — full page, scrolls naturally */}
+      <div className="flex-1 max-w-5xl mx-auto w-full px-4 py-4">
+        {!hasSelection && (
+          <div className="flex items-center gap-3 mb-4 p-3 bg-slate-50 rounded-xl text-xs text-slate-500">
+            <div className="flex gap-1.5">
+              <span className="inline-block w-2 h-2 rounded-full bg-amber-500 mt-0.5" />
+              <span><strong className="text-slate-700">VIP</strong> Cliquez sur une table</span>
+            </div>
+            <div className="w-px h-3 bg-slate-200" />
+            <div className="flex gap-1.5">
+              <span className="inline-block w-2 h-2 rounded-full bg-green-500 mt-0.5" />
+              <span><strong className="text-slate-700">Normal</strong> Cliquez sur les sièges</span>
+            </div>
           </div>
+        )}
 
-          {/* Booking form — appears instantly on first click */}
-          <AnimatePresence mode="wait">
-            {hasForm && selectedTable && (
-              <motion.div
-                ref={formRef}
-                key={selectedTable.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                transition={{ duration: 0.2 }}
-                className="border-t lg:border-t-0 lg:border-l border-slate-200/60 bg-slate-50/50 p-4 lg:p-6 lg:max-h-[calc(100vh-3.5rem)] lg:overflow-y-auto lg:sticky lg:top-14"
-              >
-                <BookingForm
-                  eventId={event.id}
-                  table={selectedTable}
-                  selectedSeatIds={selectedSeatIds}
-                  onCancel={handleCancel}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        <SeatingPlan
+          eventId={event.id}
+          tables={tables}
+          onTableSelect={handleTableSelect}
+          onSeatsSelect={handleSeatToggle}
+          selectedTableId={selectedTable?.id}
+          selectedSeatIds={selectedSeatIds}
+          readOnly={false}
+        />
       </div>
+
+      {/* Bottom sheet — slides up when seats are selected */}
+      <AnimatePresence>
+        {hasSelection && selectedTable && (
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] flex flex-col"
+            style={{ maxHeight: "75vh" }}
+          >
+            {/* Drag handle */}
+            <div className="flex justify-center pt-2 pb-0">
+              <div className="w-10 h-1 rounded-full bg-slate-200" />
+            </div>
+
+            <BookingForm
+              eventId={event.id}
+              table={selectedTable}
+              selectedSeatIds={selectedSeatIds}
+              onCancel={handleCancel}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop: sidebar instead of bottom sheet */}
+      <style>{`
+        @media (min-width: 1024px) {
+          .fixed.inset-x-0.bottom-0 {
+            position: fixed !important;
+            inset: auto 0 auto auto !important;
+            top: 48px !important;
+            bottom: 0 !important;
+            width: 420px !important;
+            max-height: none !important;
+            border-radius: 0 !important;
+            border-left: 1px solid #e2e8f0;
+            box-shadow: -4px 0 20px rgba(0,0,0,0.05) !important;
+          }
+        }
+      `}</style>
     </main>
   );
 }
