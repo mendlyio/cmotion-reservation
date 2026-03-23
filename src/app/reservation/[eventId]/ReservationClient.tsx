@@ -13,18 +13,16 @@ interface ReservationClientProps {
   event: EventData;
 }
 
-type Step = "select" | "form";
-
 export function ReservationClient({ event }: ReservationClientProps) {
   const [tables, setTables] = useState<TableWithSeats[]>([]);
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState<Step>("select");
   const [selectedTable, setSelectedTable] =
     useState<TableWithSeats | null>(null);
   const [selectedSeatIds, setSelectedSeatIds] = useState<number[]>([]);
   const [holdExpiresAt, setHoldExpiresAt] = useState<string | null>(null);
-  const [seatSelectionMode, setSeatSelectionMode] = useState(false);
+  const [holdingInProgress, setHoldingInProgress] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
+  const hasForm = selectedTable !== null && selectedSeatIds.length > 0;
 
   const fetchSeating = useCallback(async () => {
     try {
@@ -45,6 +43,7 @@ export function ReservationClient({ event }: ReservationClientProps) {
   }, [fetchSeating]);
 
   const createHold = async (tableId: number, seatIds?: number[]) => {
+    setHoldingInProgress(true);
     try {
       const res = await fetch("/api/hold", {
         method: "POST",
@@ -54,16 +53,19 @@ export function ReservationClient({ event }: ReservationClientProps) {
 
       if (!res.ok) {
         const data = await res.json();
-        toast.error(data.error || "Impossible de réserver");
+        toast.error(data.error || "Place indisponible");
         return false;
       }
 
       const data = await res.json();
       setHoldExpiresAt(data.expiresAt);
+      await fetchSeating();
       return true;
     } catch {
       toast.error("Erreur de connexion");
       return false;
+    } finally {
+      setHoldingInProgress(false);
     }
   };
 
@@ -79,68 +81,69 @@ export function ReservationClient({ event }: ReservationClientProps) {
   const scrollToForm = () => {
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 200);
+    }, 250);
   };
 
+  // VIP: click table → instant hold + form
   const handleTableSelect = async (table: TableWithSeats) => {
     if (!table.isVip) return;
     const success = await createHold(table.id);
     if (success) {
       setSelectedTable(table);
       setSelectedSeatIds(table.seats.map((s) => s.id));
-      setStep("form");
-      await fetchSeating();
       scrollToForm();
     }
   };
 
+  // Normal: click seat → instant hold + form, subsequent clicks add/remove seats
   const handleSeatToggle = async (tableId: number, seatIds: number[]) => {
     const table = tables.find((t) => t.id === tableId);
     if (!table || table.isVip) return;
-
     const seatId = seatIds[0];
     const isAlreadySelected = selectedSeatIds.includes(seatId);
 
-    if (!seatSelectionMode) {
-      setSeatSelectionMode(true);
-      setSelectedTable(table);
-      setSelectedSeatIds([seatId]);
-      return;
-    }
-
+    // Clicking a seat on a different table — switch tables
     if (selectedTable && selectedTable.id !== tableId) {
-      toast.error("Sélectionnez des sièges de la même table");
+      toast.error("Vous ne pouvez sélectionner que des sièges d'une même table");
       return;
     }
 
     if (isAlreadySelected) {
+      // Deselect seat
       const newIds = selectedSeatIds.filter((id) => id !== seatId);
       if (newIds.length === 0) {
-        setSeatSelectionMode(false);
+        // Last seat removed — release hold, clear form
+        await releaseHold();
         setSelectedTable(null);
+        setSelectedSeatIds([]);
+        await fetchSeating();
+        return;
       }
       setSelectedSeatIds(newIds);
+      // Re-hold with updated seats
+      await createHold(tableId, newIds);
     } else {
-      setSelectedSeatIds([...selectedSeatIds, seatId]);
-    }
-  };
-
-  const handleConfirmSeats = async () => {
-    if (!selectedTable || selectedSeatIds.length === 0) return;
-    const success = await createHold(selectedTable.id, selectedSeatIds);
-    if (success) {
-      setStep("form");
-      await fetchSeating();
-      scrollToForm();
+      // Add seat
+      const newIds = [...selectedSeatIds, seatId];
+      setSelectedTable(table);
+      setSelectedSeatIds(newIds);
+      const success = await createHold(tableId, newIds);
+      if (!success) {
+        // Revert if hold failed
+        setSelectedSeatIds(selectedSeatIds);
+        if (selectedSeatIds.length === 0) setSelectedTable(null);
+        return;
+      }
+      if (selectedSeatIds.length === 0) {
+        scrollToForm();
+      }
     }
   };
 
   const handleCancel = async () => {
     await releaseHold();
-    setStep("select");
     setSelectedTable(null);
     setSelectedSeatIds([]);
-    setSeatSelectionMode(false);
     await fetchSeating();
   };
 
@@ -166,7 +169,7 @@ export function ReservationClient({ event }: ReservationClientProps) {
 
   return (
     <main className="flex-1 flex flex-col">
-      {/* Top bar — compact, sticky */}
+      {/* Top bar */}
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-lg border-b border-slate-200/50">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
@@ -198,48 +201,29 @@ export function ReservationClient({ event }: ReservationClientProps) {
             </div>
           </div>
 
-          {holdExpiresAt && (
-            <CountdownTimer
-              expiresAt={holdExpiresAt}
-              onExpired={handleExpired}
-            />
-          )}
+          <div className="flex items-center gap-2">
+            {holdingInProgress && (
+              <div className="w-4 h-4 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin" />
+            )}
+            {holdExpiresAt && (
+              <CountdownTimer
+                expiresAt={holdExpiresAt}
+                onExpired={handleExpired}
+              />
+            )}
+          </div>
         </div>
       </header>
 
       {/* Main content */}
       <div className="flex-1 max-w-5xl mx-auto w-full">
-        <div className={`grid gap-0 lg:gap-6 ${step === "form" ? "lg:grid-cols-[1fr_380px]" : ""}`}>
+        <div
+          className={`grid gap-0 lg:gap-6 ${
+            hasForm ? "lg:grid-cols-[1fr_380px]" : ""
+          }`}
+        >
           {/* Seating plan */}
           <div className="p-4 lg:p-6">
-            {/* Selection bar — mobile friendly */}
-            {seatSelectionMode && step === "select" && (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-3 flex items-center justify-between gap-3 p-3 bg-blue-50 rounded-xl border border-blue-100"
-              >
-                <span className="text-sm font-semibold text-blue-800">
-                  {selectedSeatIds.length} siège(s)
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleCancel}
-                    className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700 rounded-lg border border-slate-200 bg-white active:bg-slate-50"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    onClick={handleConfirmSeats}
-                    disabled={selectedSeatIds.length === 0}
-                    className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-40 active:scale-[0.97]"
-                  >
-                    Confirmer
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
             <SeatingPlan
               eventId={event.id}
               tables={tables}
@@ -247,31 +231,37 @@ export function ReservationClient({ event }: ReservationClientProps) {
               onSeatsSelect={handleSeatToggle}
               selectedTableId={selectedTable?.id}
               selectedSeatIds={selectedSeatIds}
-              readOnly={step === "form"}
+              readOnly={false}
             />
 
-            {step === "select" && !seatSelectionMode && (
+            {!hasForm && (
               <div className="mt-3 px-1 space-y-1">
                 <p className="text-xs text-slate-400">
-                  <span className="font-semibold text-amber-600">VIP (rangs 1-3)</span>{" "}
+                  <span className="font-semibold text-amber-600">
+                    VIP (rangs 1-3)
+                  </span>{" "}
                   — Cliquez sur une table — 280€ / 8 pers.
                 </p>
                 <p className="text-xs text-slate-400">
-                  <span className="font-semibold text-slate-600">Normal (rangs 4-9)</span>{" "}
+                  <span className="font-semibold text-slate-600">
+                    Normal (rangs 4-9)
+                  </span>{" "}
                   — Cliquez sur les sièges — dès 28€
                 </p>
               </div>
             )}
           </div>
 
-          {/* Booking form */}
-          <AnimatePresence>
-            {step === "form" && selectedTable && (
+          {/* Booking form — appears instantly on first click */}
+          <AnimatePresence mode="wait">
+            {hasForm && selectedTable && (
               <motion.div
                 ref={formRef}
+                key={selectedTable.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
+                transition={{ duration: 0.2 }}
                 className="border-t lg:border-t-0 lg:border-l border-slate-200/60 bg-slate-50/50 p-4 lg:p-6 lg:max-h-[calc(100vh-3.5rem)] lg:overflow-y-auto lg:sticky lg:top-14"
               >
                 <BookingForm

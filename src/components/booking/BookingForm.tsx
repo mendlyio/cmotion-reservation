@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { GuestForm } from "./GuestForm";
 import { UpsellSection } from "./UpsellSection";
 import { OrderSummary } from "./OrderSummary";
@@ -29,14 +29,11 @@ export function BookingForm({
   const isVip = table.isVip;
   const seatIds = isVip ? table.seats.map((s) => s.id) : selectedSeatIds;
 
-  const [guests, setGuests] = useState<SeatFormData[]>(
-    seatIds.map((seatId) => ({
-      seatId,
-      firstName: "",
-      lastName: "",
-      mealChoice: "lasagne" as MealChoice,
-      hasDessert: false,
-    }))
+  // Keep a map of guest data by seatId so data is preserved when seats are added/removed
+  const guestMapRef = useRef<Map<number, SeatFormData>>(new Map());
+
+  const [guests, setGuests] = useState<SeatFormData[]>(() =>
+    buildGuestList(seatIds, guestMapRef.current)
   );
   const [upsells, setUpsells] = useState<{ type: string; quantity: number }[]>(
     []
@@ -46,6 +43,18 @@ export function BookingForm({
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Sync guests when selectedSeatIds changes (add/remove seats dynamically)
+  useEffect(() => {
+    // Save current guest data into the map
+    for (const g of guests) {
+      guestMapRef.current.set(g.seatId, g);
+    }
+    // Rebuild the guest list based on new seatIds, reusing existing data
+    const newGuests = buildGuestList(seatIds, guestMapRef.current);
+    setGuests(newGuests);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSeatIds.join(",")]);
 
   const bookingData: BookingFormData = {
     eventId,
@@ -148,11 +157,7 @@ export function BookingForm({
   const total = calculateTotal(bookingData);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-4"
-    >
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -162,7 +167,7 @@ export function BookingForm({
               : `Table ${table.rowNumber}-${table.tableNumber}`}
           </h2>
           <p className="text-xs text-slate-400">
-            {isVip ? "8 places — 280€" : `${seatIds.length} siège(s)`}
+            {isVip ? "8 places — 280€" : `${seatIds.length} siège(s) sélectionné(s)`}
           </p>
         </div>
         <button
@@ -182,26 +187,42 @@ export function BookingForm({
         </div>
       )}
 
-      {/* Guest forms */}
+      {!isVip && (
+        <p className="text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100">
+          Cliquez sur d&apos;autres sièges de cette table pour les ajouter
+        </p>
+      )}
+
+      {/* Guest forms — animate in/out as seats are added/removed */}
       <div className="space-y-3">
-        {guests.map((guest, i) => {
-          const seat = table.seats.find((s) => s.id === guest.seatId);
-          return (
-            <GuestForm
-              key={guest.seatId}
-              index={i}
-              seatId={guest.seatId}
-              seatLabel={`Siège ${seat?.seatNumber || i + 1}`}
-              data={guest}
-              isVip={isVip}
-              onChange={(updated) => {
-                const newGuests = [...guests];
-                newGuests[i] = updated;
-                setGuests(newGuests);
-              }}
-            />
-          );
-        })}
+        <AnimatePresence initial={false}>
+          {guests.map((guest, i) => {
+            const seat = table.seats.find((s) => s.id === guest.seatId);
+            return (
+              <motion.div
+                key={guest.seatId}
+                initial={{ opacity: 0, height: 0, overflow: "hidden" }}
+                animate={{ opacity: 1, height: "auto", overflow: "visible" }}
+                exit={{ opacity: 0, height: 0, overflow: "hidden" }}
+                transition={{ duration: 0.2 }}
+              >
+                <GuestForm
+                  index={i}
+                  seatId={guest.seatId}
+                  seatLabel={`Siège ${seat?.seatNumber || i + 1}`}
+                  data={guest}
+                  isVip={isVip}
+                  onChange={(updated) => {
+                    const newGuests = [...guests];
+                    newGuests[i] = updated;
+                    setGuests(newGuests);
+                    guestMapRef.current.set(updated.seatId, updated);
+                  }}
+                />
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
 
       <UpsellSection upsells={upsells} onChange={setUpsells} />
@@ -209,9 +230,7 @@ export function BookingForm({
       {/* Contact */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100">
-          <span className="text-sm font-semibold text-slate-700">
-            Contact
-          </span>
+          <span className="text-sm font-semibold text-slate-700">Contact</span>
         </div>
         <div className="p-4 space-y-3">
           <div>
@@ -263,7 +282,7 @@ export function BookingForm({
         </div>
       )}
 
-      {/* Sticky CTA on mobile */}
+      {/* Sticky CTA */}
       <div className="sticky bottom-0 -mx-4 px-4 pb-4 pt-3 bg-gradient-to-t from-white via-white to-white/0 sm:static sm:mx-0 sm:px-0 sm:pb-0 sm:pt-0 sm:bg-transparent">
         <div className="flex gap-2.5">
           <button
@@ -284,6 +303,22 @@ export function BookingForm({
           </button>
         </div>
       </div>
-    </motion.div>
+    </div>
+  );
+}
+
+function buildGuestList(
+  seatIds: number[],
+  existingMap: Map<number, SeatFormData>
+): SeatFormData[] {
+  return seatIds.map(
+    (seatId) =>
+      existingMap.get(seatId) || {
+        seatId,
+        firstName: "",
+        lastName: "",
+        mealChoice: "lasagne" as MealChoice,
+        hasDessert: false,
+      }
   );
 }
