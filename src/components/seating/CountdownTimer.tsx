@@ -22,10 +22,10 @@ export function CountdownTimer({ expiresAt, onExpired }: { expiresAt: string; on
   const low = left < 60000;
 
   return (
-    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold tabular-nums backdrop-blur-sm ${
-      low ? "bg-red-500/20 text-red-300" : "bg-white/10 text-white/60"
+    <div     className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold tabular-nums ${
+      low ? "bg-red-500/20 text-red-300" : "bg-violet-500/15 text-violet-300/70"
     }`}>
-      <div className={`w-1.5 h-1.5 rounded-full ${low ? "bg-red-400 animate-pulse" : "bg-emerald-400"}`} />
+      <div className={`w-1.5 h-1.5 rounded-full ${low ? "bg-red-400 animate-pulse" : "bg-violet-400"}`} />
       {String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}
     </div>
   );

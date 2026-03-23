@@ -49,9 +49,7 @@ export function ReservationClient({ event }: { event: EventData }) {
     setHoldExp(null);
   };
 
-  const scrollForm = () => setTimeout(() =>
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 200
-  );
+  const scrollForm = () => setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 200);
 
   const onTable = async (t: TableWithSeats) => {
     if (!t.isVip) return;
@@ -80,84 +78,47 @@ export function ReservationClient({ event }: { event: EventData }) {
   const cancel = async () => { await release(); setSelTable(null); setSelSeats([]); await fetch_(); };
   const expired = async () => { toast.error("Réservation expirée"); await cancel(); };
 
-  const d = new Date(event.eventDate).toLocaleDateString("fr-FR", {
-    weekday: "long", day: "numeric", month: "long",
-  });
-  const isPlus12 = event.ageGroup === "+12";
-  const accentColor = isPlus12 ? "#818cf8" : "#f472b6"; // indigo-400 / pink-400
+  const d = new Date(event.eventDate).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 
   if (loading) return (
-    <div className="flex items-center justify-center min-h-screen" style={{ background: "#0a0a14" }}>
-      <div className="w-5 h-5 border-2 border-white/10 border-t-purple-400 rounded-full animate-spin" />
+    <div className="flex items-center justify-center min-h-screen bg-[#0d0d1a]">
+      <div className="w-6 h-6 border-2 border-white/10 border-t-purple-400 rounded-full animate-spin" />
     </div>
   );
 
   return (
-    <main className="min-h-screen" style={{ background: "#0a0a14" }}>
-
-      {/* ── Header ── unified dark shell */}
-      <header className="sticky top-0 z-40 border-b" style={{ background: "rgba(10,10,20,0.92)", borderColor: "rgba(255,255,255,0.06)", backdropFilter: "blur(16px)" }}>
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-
-          {/* Back + event info */}
+    <main className="min-h-screen bg-[#fafafa]">
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-[#0f0c1d]/95 backdrop-blur-md border-b border-violet-900/40">
+        <div className="max-w-6xl mx-auto px-4 h-12 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <Link
-              href="/"
-              className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-colors"
-              style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)" }}
-            >
+            <Link href="/" className="w-7 h-7 rounded-full bg-violet-500/15 flex items-center justify-center text-violet-300/60 hover:bg-violet-500/25 hover:text-violet-200 transition">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
             </Link>
-
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span
-                  className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded"
-                  style={{ background: `${accentColor}22`, color: accentColor }}
-                >
-                  {isPlus12 ? "+12 ans" : "−12 ans"}
-                </span>
-                <h1 className="text-sm font-bold truncate" style={{ color: "rgba(255,255,255,0.9)" }}>
-                  {event.name}
-                </h1>
-              </div>
-              <p className="text-[10px] mt-0.5 truncate capitalize" style={{ color: "rgba(255,255,255,0.25)" }}>
-                {d} · {event.timeInfo}
-              </p>
+              <h1 className="text-sm font-bold text-white/90 truncate">{event.name}</h1>
+              <p className="text-[10px] text-violet-300/40 truncate capitalize">{d} · {event.timeInfo}</p>
             </div>
           </div>
-
-          {/* Right: spinner + timer */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {holding && (
-              <div className="w-3.5 h-3.5 rounded-full border-2 border-t-purple-400 animate-spin" style={{ borderColor: "rgba(255,255,255,0.1)", borderTopColor: "#c084fc" }} />
-            )}
+          <div className="flex items-center gap-2">
+            {holding && <div className="w-3.5 h-3.5 border-2 border-violet-900 border-t-violet-400 rounded-full animate-spin" />}
             {holdExp && <CountdownTimer expiresAt={holdExp} onExpired={expired} />}
           </div>
         </div>
       </header>
 
-      {/* ── Plan section ── same dark shell, no visual break */}
-      <section>
-        <div className="max-w-5xl mx-auto px-3 sm:px-5 pt-3 pb-4">
-
-          {/* Instruction hint — only before selection */}
+      {/* Plan */}
+      <section className="bg-[#0f0c1d]">
+        <div className="max-w-6xl mx-auto px-2 sm:px-4 py-3">
           {!has && (
-            <div className="flex items-center justify-center gap-5 mb-3 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
-              <div className="flex items-center gap-2 text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>
-                <div className="w-2 h-2 rounded-full" style={{ background: "#c084fc" }} />
-                <span><span className="font-bold" style={{ color: "#c084fc" }}>VIP</span> — cliquez sur la table</span>
-              </div>
-              <div className="w-px h-3" style={{ background: "rgba(255,255,255,0.08)" }} />
-              <div className="flex items-center gap-2 text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>
-                <div className="w-2 h-2 rounded-full" style={{ background: "#34d399" }} />
-                <span><span className="font-bold" style={{ color: "#34d399" }}>Normal</span> — cliquez sur les sièges</span>
-              </div>
+            <div className="flex items-center justify-center gap-4 mb-2 text-[10px] text-violet-300/30">
+              <span><span className="text-amber-400/80 font-bold">VIP</span> · cliquer sur la table · 280€</span>
+              <span className="w-px h-3 bg-violet-800/50" />
+              <span><span className="text-emerald-400/80 font-bold">Normal</span> · cliquer sur les sièges · dès 28€</span>
             </div>
           )}
-
           <SeatingPlan
             eventId={event.id}
             tables={tables}
@@ -170,29 +131,25 @@ export function ReservationClient({ event }: { event: EventData }) {
         </div>
       </section>
 
-      {/* ── Booking form ── white card below, clean separation */}
+      {/* Booking form — inline below plan */}
       <AnimatePresence>
         {has && selTable && (
           <motion.section
             ref={formRef}
-            initial={{ opacity: 0, y: 24 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 24 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
+            exit={{ opacity: 0, y: 30 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="relative z-10 -mt-3"
           >
-            {/* Transition strip between dark plan and white form */}
-            <div className="h-6" style={{ background: "linear-gradient(to bottom, #0a0a14, #f8f8fc)" }} />
-
-            <div style={{ background: "#f8f8fc" }} className="pb-16">
-              <div className="max-w-lg mx-auto px-4">
-                <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}>
-                  <BookingForm
-                    eventId={event.id}
-                    table={selTable}
-                    selectedSeatIds={selSeats}
-                    onCancel={cancel}
-                  />
-                </div>
+            <div className="max-w-lg mx-auto px-4 pb-10">
+              <div className="bg-white rounded-2xl shadow-xl shadow-black/5 border border-slate-200/60 overflow-hidden">
+                <BookingForm
+                  eventId={event.id}
+                  table={selTable}
+                  selectedSeatIds={selSeats}
+                  onCancel={cancel}
+                />
               </div>
             </div>
           </motion.section>

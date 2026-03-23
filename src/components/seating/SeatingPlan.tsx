@@ -87,44 +87,52 @@ export function SeatingPlan({
     setTooltip({ x: e.clientX - rc.left, y: e.clientY - rc.top - 8, text });
   }, []);
 
+  // Palette unifiée
+  const LEGEND = [
+    { c: "#34d399", l: "Libre" },        // émeraude — disponible
+    { c: "#818cf8", l: "Ma sélection" }, // indigo — sélectionné (même violet que le plan)
+    { c: "#a78bfa", l: "En cours" },     // violet clair — held
+    { c: "#334155", l: "Réservé" },      // slate sombre — réservé
+  ];
+
   return (
-    <div ref={ref} className="relative w-full">
-      {/* Legend */}
-      <div className="flex items-center justify-center gap-4 pb-2">
-        {[
-          { c: "#34d399", l: "Libre" },
-          { c: "#60a5fa", l: "Votre choix" },
-          { c: "#a78bfa", l: "En cours" },
-          { c: "#334155", l: "Réservé" },
-        ].map((i) => (
+    <div ref={ref} className="relative w-full rounded-2xl overflow-hidden" style={{ background: "#0f0c1d" }}>
+      {/* Legend — alignée sur la palette du plan */}
+      <div className="flex items-center justify-center gap-5 pt-3 pb-1 px-3">
+        {LEGEND.map((i) => (
           <div key={i.l} className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full" style={{ background: i.c }} />
-            <span className="text-[10px] font-medium" style={{ color: "rgba(255,255,255,0.3)" }}>{i.l}</span>
+            <div className="w-2 h-2 rounded-full ring-1 ring-black/20" style={{ background: i.c }} />
+            <span className="text-[10px] text-violet-300/50 font-medium">{i.l}</span>
           </div>
         ))}
+        {/* VIP dot */}
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full ring-1 ring-amber-500/50" style={{ background: "transparent", outline: "1.5px solid #f59e0b" }} />
+          <span className="text-[10px] text-violet-300/50 font-medium">VIP</span>
+        </div>
       </div>
 
       <div className="overflow-x-auto pb-3">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" style={{ minWidth: 560 }}>
-          {/* Scene glow */}
           <defs>
+            {/* Scène : même violet que la charte */}
             <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#c084fc" stopOpacity="0.6" />
-              <stop offset="100%" stopColor="#7c3aed" stopOpacity="0.2" />
+              <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.7" />
+              <stop offset="100%" stopColor="#4c1d95" stopOpacity="0.3" />
             </linearGradient>
             <filter id="glow">
-              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feGaussianBlur stdDeviation="4" result="blur" />
               <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
             </filter>
           </defs>
 
-          {/* Scene */}
+          {/* Scène */}
           <rect x={PX + 20} y={PT} width={W - (PX + 20) * 2} height={SH} rx={SH / 2} fill="url(#sg)" filter="url(#glow)" />
-          <text x={W / 2} y={PT + SH / 2 + 4} textAnchor="middle" fill="white" fontSize={10} fontWeight="800" fontFamily="system-ui" letterSpacing="4" opacity="0.9">
+          <text x={W / 2} y={PT + SH / 2 + 4} textAnchor="middle" fill="#e9d5ff" fontSize={10} fontWeight="800" fontFamily="system-ui" letterSpacing="4" opacity="0.8">
             SCÈNE
           </text>
 
-          {/* VIP / Normal separator */}
+          {/* Séparateur VIP / Normal */}
           {(() => {
             const vipRows = Object.entries(rows).filter(([, rt]) => rt[0]?.isVip);
             const normRows = Object.entries(rows).filter(([, rt]) => !rt[0]?.isVip);
@@ -133,15 +141,15 @@ export function SeatingPlan({
             const sepY = PT + SH + SGA + CR + lastVipIdx * (CD + RG) + CR + RG / 2;
             return (
               <g>
-                <line x1={PX + 10} y1={sepY} x2={W - PX - 10} y2={sepY} stroke="#c084fc" strokeWidth="0.5" strokeDasharray="4 4" opacity="0.3" />
-                <text x={W / 2} y={sepY - 4} textAnchor="middle" fill="#c084fc" fontSize={7} fontWeight="700" opacity="0.5" fontFamily="system-ui" letterSpacing="2">
+                <line x1={PX + 10} y1={sepY} x2={W - PX - 10} y2={sepY} stroke="#7c3aed" strokeWidth="0.5" strokeDasharray="5 5" opacity="0.35" />
+                <text x={W / 2} y={sepY - 4} textAnchor="middle" fill="#a78bfa" fontSize={7} fontWeight="700" opacity="0.45" fontFamily="system-ui" letterSpacing="3">
                   VIP
                 </text>
               </g>
             );
           })()}
 
-          {/* Rows */}
+          {/* Rangées */}
           {Object.entries(rows).map(([rn, rt]) => {
             const ri = parseInt(rn) - 1;
             const cy = PT + SH + SGA + CR + ri * (CD + RG);
@@ -149,7 +157,8 @@ export function SeatingPlan({
             const sx = (W - tw) / 2 + CR;
             return (
               <g key={rn}>
-                <text x={10} y={cy + 3} fontSize={7} fill={rt[0]?.isVip ? "#c084fc" : "rgba(255,255,255,0.15)"} fontWeight="900" fontFamily="system-ui">
+                {/* Numéro de rang — violet pour VIP, quasi invisible pour normal */}
+                <text x={10} y={cy + 3} fontSize={7} fill={rt[0]?.isVip ? "#a78bfa" : "rgba(139,92,246,0.15)"} fontWeight="900" fontFamily="system-ui">
                   {rn}
                 </text>
                 {rt.map((t, ti) => (

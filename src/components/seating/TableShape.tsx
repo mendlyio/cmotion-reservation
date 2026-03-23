@@ -22,10 +22,10 @@ interface TableShapeProps {
 }
 
 const C: Record<string, string> = {
-  available: "#34d399",
-  held: "#a78bfa",
-  reserved: "#475569",
-  selected: "#60a5fa",
+  available: "#34d399",  // émeraude — libre
+  held: "#a78bfa",       // violet clair — en cours
+  reserved: "#334155",   // slate sombre — réservé
+  selected: "#818cf8",   // indigo — ma sélection (cohérent avec la légende)
 };
 
 export function TableShape({
@@ -40,13 +40,13 @@ export function TableShape({
   const canClick = !readOnly && vip && vipOk && !isSelected;
 
   let fill = "rgba(255,255,255,0.04)";
-  if (isSelected) fill = "rgba(96,165,250,0.12)";
+  if (isSelected) fill = "rgba(129,140,248,0.15)"; // indigo translucide
   else if (allRes) fill = "rgba(71,85,105,0.15)";
   else if (anyHeld) fill = "rgba(167,139,250,0.1)";
 
   const stroke = vip
-    ? (isHovered && canClick ? "#e9d5ff" : "#7c3aed")
-    : (isSelected ? "#60a5fa" : "rgba(255,255,255,0.08)");
+    ? (isHovered && canClick ? "#c4b5fd" : "#7c3aed")   // violet clair au hover, violet profond par défaut
+    : (isSelected ? "#818cf8" : "rgba(139,92,246,0.12)"); // indigo sélectionné, violet très subtil disponible
 
   return (
     <g onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
@@ -83,7 +83,7 @@ export function TableShape({
               onClick={() => { if (canClickSeat || (vip && !readOnly)) onSeatClick(seat); }}
               onMouseMove={(e) => onMouseMove(e, seat)} />
             <circle cx={sx} cy={sy} r={sr} fill={color}
-              stroke={sel ? "#93c5fd" : "rgba(0,0,0,0.3)"} strokeWidth={sel ? 1.5 : 0.5}
+              stroke={sel ? "#c4b5fd" : "rgba(0,0,0,0.3)"} strokeWidth={sel ? 1.5 : 0.5}
               pointerEvents="none" style={{ transition: "fill .15s" }} />
             <text x={sx} y={sy + 0.5} textAnchor="middle" dominantBaseline="middle"
               fontSize={6} fill="white" fontWeight="800" fontFamily="system-ui" pointerEvents="none" opacity={0.9}>
