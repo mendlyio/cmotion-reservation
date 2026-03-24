@@ -92,15 +92,14 @@ export function getMealPrice(meal: MealChoice): number {
 }
 
 export function calculateTotal(data: BookingFormData): number {
-  if (data.isVip) {
-    return VIP_TABLE_PRICE;
-  }
+  let total = data.isVip ? VIP_TABLE_PRICE : 0;
 
-  let total = 0;
-  for (const guest of data.guests) {
-    total += getMealPrice(guest.mealChoice);
-    if (guest.hasDessert) {
-      total += DESSERT_PRICE;
+  if (!data.isVip) {
+    for (const guest of data.guests) {
+      total += getMealPrice(guest.mealChoice);
+      if (guest.hasDessert) {
+        total += DESSERT_PRICE;
+      }
     }
   }
 
