@@ -297,10 +297,10 @@ export function SeatingPlan({
         </div>{/* fin div position:relative (tooltip wrapper) */}
         </div>{/* fin svgWrapRef */}
 
-        {/* Boutons zoom flottants — coin bas droit, style Maps */}
+        {/* Boutons zoom — fixed contre le bord droit, centré verticalement */}
         <div
-          className="absolute bottom-4 right-3 flex flex-col rounded-xl overflow-hidden shadow-lg"
-          style={{ border: "1px solid rgba(201,162,39,0.25)", background: "rgba(12,10,0,0.88)", backdropFilter: "blur(10px)" }}
+          className="fixed right-3 top-1/2 -translate-y-1/2 z-40 flex flex-col rounded-xl overflow-hidden shadow-xl"
+          style={{ border: "1px solid rgba(201,162,39,0.3)", background: "rgba(10,8,0,0.90)", backdropFilter: "blur(12px)" }}
         >
           <button
             onClick={zoomIn}
