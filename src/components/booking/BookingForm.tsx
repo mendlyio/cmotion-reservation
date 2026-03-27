@@ -67,27 +67,34 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
   };
 
   const STEPS = [
-    { emoji: "👤", label: "Convives", done: gOk },
-    { emoji: "✨", label: "Contact", done: cOk },
-    { emoji: "💳", label: "Payer", done: false },
+    { label: "Convives", done: gOk },
+    { label: "Contact", done: cOk },
+    { label: "Payer", done: false },
   ];
 
   return (
     <div>
       {/* Header bar */}
-        <div className="bg-linear-to-r from-slate-900 to-slate-800 px-5 py-4 flex items-center justify-between">
+      <div className="bg-gradient-to-r from-[#141400] to-[#0f0f0f] border-b border-[#c9a227]/15 px-5 py-4 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-white font-bold text-sm">Table {table.rowNumber}-{table.tableNumber}</span>
-            {vip && <span className="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full">VIP</span>}
+            {vip && (
+              <span className="bg-[#c9a227]/15 text-[#c9a227] border border-[#c9a227]/30 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                VIP ★
+              </span>
+            )}
           </div>
-          <p className="text-white/40 text-[11px] mt-0.5">
+          <p className="text-[#555] text-[11px] mt-0.5">
             {vip ? "8 places · 280€ tout inclus" : `${ids.length} ${ids.length > 1 ? "sièges sélectionnés" : "siège sélectionné"}`}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-white font-extrabold text-lg tabular-nums">{(total / 100).toFixed(2)}€</span>
-          <button onClick={onCancel} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white/50 hover:bg-red-500/20 hover:text-red-300 transition">
+          <span className="text-[#c9a227] font-extrabold text-lg tabular-nums">{(total / 100).toFixed(2)}€</span>
+          <button
+            onClick={onCancel}
+            className="w-7 h-7 rounded-full bg-[#1a1a1a] hover:bg-red-500/15 border border-[#2a2a2a] hover:border-red-500/30 flex items-center justify-center text-[#555] hover:text-red-400 transition-all"
+          >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -96,18 +103,26 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
       </div>
 
       {/* Step tabs */}
-      <div className="flex border-b border-slate-100">
+      <div className="flex border-b border-[#1a1a1a]">
         {STEPS.map((s, i) => (
           <button
             key={i}
             onClick={() => setStep(i as Step)}
             className={`flex-1 py-2.5 text-center text-xs font-semibold transition-all relative ${
-              step === i ? "text-slate-900" : s.done && i < step ? "text-emerald-600" : "text-slate-300"
+              step === i
+                ? "text-[#c9a227]"
+                : s.done && i < step
+                ? "text-emerald-500"
+                : "text-[#444]"
             }`}
           >
-            <span className="mr-1">{s.done && i < step ? "✓" : s.emoji}</span>
-            {s.label}
-            {step === i && <motion.div layoutId="tab" className="absolute bottom-0 left-2 right-2 h-0.5 bg-slate-900 rounded-full" />}
+            {s.done && i < step ? "✓ " : ""}{s.label}
+            {step === i && (
+              <motion.div
+                layoutId="tab"
+                className="absolute bottom-0 left-2 right-2 h-0.5 bg-gradient-to-r from-[#c9a227] to-[#a07818] rounded-full"
+              />
+            )}
           </button>
         ))}
       </div>
@@ -118,16 +133,16 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
           {step === 0 && (
             <motion.div key="s0" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.12 }} className="space-y-3">
               {vip && (
-                <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-xl text-xs text-amber-700 font-medium">
+                <div className="flex items-center gap-2 p-3 bg-[#c9a227]/8 border border-[#c9a227]/20 rounded-xl text-xs text-[#c9a227] font-medium">
                   <span>★</span> Bulles, zakouski et dessert inclus
                 </div>
               )}
               {!vip && (
-                <p className="text-[11px] text-blue-500 bg-blue-50 px-3 py-2 rounded-xl">
+                <p className="text-[11px] text-[#c9a227]/70 bg-[#c9a227]/5 border border-[#c9a227]/15 px-3 py-2 rounded-xl">
                   Vous pouvez encore ajouter des sièges en cliquant sur le plan ci-dessus
                 </p>
               )}
-              <p className="text-[11px] text-slate-400 bg-slate-50 px-3 py-2 rounded-xl">
+              <p className="text-[11px] text-[#555] bg-[#141414] border border-[#1e1e1e] px-3 py-2 rounded-xl">
                 Veuillez choisir un plat pour chaque convive ci-dessous.
               </p>
               <AnimatePresence initial={false}>
@@ -148,34 +163,21 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
             <motion.div key="s1" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.12 }} className="space-y-4">
               <UpsellSection upsells={upsells} onChange={setUpsells} />
               <div className="space-y-3">
-                <p className="text-xs font-bold text-slate-900 uppercase tracking-wider">Contact</p>
-                <Field
-                  label="Élève référent"
-                  value={ref}
-                  set={setRef}
-                  placeholder="Nom de l'élève"
-                  required
-                />
-                <Field
-                  label="Email"
-                  value={email}
-                  set={setEmail}
-                  placeholder="votre@email.com"
-                  type="email"
-                  required
-                />
-                {/* Téléphone avec préfixe pays */}
+                <p className="text-xs font-bold text-[#888] uppercase tracking-widest">Contact</p>
+                <Field label="Élève référent" value={ref} set={setRef} placeholder="Nom de l'élève" required />
+                <Field label="Email" value={email} set={setEmail} placeholder="votre@email.com" type="email" required />
+                {/* Phone with country prefix */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[11px] font-semibold text-[#555] uppercase tracking-widest mb-1.5">
                     Téléphone <span className="text-red-400">*</span>
                   </label>
-                  <div className={`flex rounded-xl border overflow-hidden transition-all focus-within:ring-2 focus-within:ring-indigo-500/30 focus-within:border-indigo-400 ${
-                    phoneLocal.trim() ? "border-slate-200" : "border-red-300 bg-red-50/20"
+                  <div className={`flex rounded-xl border overflow-hidden transition-all focus-within:border-[#c9a227]/50 focus-within:ring-1 focus-within:ring-[#c9a227]/20 ${
+                    phoneLocal.trim() ? "border-[#2a2a2a]" : "border-red-500/30 bg-red-500/5"
                   }`}>
                     <select
                       value={phonePrefix}
                       onChange={(e) => setPhonePrefix(e.target.value)}
-                      className="h-12 pl-3 pr-2 bg-slate-50 text-sm text-slate-700 font-semibold border-r border-slate-200 focus:outline-none appearance-none cursor-pointer shrink-0"
+                      className="h-12 pl-3 pr-2 bg-[#141414] text-sm text-[#aaa] font-semibold border-r border-[#2a2a2a] focus:outline-none appearance-none cursor-pointer shrink-0"
                       style={{ backgroundImage: "none" }}
                     >
                       <option value="+32">🇧🇪 +32</option>
@@ -188,7 +190,7 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
                       value={phoneLocal}
                       onChange={(e) => setPhoneLocal(e.target.value)}
                       placeholder="470 12 34 56"
-                      className="flex-1 h-12 px-3 bg-white text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none"
+                      className="flex-1 h-12 px-3 bg-[#0f0f0f] text-sm text-white placeholder-[#333] focus:outline-none"
                     />
                   </div>
                 </div>
@@ -199,7 +201,11 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
           {step === 2 && (
             <motion.div key="s2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.12 }} className="space-y-4">
               <OrderSummary data={data} table={table} />
-              {error && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">{error}</div>}
+              {error && (
+                <div className="p-3 bg-red-500/8 border border-red-500/20 rounded-xl text-sm text-red-400">
+                  {error}
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -211,19 +217,33 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
           <button
             onClick={() => setStep((step + 1) as Step)}
             disabled={step === 0 ? !gOk : !cOk}
-            className="w-full h-12 bg-slate-900 text-white text-sm font-bold rounded-xl disabled:opacity-20 active:scale-[0.98] transition-all"
+            className="w-full h-12 bg-gradient-to-r from-[#c9a227] to-[#a07818] text-black text-sm font-bold rounded-xl disabled:opacity-25 active:scale-[0.98] transition-all shadow-lg shadow-[#c9a227]/20"
           >
             Continuer
           </button>
         ) : (
           <div className="flex gap-2">
-            <button onClick={() => pay(false)} disabled={!cOk || loading}
-              className="flex-1 h-12 bg-linear-to-r from-purple-600 to-blue-600 text-white text-sm font-bold rounded-xl disabled:opacity-20 active:scale-[0.98] transition-all shadow-lg shadow-purple-500/20">
-              {loading ? "Traitement…" : `Payer ${(total / 100).toFixed(2)}€`}
+            <button
+              onClick={() => pay(false)}
+              disabled={!cOk || loading}
+              className="flex-1 h-12 bg-gradient-to-r from-[#c9a227] to-[#a07818] text-black text-sm font-bold rounded-xl disabled:opacity-25 active:scale-[0.98] transition-all shadow-lg shadow-[#c9a227]/20"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                  Traitement…
+                </span>
+              ) : `Payer ${(total / 100).toFixed(2)}€`}
             </button>
             {process.env.NODE_ENV !== "production" && (
-              <button onClick={() => pay(true)} disabled={!cOk || loading}
-                className="h-12 px-4 bg-slate-100 text-slate-500 text-[11px] font-bold rounded-xl disabled:opacity-20 active:scale-[0.98] transition-all">
+              <button
+                onClick={() => pay(true)}
+                disabled={!cOk || loading}
+                className="h-12 px-4 bg-[#1a1a1a] border border-[#2a2a2a] text-[#555] text-[11px] font-bold rounded-xl disabled:opacity-25 active:scale-[0.98] transition-all"
+              >
                 Test
               </button>
             )}
@@ -240,7 +260,7 @@ function Field({ label, value, set, placeholder, type = "text", required }: {
   const empty = required && value.trim() === "";
   return (
     <div>
-      <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+      <label className="block text-[11px] font-semibold text-[#555] uppercase tracking-widest mb-1.5">
         {label} {required && <span className="text-red-400">*</span>}
       </label>
       <input
@@ -249,8 +269,10 @@ function Field({ label, value, set, placeholder, type = "text", required }: {
         value={value}
         onChange={(e) => set(e.target.value)}
         placeholder={placeholder}
-        className={`w-full h-12 px-4 rounded-xl border text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 focus:bg-white transition-all ${
-          empty ? "border-red-300 bg-red-50/30" : "border-slate-200 bg-slate-50/50"
+        className={`w-full h-12 px-4 rounded-xl border text-sm text-white placeholder-[#333] focus:outline-none focus:ring-1 focus:ring-[#c9a227]/30 focus:border-[#c9a227]/50 transition-all ${
+          empty
+            ? "border-red-500/30 bg-red-500/5"
+            : "border-[#2a2a2a] bg-[#141414]"
         }`}
       />
     </div>

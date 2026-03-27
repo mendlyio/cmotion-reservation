@@ -12,31 +12,34 @@ interface Props {
 }
 
 const inputClass = (value: string) =>
-  `h-11 px-3 rounded-lg border text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 focus:bg-white transition-all bg-slate-50/50 ${
+  `w-full h-11 px-3 rounded-lg border text-sm text-white placeholder-[#333] focus:outline-none focus:ring-1 focus:ring-[#c9a227]/30 focus:border-[#c9a227]/50 transition-all ${
     value.trim() === ""
-      ? "border-red-300 bg-red-50/30"
-      : "border-slate-200"
+      ? "border-red-500/30 bg-red-500/5"
+      : "border-[#2a2a2a] bg-[#141414]"
   }`;
 
 export function GuestForm({ index, seatLabel, data, isVip, onChange }: Props) {
+  const done = !!data.firstName && !!data.lastName;
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 bg-slate-50/80 border-b border-slate-100">
+    <div className="rounded-xl border border-[#1e1e1e] bg-[#0f0f0f] overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-[#141414] border-b border-[#1e1e1e]">
         <div className="flex items-center gap-2">
-          <div className={`w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center ${
-            data.firstName && data.lastName ? "bg-indigo-500" : "bg-slate-300"
+          <div className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center ${
+            done
+              ? "bg-[#c9a227]/20 text-[#c9a227] border border-[#c9a227]/30"
+              : "bg-[#1a1a1a] text-[#555] border border-[#2a2a2a]"
           }`}>
-            {data.firstName && data.lastName ? "✓" : index + 1}
+            {done ? "✓" : index + 1}
           </div>
-          <span className="text-xs font-semibold text-slate-600">Convive {index + 1}</span>
+          <span className="text-xs font-semibold text-[#888]">Convive {index + 1}</span>
         </div>
-        <span className="text-[10px] text-slate-400 font-mono">{seatLabel}</span>
+        <span className="text-[10px] text-[#444] font-mono">{seatLabel}</span>
       </div>
 
       <div className="p-3 space-y-2.5">
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+            <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-widest mb-1">
               Prénom <span className="text-red-400">*</span>
             </label>
             <input
@@ -45,11 +48,11 @@ export function GuestForm({ index, seatLabel, data, isVip, onChange }: Props) {
               value={data.firstName}
               onChange={(e) => onChange({ ...data, firstName: e.target.value })}
               placeholder="Prénom"
-              className={`w-full ${inputClass(data.firstName)}`}
+              className={inputClass(data.firstName)}
             />
           </div>
           <div>
-            <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+            <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-widest mb-1">
               Nom <span className="text-red-400">*</span>
             </label>
             <input
@@ -58,19 +61,19 @@ export function GuestForm({ index, seatLabel, data, isVip, onChange }: Props) {
               value={data.lastName}
               onChange={(e) => onChange({ ...data, lastName: e.target.value })}
               placeholder="Nom"
-              className={`w-full ${inputClass(data.lastName)}`}
+              className={inputClass(data.lastName)}
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+          <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-widest mb-1">
             Choix du plat <span className="text-red-400">*</span>
           </label>
           <select
             value={data.mealChoice}
             onChange={(e) => onChange({ ...data, mealChoice: e.target.value as MealChoice })}
-            className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-slate-50/50 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 focus:bg-white transition-all"
+            className="w-full h-11 px-3 rounded-lg border border-[#2a2a2a] bg-[#141414] text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#c9a227]/30 focus:border-[#c9a227]/50 transition-all"
           >
             {MEAL_OPTIONS.map((m) => (
               <option key={m.value} value={m.value}>
@@ -89,18 +92,18 @@ export function GuestForm({ index, seatLabel, data, isVip, onChange }: Props) {
                 onChange={(e) => onChange({ ...data, hasDessert: e.target.checked })}
                 className="sr-only peer"
               />
-              <div className="w-10 h-6 bg-slate-200 rounded-full peer-checked:bg-indigo-500 transition-colors" />
-              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform peer-checked:translate-x-4" />
+              <div className="w-10 h-6 bg-[#1a1a1a] border border-[#2a2a2a] rounded-full peer-checked:bg-[#c9a227]/30 peer-checked:border-[#c9a227]/50 transition-colors" />
+              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-[#444] rounded-full shadow-sm transition-all peer-checked:translate-x-4 peer-checked:bg-[#c9a227]" />
             </div>
-            <span className="text-sm text-slate-600">
-              Tiramisu <span className="text-slate-400">(+{(DESSERT_PRICE / 100).toFixed(2)}€)</span>
+            <span className="text-sm text-[#888]">
+              Tiramisu <span className="text-[#555]">(+{(DESSERT_PRICE / 100).toFixed(2)}€)</span>
             </span>
           </label>
         )}
 
         {isVip && (
-          <p className="text-[11px] text-amber-600 flex items-center gap-1.5">
-            <span>★</span> Dessert inclus
+          <p className="text-[11px] text-[#c9a227]/70 flex items-center gap-1.5">
+            <span className="text-[#c9a227]">★</span> Dessert inclus
           </p>
         )}
       </div>

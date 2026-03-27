@@ -44,30 +44,16 @@ export default async function ConfirmationPage({ params }: Props) {
   let seatDetails: { id: number; tableId: number; seatNumber: number }[] = [];
   if (seatIds.length > 0) {
     seatDetails = await db
-      .select({
-        id: seats.id,
-        tableId: seats.tableId,
-        seatNumber: seats.seatNumber,
-      })
+      .select({ id: seats.id, tableId: seats.tableId, seatNumber: seats.seatNumber })
       .from(seats)
       .where(inArray(seats.id, seatIds));
   }
 
   const tableIds = [...new Set(seatDetails.map((s) => s.tableId))];
-  let tableDetail: {
-    id: number;
-    rowNumber: number;
-    tableNumber: number;
-    isVip: boolean;
-  } | null = null;
+  let tableDetail: { id: number; rowNumber: number; tableNumber: number; isVip: boolean } | null = null;
   if (tableIds.length > 0) {
     const [t] = await db
-      .select({
-        id: tables.id,
-        rowNumber: tables.rowNumber,
-        tableNumber: tables.tableNumber,
-        isVip: tables.isVip,
-      })
+      .select({ id: tables.id, rowNumber: tables.rowNumber, tableNumber: tables.tableNumber, isVip: tables.isVip })
       .from(tables)
       .where(inArray(tables.id, tableIds));
     tableDetail = t || null;
@@ -87,133 +73,98 @@ export default async function ConfirmationPage({ params }: Props) {
   });
 
   return (
-    <main className="flex-1 flex flex-col">
+    <main className="flex-1 flex flex-col min-h-screen bg-[#0a0a0a]">
+      {/* Ambient glow */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[400px] h-[300px] rounded-full blur-3xl opacity-60 ${
+          isPaid ? "bg-[#c9a227]/10" : "bg-amber-500/8"
+        }`} />
+      </div>
+
       {/* Status header */}
-      <div
-        className={`pt-12 pb-8 px-5 text-center ${
+      <div className="relative pt-12 pb-10 px-5 text-center">
+        <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5 shadow-xl ${
           isPaid
-            ? "bg-gradient-to-b from-emerald-500 to-emerald-600"
-            : "bg-gradient-to-b from-amber-400 to-amber-500"
-        }`}
-      >
-        <div
-          className={`inline-flex items-center justify-center w-14 h-14 rounded-full mb-4 ${
-            isPaid ? "bg-white/20" : "bg-white/20"
-          }`}
-        >
+            ? "bg-gradient-to-br from-[#c9a227] to-[#a07818] shadow-[#c9a227]/30"
+            : "bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/20"
+        }`}>
           {isPaid ? (
-            <svg
-              className="w-7 h-7 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M5 13l4 4L19 7"
-              />
+            <svg className="w-8 h-8 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           ) : (
-            <svg
-              className="w-7 h-7 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
+            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           )}
         </div>
 
-        <h1 className="text-xl font-extrabold text-white mb-1">
+        <h1 className="text-2xl font-extrabold text-white mb-1">
           {isPaid ? "Réservation confirmée" : "Paiement en attente"}
         </h1>
-        <p className="text-sm text-white/70">
-          #{reservation.id}
+        <p className="text-sm text-[#555]">
+          Réservation <span className="text-[#c9a227] font-mono">#{reservation.id}</span>
         </p>
       </div>
 
       {/* Content */}
-      <div className="flex-1 -mt-3 relative z-10">
-        <div className="max-w-lg mx-auto px-4 pb-10">
-          <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+      <div className="relative flex-1 -mt-2">
+        <div className="max-w-lg mx-auto px-4 pb-12 space-y-3">
+
+          {/* Main card */}
+          <div className="bg-[#0f0f0f] rounded-2xl border border-[#1e1a0e] overflow-hidden">
             {/* Event info */}
-            <div className="p-5 space-y-3">
-              <div>
-                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1">
-                  Événement
-                </p>
-                <p className="text-base font-bold text-slate-900">
-                  {event.name}
-                </p>
-                <p className="text-sm text-slate-500 capitalize">{date}</p>
-                <p className="text-sm text-slate-400">{event.timeInfo}</p>
-              </div>
+            <div className="p-5 space-y-4 border-b border-[#141414]">
+              <InfoBlock label="Événement">
+                <p className="text-base font-bold text-white">{event.name}</p>
+                <p className="text-sm text-[#666] capitalize">{date}</p>
+                <p className="text-sm text-[#555]">{event.timeInfo}</p>
+              </InfoBlock>
 
               {tableDetail && (
-                <div>
-                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1">
-                    Emplacement
-                  </p>
-                  <p className="text-sm font-semibold text-slate-800">
+                <InfoBlock label="Emplacement">
+                  <p className="text-sm font-semibold text-white flex items-center gap-2">
                     Table {tableDetail.rowNumber}-{tableDetail.tableNumber}
                     {tableDetail.isVip && (
-                      <span className="ml-1.5 text-amber-500">★ VIP</span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-[#c9a227]/15 text-[#c9a227] border border-[#c9a227]/30 uppercase tracking-wider">
+                        VIP ★
+                      </span>
                     )}
                   </p>
-                </div>
+                </InfoBlock>
               )}
 
-              <div>
-                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1">
-                  Contact
-                </p>
-                <p className="text-sm text-slate-700">
-                  {reservation.referentStudent}
-                </p>
-                <p className="text-sm text-slate-500">{reservation.email}</p>
-              </div>
+              <InfoBlock label="Contact">
+                <p className="text-sm text-white">{reservation.referentStudent}</p>
+                <p className="text-sm text-[#666]">{reservation.email}</p>
+              </InfoBlock>
             </div>
 
             {/* Guests */}
-            <div className="border-t">
-              <div className="px-5 py-2.5 bg-slate-50">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                  Convives
-                </p>
+            <div>
+              <div className="px-5 py-3 bg-[#141414] border-b border-[#1a1a1a]">
+                <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest">Convives</p>
               </div>
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-[#0f0f0f]">
                 {resSeats.map((guest) => {
-                  const seat = seatDetails.find(
-                    (s) => s.id === guest.seatId
-                  );
-                  const meal = MEAL_OPTIONS.find(
-                    (m) => m.value === guest.mealChoice
-                  );
+                  const seat = seatDetails.find((s) => s.id === guest.seatId);
+                  const meal = MEAL_OPTIONS.find((m) => m.value === guest.mealChoice);
                   return (
-                    <div
-                      key={guest.id}
-                      className="px-5 py-3 flex items-center justify-between"
-                    >
+                    <div key={guest.id} className="px-5 py-3 flex items-center justify-between bg-[#0a0a0a]">
                       <div>
-                        <p className="text-sm font-medium text-slate-800">
+                        <p className="text-sm font-medium text-white">
                           {guest.firstName} {guest.lastName}
                           {seat && (
-                            <span className="text-slate-300 ml-1.5 text-xs">
+                            <span className="text-[#444] ml-1.5 text-xs font-mono">
                               S{seat.seatNumber}
                             </span>
                           )}
                         </p>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-[#555]">
                           {meal?.label || guest.mealChoice}
-                          {guest.hasDessert && " + Tiramisu"}
+                          {guest.hasDessert && (
+                            <span className="text-[#c9a227]/70"> + Tiramisu</span>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -224,20 +175,16 @@ export default async function ConfirmationPage({ params }: Props) {
 
             {/* Upsells */}
             {upsells.length > 0 && (
-              <div className="border-t px-5 py-3 space-y-1">
+              <div className="border-t border-[#141414] px-5 py-3 space-y-1.5 bg-[#0a0a0a]">
+                <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest mb-2">Extras</p>
                 {upsells.map((u) => {
-                  const option = UPSELL_OPTIONS.find(
-                    (o) => o.type === u.upsellType
-                  );
+                  const option = UPSELL_OPTIONS.find((o) => o.type === u.upsellType);
                   return (
-                    <div
-                      key={u.id}
-                      className="flex justify-between text-sm"
-                    >
-                      <span className="text-slate-600">
+                    <div key={u.id} className="flex justify-between text-sm">
+                      <span className="text-[#888]">
                         {option?.label || u.upsellType} ×{u.quantity}
                       </span>
-                      <span className="text-slate-800 font-medium">
+                      <span className="text-white font-medium tabular-nums">
                         {((u.unitPrice * u.quantity) / 100).toFixed(2)}€
                       </span>
                     </div>
@@ -247,31 +194,22 @@ export default async function ConfirmationPage({ params }: Props) {
             )}
 
             {/* Total */}
-            <div className="px-5 py-4 bg-slate-900 flex justify-between items-center">
-              <span className="text-sm text-slate-400">Total</span>
-              <span className="text-2xl font-extrabold text-white">
+            <div className="px-5 py-4 bg-gradient-to-r from-[#1a1400] to-[#141000] border-t border-[#c9a227]/15 flex justify-between items-center">
+              <span className="text-sm text-[#666]">Total payé</span>
+              <span className="text-2xl font-extrabold text-[#c9a227] tabular-nums">
                 {(reservation.totalAmount / 100).toFixed(2)}€
               </span>
             </div>
           </div>
 
-          <div className="mt-5 text-center">
+          {/* Back link */}
+          <div className="text-center pt-2">
             <Link
               href="/"
-              className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm text-[#555] hover:text-[#c9a227] transition-colors group"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15 19l-7-7 7-7"
-                />
+              <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
               Retour à l&apos;accueil
             </Link>
@@ -279,5 +217,14 @@ export default async function ConfirmationPage({ params }: Props) {
         </div>
       </div>
     </main>
+  );
+}
+
+function InfoBlock({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest mb-1.5">{label}</p>
+      {children}
+    </div>
   );
 }
