@@ -49,11 +49,14 @@ export function ReservationClient({ event }: { event: EventData }) {
     setHoldExp(null);
   };
 
-  const scrollForm = () => setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 200);
+  const scrollToForm = () => {
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
 
   const onTable = async (t: TableWithSeats) => {
     if (!t.isVip) return;
-    if (await hold(t.id)) { setSelTable(t); setSelSeats(t.seats.map((s) => s.id)); scrollForm(); }
+    // Sélection sans scroll automatique
+    if (await hold(t.id)) { setSelTable(t); setSelSeats(t.seats.map((s) => s.id)); }
   };
 
   const onSeat = async (tid: number, sids: number[]) => {
@@ -70,8 +73,8 @@ export function ReservationClient({ event }: { event: EventData }) {
     } else {
       const n = [...selSeats, sid];
       setSelTable(t); setSelSeats(n);
+      // Pas de scroll automatique — l'utilisateur clique sur le bouton flottant
       if (!(await hold(tid, n))) { setSelSeats(selSeats); if (!selSeats.length) setSelTable(null); return; }
-      if (!selSeats.length) scrollForm();
     }
   };
 
@@ -190,18 +193,18 @@ export function ReservationClient({ event }: { event: EventData }) {
         </div>
       </section>
 
-      {/* Booking form */}
+      {/* Booking form — revealed after scrolling */}
       <AnimatePresence>
         {has && selTable && (
           <motion.section
             ref={formRef}
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 30 }}
+            exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
             className="relative z-10"
           >
-            <div className="max-w-lg mx-auto px-4 py-6">
+            <div className="max-w-lg mx-auto px-4 py-6 pb-32">
               <div className="bg-[#0f0f0f] rounded-2xl border border-[#1e1a0e] overflow-hidden shadow-2xl shadow-black/50">
                 <BookingForm
                   eventId={event.id}
@@ -212,6 +215,63 @@ export function ReservationClient({ event }: { event: EventData }) {
               </div>
             </div>
           </motion.section>
+        )}
+      </AnimatePresence>
+
+      {/* Floating CTA — apparaît dès qu'une place est choisie */}
+      <AnimatePresence>
+        {has && selTable && (
+          <motion.div
+            initial={{ opacity: 0, y: 80 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 80 }}
+            transition={{ type: "spring", stiffness: 420, damping: 32 }}
+            className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl shadow-black/60"
+            style={{
+              background: "linear-gradient(135deg, #1a1400 0%, #0f0c00 100%)",
+              border: "1px solid rgba(201,162,39,0.35)",
+              backdropFilter: "blur(12px)",
+            }}
+          >
+            {/* Seat count badge */}
+            <div className="flex items-center gap-2 pr-3 border-r border-[#c9a227]/20">
+              <div className="w-7 h-7 rounded-lg bg-[#c9a227]/15 border border-[#c9a227]/30 flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-[#c9a227]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-black text-white tabular-nums leading-none">
+                  {selSeats.length} {selSeats.length > 1 ? "places" : "place"}
+                </p>
+                <p className="text-[10px] text-[#c9a227]/60 leading-none mt-0.5">
+                  {selTable.isVip ? "VIP · Table " : "Table "}{selTable.rowNumber}-{selTable.tableNumber}
+                </p>
+              </div>
+            </div>
+
+            {/* CTA button */}
+            <button
+              onClick={scrollToForm}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#c9a227] to-[#a07818] text-black text-sm font-black shadow-lg shadow-[#c9a227]/25 hover:opacity-90 active:scale-[0.97] transition-all"
+            >
+              Remplir le formulaire
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+              </svg>
+            </button>
+
+            {/* Cancel */}
+            <button
+              onClick={cancel}
+              className="w-7 h-7 rounded-lg bg-[#1a1a1a] hover:bg-red-500/15 border border-[#2a2a2a] hover:border-red-500/30 flex items-center justify-center text-[#555] hover:text-red-400 transition-all"
+              title="Annuler la sélection"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
     </main>
