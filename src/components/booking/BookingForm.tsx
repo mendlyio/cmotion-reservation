@@ -30,6 +30,7 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>(0);
+  const [phoneTouched, setPhoneTouched] = useState(false);
 
   const phone = phoneLocal.trim() ? `${phonePrefix} ${phoneLocal.trim()}` : "";
 
@@ -172,7 +173,7 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
                     Téléphone <span className="text-red-400">*</span>
                   </label>
                   <div className={`flex rounded-xl border overflow-hidden transition-all focus-within:border-[#c9a227]/50 focus-within:ring-1 focus-within:ring-[#c9a227]/20 ${
-                    phoneLocal.trim() ? "border-[#2a2a2a]" : "border-red-500/30 bg-red-500/5"
+                    !phoneTouched || phoneLocal.trim() ? "border-[#2a2a2a]" : "border-red-500/30 bg-red-500/5"
                   }`}>
                     <select
                       value={phonePrefix}
@@ -189,6 +190,7 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
                       autoComplete="tel"
                       value={phoneLocal}
                       onChange={(e) => setPhoneLocal(e.target.value)}
+                      onBlur={() => setPhoneTouched(true)}
                       placeholder="470 12 34 56"
                       className="flex-1 h-12 px-3 bg-[#0f0f0f] text-sm text-white placeholder-[#333] focus:outline-none"
                     />
@@ -257,7 +259,8 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
 function Field({ label, value, set, placeholder, type = "text", required }: {
   label: string; value: string; set: (v: string) => void; placeholder: string; type?: string; required?: boolean;
 }) {
-  const empty = required && value.trim() === "";
+  const [touched, setTouched] = useState(false);
+  const invalid = required && touched && value.trim() === "";
   return (
     <div>
       <label className="block text-[11px] font-semibold text-[#555] uppercase tracking-widest mb-1.5">
@@ -268,9 +271,10 @@ function Field({ label, value, set, placeholder, type = "text", required }: {
         autoComplete={type === "email" ? "email" : undefined}
         value={value}
         onChange={(e) => set(e.target.value)}
+        onBlur={() => setTouched(true)}
         placeholder={placeholder}
         className={`w-full h-12 px-4 rounded-xl border text-sm text-white placeholder-[#333] focus:outline-none focus:ring-1 focus:ring-[#c9a227]/30 focus:border-[#c9a227]/50 transition-all ${
-          empty
+          invalid
             ? "border-red-500/30 bg-red-500/5"
             : "border-[#2a2a2a] bg-[#141414]"
         }`}

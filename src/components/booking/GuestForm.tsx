@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { MEAL_OPTIONS, DESSERT_PRICE, MealChoice, SeatFormData } from "@/types";
 
 interface Props {
@@ -11,15 +12,17 @@ interface Props {
   onChange: (data: SeatFormData) => void;
 }
 
-const inputClass = (value: string) =>
+const inputClass = (value: string, touched: boolean) =>
   `w-full h-11 px-3 rounded-lg border text-sm text-white placeholder-[#333] focus:outline-none focus:ring-1 focus:ring-[#c9a227]/30 focus:border-[#c9a227]/50 transition-all ${
-    value.trim() === ""
+    touched && value.trim() === ""
       ? "border-red-500/30 bg-red-500/5"
       : "border-[#2a2a2a] bg-[#141414]"
   }`;
 
 export function GuestForm({ index, seatLabel, data, isVip, onChange }: Props) {
+  const [touched, setTouched] = useState({ firstName: false, lastName: false });
   const done = !!data.firstName && !!data.lastName;
+
   return (
     <div className="rounded-xl border border-[#1e1e1e] bg-[#0f0f0f] overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2.5 bg-[#141414] border-b border-[#1e1e1e]">
@@ -47,8 +50,9 @@ export function GuestForm({ index, seatLabel, data, isVip, onChange }: Props) {
               autoComplete="given-name"
               value={data.firstName}
               onChange={(e) => onChange({ ...data, firstName: e.target.value })}
+              onBlur={() => setTouched((t) => ({ ...t, firstName: true }))}
               placeholder="Prénom"
-              className={inputClass(data.firstName)}
+              className={inputClass(data.firstName, touched.firstName)}
             />
           </div>
           <div>
@@ -60,8 +64,9 @@ export function GuestForm({ index, seatLabel, data, isVip, onChange }: Props) {
               autoComplete="family-name"
               value={data.lastName}
               onChange={(e) => onChange({ ...data, lastName: e.target.value })}
+              onBlur={() => setTouched((t) => ({ ...t, lastName: true }))}
               placeholder="Nom"
-              className={inputClass(data.lastName)}
+              className={inputClass(data.lastName, touched.lastName)}
             />
           </div>
         </div>
