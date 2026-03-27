@@ -25,18 +25,31 @@ export function GuestForm({ index, seatLabel, data, isVip, onChange }: Props) {
 
   return (
     <div className="rounded-xl border border-[#1e1e1e] bg-[#0f0f0f] overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2.5 bg-[#141414] border-b border-[#1e1e1e]">
-        <div className="flex items-center gap-2">
-          <div className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center ${
+      <div className={`flex items-center justify-between px-4 py-3 border-b transition-colors ${
+        done
+          ? "bg-gradient-to-r from-[#1a1400] to-[#0f0c00] border-[#c9a227]/25"
+          : "bg-[#141414] border-[#1e1e1e]"
+      }`}>
+        <div className="flex items-center gap-2.5">
+          <div className={`w-6 h-6 rounded-lg text-[11px] font-black flex items-center justify-center transition-all ${
             done
-              ? "bg-[#c9a227]/20 text-[#c9a227] border border-[#c9a227]/30"
+              ? "bg-[#c9a227]/20 text-[#c9a227] border border-[#c9a227]/40"
               : "bg-[#1a1a1a] text-[#555] border border-[#2a2a2a]"
           }`}>
             {done ? "✓" : index + 1}
           </div>
-          <span className="text-xs font-semibold text-[#888]">Convive {index + 1}</span>
+          <span className={`text-xs font-bold tracking-wide transition-colors ${done ? "text-[#c9a227]" : "text-[#666]"}`}>
+            Convive {index + 1}
+            {done && (
+              <span className="ml-2 font-normal text-[#c9a227]/60">
+                — {data.firstName} {data.lastName}
+              </span>
+            )}
+          </span>
         </div>
-        <span className="text-[10px] text-[#444] font-mono">{seatLabel}</span>
+        <span className={`text-[10px] font-mono transition-colors ${done ? "text-[#c9a227]/40" : "text-[#333]"}`}>
+          {seatLabel}
+        </span>
       </div>
 
       <div className="p-3 space-y-2.5">

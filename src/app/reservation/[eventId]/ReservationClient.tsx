@@ -16,6 +16,7 @@ export function ReservationClient({ event }: { event: EventData }) {
   const [selSeats, setSelSeats] = useState<number[]>([]);
   const [holdExp, setHoldExp] = useState<string | null>(null);
   const [holding, setHolding] = useState(false);
+  const [floatingHidden, setFloatingHidden] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
   const has = selTable !== null && selSeats.length > 0;
 
@@ -50,6 +51,7 @@ export function ReservationClient({ event }: { event: EventData }) {
   };
 
   const scrollToForm = () => {
+    setFloatingHidden(true);
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
 
@@ -79,7 +81,7 @@ export function ReservationClient({ event }: { event: EventData }) {
     }
   };
 
-  const cancel = async () => { await release(); setSelTable(null); setSelSeats([]); await fetch_(); };
+  const cancel = async () => { await release(); setSelTable(null); setSelSeats([]); setFloatingHidden(false); await fetch_(); };
   const expired = async () => { toast.error("Réservation expirée"); await cancel(); };
 
   const dateObj = new Date(event.eventDate);
@@ -219,9 +221,9 @@ export function ReservationClient({ event }: { event: EventData }) {
         )}
       </AnimatePresence>
 
-      {/* Floating CTA — pleine largeur mobile, centré desktop */}
+      {/* Floating CTA — disparaît après clic sur Continuer */}
       <AnimatePresence>
-        {has && selTable && (
+        {has && selTable && !floatingHidden && (
           <motion.div
             initial={{ opacity: 0, y: 80 }}
             animate={{ opacity: 1, y: 0 }}
