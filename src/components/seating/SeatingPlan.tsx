@@ -161,13 +161,12 @@ export function SeatingPlan({
         ))}
       </div>
 
-      {/* Wrapper plan + barre zoom latérale */}
-      <div className="relative flex">
-
-        {/* Zone de scroll + SVG — touch-action: pan-x pan-y bloque le pinch */}
+      {/* Zone de scroll + SVG */}
+      <div className="relative">
+        {/* Zone de scroll — touchAction bloque le pinch-to-zoom natif */}
         <div
           ref={svgWrapRef}
-          className="flex-1 overflow-auto pb-3"
+          className="overflow-auto pb-3"
           style={{
             WebkitOverflowScrolling: "touch",
             touchAction: "pan-x pan-y",
@@ -295,64 +294,36 @@ export function SeatingPlan({
               </motion.div>
             )}
           </AnimatePresence>
-        </div>{/* fin div position:relative */}
+        </div>{/* fin div position:relative (tooltip wrapper) */}
         </div>{/* fin svgWrapRef */}
 
-        {/* Barre de zoom verticale — collée à droite */}
+        {/* Boutons zoom flottants — coin bas droit, style Maps */}
         <div
-          className="flex flex-col items-center justify-center gap-1.5 px-1.5 py-2 self-stretch"
-          style={{ borderLeft: "1px solid rgba(201,162,39,0.1)" }}
+          className="absolute bottom-4 right-3 flex flex-col rounded-xl overflow-hidden shadow-lg"
+          style={{ border: "1px solid rgba(201,162,39,0.25)", background: "rgba(12,10,0,0.88)", backdropFilter: "blur(10px)" }}
         >
-          {/* + */}
           <button
             onClick={zoomIn}
             disabled={scale >= SCALE_MAX}
-            className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-base disabled:opacity-25 active:scale-90 transition-all"
-            style={{ color: "#c9a227", background: "rgba(201,162,39,0.08)", border: "1px solid rgba(201,162,39,0.15)" }}
+            className="w-10 h-10 flex items-center justify-center text-xl font-bold disabled:opacity-25 active:scale-90 transition-all"
+            style={{ color: "#c9a227" }}
             aria-label="Zoomer"
           >
             +
           </button>
-
-          {/* Slider vertical */}
-          <div className="relative flex flex-col items-center" style={{ height: 80 }}>
-            {/* Piste */}
-            <div className="w-0.5 h-full rounded-full" style={{ background: "rgba(201,162,39,0.12)" }} />
-            {/* Curseur */}
-            <div
-              className="absolute w-2.5 h-2.5 rounded-full -translate-x-1/2 -translate-y-1/2 left-1/2"
-              style={{
-                top: `${100 - ((scale - SCALE_MIN) / (SCALE_MAX - SCALE_MIN)) * 100}%`,
-                background: "#c9a227",
-                boxShadow: "0 0 6px rgba(201,162,39,0.5)",
-                transition: "top 0.15s",
-              }}
-            />
-          </div>
-
-          {/* − */}
+          <div style={{ height: 1, background: "rgba(201,162,39,0.15)" }} />
           <button
             onClick={zoomOut}
             disabled={scale <= SCALE_MIN}
-            className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-base disabled:opacity-25 active:scale-90 transition-all"
-            style={{ color: "#c9a227", background: "rgba(201,162,39,0.08)", border: "1px solid rgba(201,162,39,0.15)" }}
+            className="w-10 h-10 flex items-center justify-center text-xl font-bold disabled:opacity-25 active:scale-90 transition-all"
+            style={{ color: "#c9a227" }}
             aria-label="Dézoomer"
           >
             −
           </button>
-
-          {/* Reset */}
-          <button
-            onClick={zoomReset}
-            className="w-7 h-5 rounded flex items-center justify-center text-[8px] font-black mt-0.5 active:scale-90 transition-all"
-            style={{ color: "rgba(201,162,39,0.4)", border: "1px solid rgba(201,162,39,0.1)" }}
-            aria-label="Réinitialiser le zoom"
-          >
-            ↺
-          </button>
         </div>
 
-      </div>{/* fin flex */}
+      </div>{/* fin relative wrapper */}
     </div>
   );
 }
