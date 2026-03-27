@@ -55,7 +55,8 @@ export function ReservationClient({ event }: { event: EventData }) {
 
   const onTable = async (t: TableWithSeats) => {
     if (!t.isVip) return;
-    // Sélection sans scroll automatique
+    // Clic sur la table déjà sélectionnée → déselectionne
+    if (selTable?.id === t.id) { await cancel(); return; }
     if (await hold(t.id)) { setSelTable(t); setSelSeats(t.seats.map((s) => s.id)); }
   };
 
@@ -218,7 +219,7 @@ export function ReservationClient({ event }: { event: EventData }) {
         )}
       </AnimatePresence>
 
-      {/* Floating CTA — apparaît dès qu'une place est choisie */}
+      {/* Floating CTA — pleine largeur mobile, centré desktop */}
       <AnimatePresence>
         {has && selTable && (
           <motion.div
@@ -226,51 +227,54 @@ export function ReservationClient({ event }: { event: EventData }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 80 }}
             transition={{ type: "spring", stiffness: 420, damping: 32 }}
-            className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl shadow-black/60"
-            style={{
-              background: "linear-gradient(135deg, #1a1400 0%, #0f0c00 100%)",
-              border: "1px solid rgba(201,162,39,0.35)",
-              backdropFilter: "blur(12px)",
-            }}
+            className="fixed bottom-0 left-0 right-0 z-50 p-3 sm:p-4"
+            style={{ background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%)" }}
           >
-            {/* Seat count badge */}
-            <div className="flex items-center gap-2 pr-3 border-r border-[#c9a227]/20">
-              <div className="w-7 h-7 rounded-lg bg-[#c9a227]/15 border border-[#c9a227]/30 flex items-center justify-center">
-                <svg className="w-3.5 h-3.5 text-[#c9a227]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+            <div
+              className="max-w-lg mx-auto flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl shadow-black/70"
+              style={{
+                background: "linear-gradient(135deg, #1c1600 0%, #111000 100%)",
+                border: "1px solid rgba(201,162,39,0.4)",
+                backdropFilter: "blur(16px)",
+              }}
+            >
+              {/* Info sélection */}
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className="shrink-0 w-9 h-9 rounded-xl bg-[#c9a227]/15 border border-[#c9a227]/30 flex items-center justify-center">
+                  <span className="text-[#c9a227] text-sm font-black tabular-nums">{selSeats.length}</span>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-white text-sm font-bold leading-tight truncate">
+                    {selSeats.length} {selSeats.length > 1 ? "places sélectionnées" : "place sélectionnée"}
+                  </p>
+                  <p className="text-[#c9a227]/55 text-[11px] leading-tight">
+                    {selTable.isVip ? "VIP · " : ""}Table {selTable.rowNumber}-{selTable.tableNumber}
+                  </p>
+                </div>
+              </div>
+
+              {/* CTA */}
+              <button
+                onClick={scrollToForm}
+                className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#c9a227] to-[#a07818] text-black text-sm font-black shadow-lg shadow-[#c9a227]/20 hover:opacity-90 active:scale-[0.97] transition-all"
+              >
+                Continuer
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                 </svg>
-              </div>
-              <div>
-                <p className="text-xs font-black text-white tabular-nums leading-none">
-                  {selSeats.length} {selSeats.length > 1 ? "places" : "place"}
-                </p>
-                <p className="text-[10px] text-[#c9a227]/60 leading-none mt-0.5">
-                  {selTable.isVip ? "VIP · Table " : "Table "}{selTable.rowNumber}-{selTable.tableNumber}
-                </p>
-              </div>
+              </button>
+
+              {/* Annuler */}
+              <button
+                onClick={cancel}
+                className="shrink-0 w-9 h-9 rounded-xl bg-[#1a1a1a] hover:bg-red-500/12 border border-[#2a2a2a] hover:border-red-500/25 flex items-center justify-center text-[#555] hover:text-red-400 transition-all"
+                aria-label="Annuler la sélection"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-
-            {/* CTA button */}
-            <button
-              onClick={scrollToForm}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#c9a227] to-[#a07818] text-black text-sm font-black shadow-lg shadow-[#c9a227]/25 hover:opacity-90 active:scale-[0.97] transition-all"
-            >
-              Remplir le formulaire
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-              </svg>
-            </button>
-
-            {/* Cancel */}
-            <button
-              onClick={cancel}
-              className="w-7 h-7 rounded-lg bg-[#1a1a1a] hover:bg-red-500/15 border border-[#2a2a2a] hover:border-red-500/30 flex items-center justify-center text-[#555] hover:text-red-400 transition-all"
-              title="Annuler la sélection"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </motion.div>
         )}
       </AnimatePresence>
