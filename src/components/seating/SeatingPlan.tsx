@@ -59,7 +59,6 @@ export function SeatingPlan({
   const maxT = Math.max(...Object.values(rows).map((r) => r.length), 1);
   const totalR = Object.keys(rows).length;
 
-  // Extra space between VIP and Normal sections
   const hasVipRows = Object.values(rows).some((r) => r[0]?.isVip);
   const hasNormRows = Object.values(rows).some((r) => !r[0]?.isVip);
   const hasSep = hasVipRows && hasNormRows;
@@ -103,27 +102,31 @@ export function SeatingPlan({
     setTooltip({ x: e.clientX - rc.left, y: e.clientY - rc.top - 8, text });
   }, []);
 
+  // Légende Gala
   const LEGEND = [
-    { c: "#34d399", l: "Libre", filled: true },
-    { c: "#818cf8", l: "Ma sélection", filled: true },
-    { c: "#fbbf24", l: "En cours", filled: true },
-    { c: "#64748b", l: "Réservé", filled: true },
-    { c: "#d97706", l: "VIP", filled: false },
+    { c: "#4ade80",  l: "Libre",        filled: true },
+    { c: "#c9a227",  l: "Ma sélection", filled: true },
+    { c: "#fbbf24",  l: "En cours",     filled: true },
+    { c: "#374151",  l: "Réservé",      filled: true },
+    { c: "#c9a227",  l: "VIP",          filled: false },
   ];
 
   return (
-    <div ref={ref} className="relative w-full rounded-2xl overflow-hidden" style={{ background: "#0f0c1d" }}>
+    <div ref={ref} className="relative w-full rounded-2xl overflow-hidden" style={{ background: "#080700" }}>
+      {/* Légende */}
       <div className="flex items-center justify-center gap-4 sm:gap-5 pt-3 pb-1 px-3 flex-wrap">
-        {LEGEND.map((i) => (
-          <div key={i.l} className="flex items-center gap-1.5">
+        {LEGEND.map((item) => (
+          <div key={item.l} className="flex items-center gap-1.5">
             <div
               className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-              style={i.filled
-                ? { background: i.c }
-                : { background: "transparent", boxShadow: `inset 0 0 0 1.5px ${i.c}` }
+              style={item.filled
+                ? { background: item.c }
+                : { background: "transparent", boxShadow: `inset 0 0 0 1.5px ${item.c}` }
               }
             />
-            <span className="text-[10px] text-white/40 font-medium">{i.l}</span>
+            <span className="text-[10px] font-medium" style={{ color: "rgba(201,162,39,0.45)" }}>
+              {item.l}
+            </span>
           </div>
         ))}
       </div>
@@ -131,20 +134,38 @@ export function SeatingPlan({
       <div className="overflow-x-auto pb-3">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" style={{ minWidth: 560 }}>
           <defs>
-            {/* Scène : même violet que la charte */}
+            {/* Scène : gradient doré */}
             <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.7" />
-              <stop offset="100%" stopColor="#4c1d95" stopOpacity="0.3" />
+              <stop offset="0%"   stopColor="#c9a227" stopOpacity="0.55" />
+              <stop offset="100%" stopColor="#7a5c10" stopOpacity="0.2" />
             </linearGradient>
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="4" result="blur" />
-              <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+            {/* Glow pour la scène */}
+            <filter id="sceneGlow">
+              <feGaussianBlur stdDeviation="5" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            {/* Glow léger pour les sièges VIP */}
+            <filter id="goldGlow">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
             </filter>
           </defs>
 
           {/* Scène */}
-          <rect x={PX + 20} y={PT} width={W - (PX + 20) * 2} height={SH} rx={SH / 2} fill="url(#sg)" filter="url(#glow)" />
-          <text x={W / 2} y={PT + SH / 2 + 4} textAnchor="middle" fill="#e9d5ff" fontSize={10} fontWeight="800" fontFamily="system-ui" letterSpacing="4" opacity="0.8">
+          <rect x={PX + 20} y={PT} width={W - (PX + 20) * 2} height={SH} rx={SH / 2}
+            fill="url(#sg)" filter="url(#sceneGlow)" />
+          {/* Bordure scène */}
+          <rect x={PX + 20} y={PT} width={W - (PX + 20) * 2} height={SH} rx={SH / 2}
+            fill="none" stroke="#c9a227" strokeWidth="0.6" opacity="0.35" />
+          <text x={W / 2} y={PT + SH / 2 + 4} textAnchor="middle"
+            fill="#e4c76b" fontSize={10} fontWeight="800" fontFamily="system-ui"
+            letterSpacing="5" opacity="0.85">
             SCÈNE
           </text>
 
@@ -158,14 +179,15 @@ export function SeatingPlan({
             const sepY = (vipBottom + normTop) / 2;
             return (
               <g>
-                <line x1={PX + 12} y1={sepY} x2={W / 2 - 26} y2={sepY}
-                  stroke="#d97706" strokeWidth="1" strokeDasharray="4 4" opacity="0.55" />
-                <line x1={W / 2 + 26} y1={sepY} x2={W - PX - 12} y2={sepY}
-                  stroke="#d97706" strokeWidth="1" strokeDasharray="4 4" opacity="0.55" />
-                <rect x={W / 2 - 22} y={sepY - 7} width={44} height={14} rx={7}
-                  fill="#1a1530" stroke="#d97706" strokeWidth="0.8" opacity="0.95" />
+                <line x1={PX + 12} y1={sepY} x2={W / 2 - 28} y2={sepY}
+                  stroke="#c9a227" strokeWidth="0.8" strokeDasharray="4 4" opacity="0.35" />
+                <line x1={W / 2 + 28} y1={sepY} x2={W - PX - 12} y2={sepY}
+                  stroke="#c9a227" strokeWidth="0.8" strokeDasharray="4 4" opacity="0.35" />
+                {/* Badge VIP centré */}
+                <rect x={W / 2 - 22} y={sepY - 8} width={44} height={16} rx={8}
+                  fill="#0f0c00" stroke="#c9a227" strokeWidth="0.8" opacity="0.95" />
                 <text x={W / 2} y={sepY} textAnchor="middle" dominantBaseline="central"
-                  fill="#fbbf24" fontSize={7} fontWeight="800" fontFamily="system-ui" letterSpacing="3">
+                  fill="#c9a227" fontSize={7} fontWeight="900" fontFamily="system-ui" letterSpacing="3">
                   VIP
                 </text>
               </g>
@@ -179,7 +201,10 @@ export function SeatingPlan({
             const sx = (W - tw) / 2 + CR;
             return (
               <g key={rn}>
-                <text x={10} y={cy + 3} fontSize={7} fill={rt[0]?.isVip ? "#d97706" : "rgba(255,255,255,0.12)"} fontWeight="900" fontFamily="system-ui">
+                {/* Numéro de rangée */}
+                <text x={10} y={cy + 3} fontSize={7}
+                  fill={rt[0]?.isVip ? "rgba(201,162,39,0.5)" : "rgba(255,255,255,0.1)"}
+                  fontWeight="900" fontFamily="system-ui">
                   {rn}
                 </text>
                 {rt.map((t, ti) => (
@@ -209,14 +234,28 @@ export function SeatingPlan({
         </svg>
       </div>
 
+      {/* Tooltip */}
       <AnimatePresence>
         {tooltip && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="absolute pointer-events-none bg-black/80 backdrop-blur-sm text-white text-[10px] px-2 py-1 rounded-md z-50 whitespace-nowrap hidden sm:block"
-            style={{ left: tooltip.x, top: tooltip.y, transform: "translate(-50%,-100%)" }}
+            transition={{ duration: 0.1 }}
+            className="absolute pointer-events-none z-50 whitespace-nowrap hidden sm:block"
+            style={{
+              left: tooltip.x,
+              top: tooltip.y,
+              transform: "translate(-50%,-100%)",
+              background: "rgba(10,8,0,0.92)",
+              border: "1px solid rgba(201,162,39,0.3)",
+              borderRadius: 8,
+              padding: "4px 10px",
+              fontSize: 11,
+              fontWeight: 700,
+              color: "#e4c76b",
+              backdropFilter: "blur(8px)",
+            }}
           >
             {tooltip.text}
           </motion.div>

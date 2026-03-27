@@ -23,10 +23,14 @@ export function CountdownTimer({ expiresAt, onExpired }: { expiresAt: string; on
   const low = left < 60000;
 
   return (
-    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-sm font-bold tabular-nums ${
-      low ? "bg-red-500 text-white" : "bg-white text-slate-900"
+    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-sm font-bold tabular-nums border transition-all ${
+      low
+        ? "bg-red-500/15 text-red-400 border-red-500/30 animate-pulse"
+        : "bg-[#c9a227]/10 text-[#c9a227] border-[#c9a227]/25"
     }`}>
-      {low && <span className="text-base leading-none">⏰</span>}
+      <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
       {String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}
     </div>
   );
