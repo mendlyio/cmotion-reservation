@@ -29,9 +29,9 @@ const PT = 12;
 const SH = 36;
 const SGA = 20;
 
-const SCALE_MIN = 0.8;
-const SCALE_MAX = 3.0;
-const SCALE_STEP = 0.25;
+const SCALE_MIN = 0.7;
+const SCALE_MAX = 2.5;
+const SCALE_STEP = 0.15;
 
 export function SeatingPlan({
   eventId,
@@ -49,13 +49,12 @@ export function SeatingPlan({
   const containerRef = useRef<HTMLDivElement>(null);
   const svgWrapRef = useRef<HTMLDivElement>(null);
 
-  // Initialise le zoom selon la taille de l'écran au premier rendu
+  // Zoom initial modeste adapté à l'écran
   useEffect(() => {
     if (typeof window !== "undefined") {
       const w = window.innerWidth;
-      if (w < 400) setScale(2.0);
-      else if (w < 480) setScale(1.75);
-      else if (w < 640) setScale(1.5);
+      if (w < 480) setScale(1.2);
+      else if (w < 640) setScale(1.0);
       else setScale(1.0);
     }
   }, []);
@@ -126,8 +125,12 @@ export function SeatingPlan({
     });
   }, []);
 
-  const zoomIn  = () => setScale((s) => Math.min(SCALE_MAX, parseFloat((s + SCALE_STEP).toFixed(2))));
-  const zoomOut = () => setScale((s) => Math.max(SCALE_MIN, parseFloat((s - SCALE_STEP).toFixed(2))));
+  const zoomIn    = () => setScale((s) => Math.min(SCALE_MAX, parseFloat((s + SCALE_STEP).toFixed(2))));
+  const zoomOut   = () => setScale((s) => Math.max(SCALE_MIN, parseFloat((s - SCALE_STEP).toFixed(2))));
+  const zoomReset = () => {
+    const w = typeof window !== "undefined" ? window.innerWidth : 768;
+    setScale(w < 480 ? 1.2 : 1.0);
+  };
 
   const LEGEND = [
     { c: "#4ade80", l: "Libre",        filled: true  },
@@ -140,58 +143,36 @@ export function SeatingPlan({
   return (
     <div ref={containerRef} className="relative w-full rounded-2xl overflow-hidden" style={{ background: "#080700" }}>
 
-      {/* Top bar : légende + zoom */}
-      <div className="flex items-center justify-between gap-3 pt-3 pb-2 px-3">
-        {/* Légende */}
-        <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
-          {LEGEND.map((item) => (
-            <div key={item.l} className="flex items-center gap-1">
-              <div
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={item.filled
-                  ? { background: item.c }
-                  : { background: "transparent", boxShadow: `inset 0 0 0 1.5px ${item.c}` }
-                }
-              />
-              <span className="text-[10px] font-medium" style={{ color: "rgba(201,162,39,0.45)" }}>
-                {item.l}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Contrôles zoom */}
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            onClick={zoomOut}
-            disabled={scale <= SCALE_MIN}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-[#c9a227] font-bold text-base transition-all disabled:opacity-25 hover:bg-[#c9a227]/10 active:scale-90"
-            style={{ border: "1px solid rgba(201,162,39,0.2)" }}
-            aria-label="Dézoomer"
-          >
-            −
-          </button>
-          <span className="text-[10px] font-bold tabular-nums w-8 text-center" style={{ color: "rgba(201,162,39,0.6)" }}>
-            {Math.round(scale * 100)}%
-          </span>
-          <button
-            onClick={zoomIn}
-            disabled={scale >= SCALE_MAX}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-[#c9a227] font-bold text-base transition-all disabled:opacity-25 hover:bg-[#c9a227]/10 active:scale-90"
-            style={{ border: "1px solid rgba(201,162,39,0.2)" }}
-            aria-label="Zoomer"
-          >
-            +
-          </button>
-        </div>
+      {/* Légende */}
+      <div className="flex items-center justify-center gap-3 sm:gap-4 flex-wrap pt-3 pb-2 px-3">
+        {LEGEND.map((item) => (
+          <div key={item.l} className="flex items-center gap-1">
+            <div
+              className="w-2.5 h-2.5 rounded-full shrink-0"
+              style={item.filled
+                ? { background: item.c }
+                : { background: "transparent", boxShadow: `inset 0 0 0 1.5px ${item.c}` }
+              }
+            />
+            <span className="text-[10px] font-medium" style={{ color: "rgba(201,162,39,0.45)" }}>
+              {item.l}
+            </span>
+          </div>
+        ))}
       </div>
 
-      {/* Zone de scroll + SVG */}
-      <div
-        ref={svgWrapRef}
-        className="overflow-auto pb-3"
-        style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
-      >
+      {/* Wrapper plan + barre zoom latérale */}
+      <div className="relative flex">
+
+        {/* Zone de scroll + SVG — touch-action: pan-x pan-y bloque le pinch */}
+        <div
+          ref={svgWrapRef}
+          className="flex-1 overflow-auto pb-3"
+          style={{
+            WebkitOverflowScrolling: "touch",
+            touchAction: "pan-x pan-y",
+          } as React.CSSProperties}
+        >
         {/* Le wrapper SVG a une taille fixe en pixels = viewBox × scale */}
         <div style={{ width: W * scale, height: H * scale, position: "relative" }}>
           <svg
@@ -314,8 +295,64 @@ export function SeatingPlan({
               </motion.div>
             )}
           </AnimatePresence>
+        </div>{/* fin div position:relative */}
+        </div>{/* fin svgWrapRef */}
+
+        {/* Barre de zoom verticale — collée à droite */}
+        <div
+          className="flex flex-col items-center justify-center gap-1.5 px-1.5 py-2 self-stretch"
+          style={{ borderLeft: "1px solid rgba(201,162,39,0.1)" }}
+        >
+          {/* + */}
+          <button
+            onClick={zoomIn}
+            disabled={scale >= SCALE_MAX}
+            className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-base disabled:opacity-25 active:scale-90 transition-all"
+            style={{ color: "#c9a227", background: "rgba(201,162,39,0.08)", border: "1px solid rgba(201,162,39,0.15)" }}
+            aria-label="Zoomer"
+          >
+            +
+          </button>
+
+          {/* Slider vertical */}
+          <div className="relative flex flex-col items-center" style={{ height: 80 }}>
+            {/* Piste */}
+            <div className="w-0.5 h-full rounded-full" style={{ background: "rgba(201,162,39,0.12)" }} />
+            {/* Curseur */}
+            <div
+              className="absolute w-2.5 h-2.5 rounded-full -translate-x-1/2 -translate-y-1/2 left-1/2"
+              style={{
+                top: `${100 - ((scale - SCALE_MIN) / (SCALE_MAX - SCALE_MIN)) * 100}%`,
+                background: "#c9a227",
+                boxShadow: "0 0 6px rgba(201,162,39,0.5)",
+                transition: "top 0.15s",
+              }}
+            />
+          </div>
+
+          {/* − */}
+          <button
+            onClick={zoomOut}
+            disabled={scale <= SCALE_MIN}
+            className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-base disabled:opacity-25 active:scale-90 transition-all"
+            style={{ color: "#c9a227", background: "rgba(201,162,39,0.08)", border: "1px solid rgba(201,162,39,0.15)" }}
+            aria-label="Dézoomer"
+          >
+            −
+          </button>
+
+          {/* Reset */}
+          <button
+            onClick={zoomReset}
+            className="w-7 h-5 rounded flex items-center justify-center text-[8px] font-black mt-0.5 active:scale-90 transition-all"
+            style={{ color: "rgba(201,162,39,0.4)", border: "1px solid rgba(201,162,39,0.1)" }}
+            aria-label="Réinitialiser le zoom"
+          >
+            ↺
+          </button>
         </div>
-      </div>
+
+      </div>{/* fin flex */}
     </div>
   );
 }
