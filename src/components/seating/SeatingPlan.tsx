@@ -299,7 +299,7 @@ export function SeatingPlan({
 
         {/* Boutons zoom — fixed contre le bord droit, centré verticalement */}
         <div
-          className="fixed right-3 top-1/2 -translate-y-1/2 z-40 flex flex-col rounded-xl overflow-hidden shadow-xl"
+          className="fixed right-3 top-3/4 -translate-y-1/2 z-40 flex flex-col rounded-xl overflow-hidden shadow-xl"
           style={{ border: "1px solid rgba(201,162,39,0.3)", background: "rgba(10,8,0,0.90)", backdropFilter: "blur(12px)" }}
         >
           <button
