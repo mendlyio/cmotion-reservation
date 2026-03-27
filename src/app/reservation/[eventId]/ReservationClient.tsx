@@ -192,6 +192,7 @@ export function ReservationClient({ event }: { event: EventData }) {
             selectedTableId={selTable?.id}
             selectedSeatIds={selSeats}
             readOnly={false}
+            hideZoom={floatingHidden}
           />
         </div>
       </section>

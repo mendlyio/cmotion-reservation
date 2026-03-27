@@ -13,6 +13,7 @@ interface SeatingPlanProps {
   selectedTableId?: number | null;
   selectedSeatIds?: number[];
   readOnly?: boolean;
+  hideZoom?: boolean;
 }
 
 const TR = 24;
@@ -41,6 +42,7 @@ export function SeatingPlan({
   selectedTableId,
   selectedSeatIds = [],
   readOnly = false,
+  hideZoom = false,
 }: SeatingPlanProps) {
   const [tables, setTables] = useState<TableWithSeats[]>(init);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
@@ -297,9 +299,9 @@ export function SeatingPlan({
         </div>{/* fin div position:relative (tooltip wrapper) */}
         </div>{/* fin svgWrapRef */}
 
-        {/* Boutons zoom — fixed contre le bord droit, centré verticalement */}
+        {/* Boutons zoom — fixed contre le bord droit, masqués quand on descend au form */}
         <div
-          className="fixed right-3 top-3/4 -translate-y-1/2 z-40 flex flex-col rounded-xl overflow-hidden shadow-xl"
+          className={`fixed right-3 top-3/4 -translate-y-1/2 z-40 flex flex-col rounded-xl overflow-hidden shadow-xl transition-all duration-300 ${hideZoom ? "opacity-0 pointer-events-none translate-x-12" : "opacity-100 translate-x-0"}`}
           style={{ border: "1px solid rgba(201,162,39,0.3)", background: "rgba(10,8,0,0.90)", backdropFilter: "blur(12px)" }}
         >
           <button
