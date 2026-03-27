@@ -92,80 +92,71 @@ export default async function AdminReservationPage({ params }: Props) {
   });
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+      {/* Breadcrumb */}
       <Link
         href="/admin/dashboard"
-        className="text-sm text-slate-500 hover:text-slate-700 mb-4 inline-block"
+        className="inline-flex items-center gap-1.5 text-sm text-[#555] hover:text-[#c9a227] transition-colors group"
       >
-        ← Dashboard
+        <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+        </svg>
+        Dashboard
       </Link>
 
-      <div className="flex items-center justify-between mb-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            Réservation #{reservation.id}
+          <h1 className="text-2xl font-bold text-white">
+            Réservation <span className="text-[#c9a227]">#{reservation.id}</span>
           </h1>
-          <p className="text-slate-500 text-sm">
-            {event.name} — {date} à {event.timeInfo}
+          <p className="text-sm text-[#555] mt-0.5">
+            {event.name} · {date} à {event.timeInfo}
           </p>
         </div>
         <StatusBadge status={reservation.stripeStatus || "pending"} />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white rounded-xl border p-6">
-          <h2 className="font-semibold mb-3">Contact</h2>
-          <dl className="space-y-2 text-sm">
-            <div>
-              <dt className="text-slate-500">Élève référent</dt>
-              <dd className="font-medium">{reservation.referentStudent}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Email</dt>
-              <dd>{reservation.email}</dd>
-            </div>
-            {reservation.phone && (
-              <div>
-                <dt className="text-slate-500">Téléphone</dt>
-                <dd>{reservation.phone}</dd>
-              </div>
-            )}
+      {/* Info cards */}
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div className="bg-[#0f0f0f] rounded-2xl border border-[#1e1a0e] p-5">
+          <h2 className="text-xs font-semibold text-[#555] uppercase tracking-widest mb-4">Contact</h2>
+          <dl className="space-y-3">
+            <InfoRow label="Élève référent" value={reservation.referentStudent} />
+            <InfoRow label="Email" value={reservation.email} />
+            {reservation.phone && <InfoRow label="Téléphone" value={reservation.phone} />}
           </dl>
         </div>
 
-        <div className="bg-white rounded-xl border p-6">
-          <h2 className="font-semibold mb-3">Paiement</h2>
-          <dl className="space-y-2 text-sm">
+        <div className="bg-[#0f0f0f] rounded-2xl border border-[#1e1a0e] p-5">
+          <h2 className="text-xs font-semibold text-[#555] uppercase tracking-widest mb-4">Paiement</h2>
+          <dl className="space-y-3">
             <div>
-              <dt className="text-slate-500">Montant</dt>
-              <dd className="text-2xl font-bold">
+              <dt className="text-xs text-[#555]">Montant</dt>
+              <dd className="text-3xl font-bold text-[#c9a227] mt-0.5">
                 {(reservation.totalAmount / 100).toFixed(2)}€
               </dd>
             </div>
-            <div>
-              <dt className="text-slate-500">Stripe ID</dt>
-              <dd className="font-mono text-xs">
-                {reservation.stripePaymentId || "—"}
-              </dd>
-            </div>
+            <InfoRow
+              label="Stripe ID"
+              value={<span className="font-mono text-xs text-[#666]">{reservation.stripePaymentId || "—"}</span>}
+            />
             {tableDetail && (
-              <div>
-                <dt className="text-slate-500">Table</dt>
-                <dd>
-                  {tableDetail.rowNumber}-{tableDetail.tableNumber}
-                  {tableDetail.isVip ? " (VIP)" : ""}
-                </dd>
-              </div>
+              <InfoRow
+                label="Table"
+                value={`${tableDetail.rowNumber}-${tableDetail.tableNumber}${tableDetail.isVip ? " · VIP ★" : ""}`}
+                gold={tableDetail.isVip}
+              />
             )}
           </dl>
         </div>
       </div>
 
-      {/* Notes admin */}
+      {/* Admin notes */}
       {reservation.adminNotes && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-          <h3 className="font-semibold text-amber-800 mb-1">Notes admin</h3>
-          <p className="text-sm text-amber-700">{reservation.adminNotes}</p>
+        <div className="bg-[#c9a227]/5 border border-[#c9a227]/20 rounded-2xl p-5">
+          <h3 className="text-xs font-semibold text-[#c9a227] uppercase tracking-widest mb-2">Notes admin</h3>
+          <p className="text-sm text-[#c9a227]/80">{reservation.adminNotes}</p>
         </div>
       )}
 
@@ -189,35 +180,45 @@ export default async function AdminReservationPage({ params }: Props) {
       />
 
       {upsells.length > 0 && (
-        <div className="bg-white rounded-xl border p-6 mt-6">
-          <h2 className="font-semibold mb-3">Extras</h2>
-          {upsells.map((u) => {
-            const option = UPSELL_OPTIONS.find(
-              (o) => o.type === u.upsellType
-            );
-            return (
-              <div key={u.id} className="flex justify-between text-sm py-1">
-                <span>
-                  {option?.label || u.upsellType} ×{u.quantity}
-                </span>
-                <span>{((u.unitPrice * u.quantity) / 100).toFixed(2)}€</span>
-              </div>
-            );
-          })}
+        <div className="bg-[#0f0f0f] rounded-2xl border border-[#1e1a0e] p-5">
+          <h2 className="text-xs font-semibold text-[#555] uppercase tracking-widest mb-4">Extras</h2>
+          <div className="space-y-2">
+            {upsells.map((u) => {
+              const option = UPSELL_OPTIONS.find((o) => o.type === u.upsellType);
+              return (
+                <div key={u.id} className="flex justify-between items-center text-sm py-2 border-b border-[#141414] last:border-0">
+                  <span className="text-[#aaa]">
+                    {option?.label || u.upsellType} ×{u.quantity}
+                  </span>
+                  <span className="font-semibold text-[#c9a227]">
+                    {((u.unitPrice * u.quantity) / 100).toFixed(2)}€
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
+function InfoRow({ label, value, gold }: { label: string; value: React.ReactNode; gold?: boolean }) {
+  return (
+    <div>
+      <dt className="text-xs text-[#555]">{label}</dt>
+      <dd className={`text-sm font-medium mt-0.5 ${gold ? "text-[#c9a227]" : "text-[#ccc]"}`}>{value}</dd>
+    </div>
+  );
+}
+
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    paid: "bg-green-100 text-green-700 border-green-200",
-    pending: "bg-amber-100 text-amber-700 border-amber-200",
-    failed: "bg-red-100 text-red-700 border-red-200",
-    refunded: "bg-slate-100 text-slate-700 border-slate-200",
+    paid: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",
+    pending: "bg-amber-500/15 text-amber-400 border-amber-500/20",
+    failed: "bg-red-500/15 text-red-400 border-red-500/20",
+    refunded: "bg-[#1e1e1e] text-[#666] border-[#2a2a2a]",
   };
-
   const labels: Record<string, string> = {
     paid: "Payé",
     pending: "En attente",
@@ -226,9 +227,7 @@ function StatusBadge({ status }: { status: string }) {
   };
 
   return (
-    <span
-      className={`inline-block px-3 py-1 rounded-full text-sm font-semibold border ${styles[status] || styles.pending}`}
-    >
+    <span className={`inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-semibold border ${styles[status] || styles.pending}`}>
       {labels[status] || status}
     </span>
   );

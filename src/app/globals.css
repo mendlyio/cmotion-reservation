@@ -46,75 +46,81 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Gala gold custom token */
+  --color-gold: #c9a227;
+  --color-gold-dark: #a07818;
+  --color-gold-light: #e4c76b;
 }
 
+/* ── Gala Dark Theme (Noir & Or) ── */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --background: oklch(0.07 0 0);
+  --foreground: oklch(0.95 0 0);
+  --card: oklch(0.1 0 0);
+  --card-foreground: oklch(0.95 0 0);
+  --popover: oklch(0.12 0 0);
+  --popover-foreground: oklch(0.95 0 0);
+  /* Gold as primary */
+  --primary: oklch(0.72 0.12 85);
+  --primary-foreground: oklch(0.07 0 0);
+  --secondary: oklch(0.15 0 0);
+  --secondary-foreground: oklch(0.85 0 0);
+  --muted: oklch(0.14 0 0);
+  --muted-foreground: oklch(0.55 0 0);
+  --accent: oklch(0.18 0.03 85);
+  --accent-foreground: oklch(0.72 0.12 85);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --border: oklch(0.2 0.01 85);
+  --input: oklch(0.18 0.01 85);
+  --ring: oklch(0.72 0.12 85);
+  --chart-1: oklch(0.72 0.12 85);
+  --chart-2: oklch(0.60 0.10 85);
+  --chart-3: oklch(0.48 0.08 85);
+  --chart-4: oklch(0.36 0.05 85);
+  --chart-5: oklch(0.24 0.02 85);
+  --radius: 0.75rem;
+  --sidebar: oklch(0.09 0 0);
+  --sidebar-foreground: oklch(0.90 0 0);
+  --sidebar-primary: oklch(0.72 0.12 85);
+  --sidebar-primary-foreground: oklch(0.07 0 0);
+  --sidebar-accent: oklch(0.15 0.02 85);
+  --sidebar-accent-foreground: oklch(0.72 0.12 85);
+  --sidebar-border: oklch(0.18 0.01 85);
+  --sidebar-ring: oklch(0.72 0.12 85);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.07 0 0);
+  --foreground: oklch(0.95 0 0);
+  --card: oklch(0.1 0 0);
+  --card-foreground: oklch(0.95 0 0);
+  --popover: oklch(0.12 0 0);
+  --popover-foreground: oklch(0.95 0 0);
+  --primary: oklch(0.72 0.12 85);
+  --primary-foreground: oklch(0.07 0 0);
+  --secondary: oklch(0.15 0 0);
+  --secondary-foreground: oklch(0.85 0 0);
+  --muted: oklch(0.14 0 0);
+  --muted-foreground: oklch(0.55 0 0);
+  --accent: oklch(0.18 0.03 85);
+  --accent-foreground: oklch(0.72 0.12 85);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --border: oklch(0.2 0.01 85);
+  --input: oklch(0.18 0.01 85);
+  --ring: oklch(0.72 0.12 85);
+  --chart-1: oklch(0.72 0.12 85);
+  --chart-2: oklch(0.60 0.10 85);
+  --chart-3: oklch(0.48 0.08 85);
+  --chart-4: oklch(0.36 0.05 85);
+  --chart-5: oklch(0.24 0.02 85);
+  --sidebar: oklch(0.09 0 0);
+  --sidebar-foreground: oklch(0.90 0 0);
+  --sidebar-primary: oklch(0.72 0.12 85);
+  --sidebar-primary-foreground: oklch(0.07 0 0);
+  --sidebar-accent: oklch(0.15 0.02 85);
+  --sidebar-accent-foreground: oklch(0.72 0.12 85);
+  --sidebar-border: oklch(0.18 0.01 85);
+  --sidebar-ring: oklch(0.72 0.12 85);
 }
 
 @layer base {
@@ -133,13 +139,41 @@
   }
   select {
     @apply appearance-none bg-no-repeat;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2364748b' viewBox='0 0 16 16'%3E%3Cpath d='M4.646 5.646a.5.5 0 0 1 .708 0L8 8.293l2.646-2.647a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23c9a227' viewBox='0 0 16 16'%3E%3Cpath d='M4.646 5.646a.5.5 0 0 1 .708 0L8 8.293l2.646-2.647a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
     background-position: right 0.75rem center;
     background-size: 1rem;
     padding-right: 2.5rem;
   }
 }
 
+/* Seating plan background */
 .plan-bg {
-  background: radial-gradient(ellipse at 50% 0%, #1a1a2e 0%, #0d0d1a 60%, #000 100%);
+  background: radial-gradient(ellipse at 50% 0%, #1a1508 0%, #0d0a00 60%, #000 100%);
+}
+
+/* Gala gold gradient utilities */
+.gold-gradient {
+  background: linear-gradient(135deg, #c9a227 0%, #e4c76b 50%, #a07818 100%);
+}
+.gold-text {
+  background: linear-gradient(135deg, #c9a227, #e4c76b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c9a227;
 }
