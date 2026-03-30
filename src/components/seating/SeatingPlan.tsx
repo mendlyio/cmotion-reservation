@@ -79,7 +79,7 @@ export function SeatingPlan({
         const r = await fetch(`/api/seating/${eventId}`);
         if (r.ok) setTables((await r.json()).tables);
       } catch { /* */ }
-    }, 10000);
+    }, 15000);
     return () => clearInterval(iv);
   }, [eventId]);
 
