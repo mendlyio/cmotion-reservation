@@ -11,7 +11,7 @@ import { eq, inArray } from "drizzle-orm";
 import { verifyAdmin } from "@/lib/admin";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { DANCER_MEAL_OPTIONS } from "@/types";
+import { DANCER_MEAL_OPTIONS, getTableLabel } from "@/types";
 import { ReservationEditor } from "./ReservationEditor";
 
 export const dynamic = "force-dynamic";
@@ -144,7 +144,7 @@ export default async function AdminReservationPage({ params }: Props) {
             {tableDetail && (
               <InfoRow
                 label="Table"
-                value={`${tableDetail.rowNumber}-${tableDetail.tableNumber}${tableDetail.isVip ? " · VIP ★" : ""}`}
+                value={`${getTableLabel(tableDetail.rowNumber, tableDetail.tableNumber)}${tableDetail.isVip ? " · VIP ★" : ""}`}
                 gold={tableDetail.isVip}
               />
             )}

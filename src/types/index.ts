@@ -95,6 +95,24 @@ export interface BookingFormData {
   phone: string;
 }
 
+const ROW_OFFSETS: Record<number, number> = (() => {
+  const offsets: Record<number, number> = {};
+  let cumulative = 0;
+  for (const row of SEATING_PLAN) {
+    offsets[row.row] = cumulative;
+    cumulative += row.tables;
+  }
+  return offsets;
+})();
+
+export function getTableLabel(rowNumber: number, tableNumber: number): number {
+  return (ROW_OFFSETS[rowNumber] ?? 0) + tableNumber;
+}
+
+export function getSeatLabel(seatNumber: number): string {
+  return String.fromCharCode(64 + seatNumber);
+}
+
 export function getMealPrice(meal: MealChoice): number {
   return MEAL_OPTIONS.find((m) => m.value === meal)?.price ?? 2800;
 }

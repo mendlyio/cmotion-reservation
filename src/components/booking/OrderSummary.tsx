@@ -1,6 +1,6 @@
 "use client";
 
-import { BookingFormData, TableWithSeats, calculateTotal, getMealPrice, MEAL_OPTIONS, DESSERT_PRICE, DESSERT_LABEL, VIP_TABLE_PRICE, DANCER_MEAL_OPTIONS } from "@/types";
+import { BookingFormData, TableWithSeats, calculateTotal, getMealPrice, MEAL_OPTIONS, DESSERT_PRICE, DESSERT_LABEL, VIP_TABLE_PRICE, DANCER_MEAL_OPTIONS, getTableLabel, getSeatLabel } from "@/types";
 
 interface Props {
   data: BookingFormData;
@@ -11,16 +11,18 @@ export function OrderSummary({ data, tables = [] }: Props) {
   const total = calculateTotal(data);
 
   const tableLabel = tables.length > 1
-    ? `Tables ${tables.map((t) => `${t.rowNumber}-${t.tableNumber}`).join(", ")}`
+    ? `Tables ${tables.map((t) => getTableLabel(t.rowNumber, t.tableNumber)).join(", ")}`
     : tables.length === 1
-    ? `Table ${tables[0].rowNumber}-${tables[0].tableNumber}`
+    ? `Table ${getTableLabel(tables[0].rowNumber, tables[0].tableNumber)}`
     : "—";
 
   // Find seat across all tables
   const findSeatLabel = (seatId: number) => {
     for (const t of tables) {
       const s = t.seats.find((s) => s.id === seatId);
-      if (s) return tables.length > 1 ? `${t.rowNumber}-${t.tableNumber} S${s.seatNumber}` : `${s.seatNumber}`;
+      if (s) return tables.length > 1
+        ? `${getTableLabel(t.rowNumber, t.tableNumber)} ${getSeatLabel(s.seatNumber)}`
+        : getSeatLabel(s.seatNumber);
     }
     return undefined;
   };

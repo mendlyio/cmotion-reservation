@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { MEAL_OPTIONS } from "@/types";
+import { MEAL_OPTIONS, getSeatLabel } from "@/types";
 import { toast } from "sonner";
 
 export interface ClientGuest {
@@ -348,7 +348,7 @@ export function ClientListSection({ reservations, events }: Props) {
                       >
                         <div className="flex items-center gap-2 mb-3">
                           <span className="text-xs font-mono text-[#444]">
-                            Siège {g.seatNumber}
+                            Siège {getSeatLabel(g.seatNumber)}
                           </span>
                           <span className="text-[#333]">—</span>
                           <span className="text-sm font-medium text-[#ccc]">

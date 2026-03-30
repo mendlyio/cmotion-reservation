@@ -11,7 +11,7 @@ import { eq, inArray } from "drizzle-orm";
 import { verifyAdmin } from "@/lib/admin";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { MEAL_OPTIONS, DANCER_MEAL_OPTIONS, DESSERT_LABEL } from "@/types";
+import { MEAL_OPTIONS, DANCER_MEAL_OPTIONS, DESSERT_LABEL, getTableLabel } from "@/types";
 import {
   ClientListSection,
   type ClientReservation,
@@ -180,7 +180,7 @@ export default async function AdminDashboardPage() {
         eventDate: event.eventDate,
         timeInfo: event.timeInfo,
         tableInfo: table
-          ? `${table.rowNumber}-${table.tableNumber}`
+          ? `${getTableLabel(table.rowNumber, table.tableNumber)}`
           : "—",
         isVip: table?.isVip ?? false,
         guests: rGuests.map((g) => {

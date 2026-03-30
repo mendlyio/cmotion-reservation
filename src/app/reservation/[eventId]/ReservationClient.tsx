@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { SeatingPlan } from "@/components/seating/SeatingPlan";
 import { CountdownTimer } from "@/components/seating/CountdownTimer";
 import { BookingForm } from "@/components/booking/BookingForm";
-import { TableWithSeats, EventData } from "@/types";
+import { TableWithSeats, EventData, getTableLabel } from "@/types";
 
 export function ReservationClient({ event }: { event: EventData }) {
   const [tables, setTables] = useState<TableWithSeats[]>([]);
@@ -363,8 +363,8 @@ export function ReservationClient({ event }: { event: EventData }) {
                   </p>
                   <p className="text-[#c9a227]/55 text-[11px] leading-tight">
                     {selTables.length > 1
-                      ? `Tables ${selTables.map((t) => `${t.rowNumber}-${t.tableNumber}`).join(", ")}`
-                      : `${primaryTable.isVip ? "VIP · " : ""}Table ${primaryTable.rowNumber}-${primaryTable.tableNumber}`}
+                      ? `Tables ${selTables.map((t) => getTableLabel(t.rowNumber, t.tableNumber)).join(", ")}`
+                      : `${primaryTable.isVip ? "VIP · " : ""}Table ${getTableLabel(primaryTable.rowNumber, primaryTable.tableNumber)}`}
                   </p>
                 </div>
               </div>

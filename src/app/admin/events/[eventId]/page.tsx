@@ -11,7 +11,7 @@ import { eq, inArray } from "drizzle-orm";
 import { verifyAdmin } from "@/lib/admin";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { MEAL_OPTIONS } from "@/types";
+import { MEAL_OPTIONS, getTableLabel } from "@/types";
 import { AdminSeatingView } from "./AdminSeatingView";
 import { EnveloppeView, type Enveloppe } from "@/components/admin/EnveloppeView";
 
@@ -113,7 +113,7 @@ export default async function AdminEventPage({ params, searchParams }: Props) {
     return {
       reservationId: r.id,
       referentStudent: r.referentStudent,
-      tableInfo: tableData ? `${tableData.rowNumber}-${tableData.tableNumber}` : "—",
+      tableInfo: tableData ? `${getTableLabel(tableData.rowNumber, tableData.tableNumber)}` : "—",
       isVip: tableData?.isVip ?? false,
       guests,
       dancerMeals,
@@ -172,7 +172,7 @@ export default async function AdminEventPage({ params, searchParams }: Props) {
               <div key={table.id} className="p-4">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-medium text-white">
-                    Table {table.rowNumber}-{table.tableNumber}
+                    Table {getTableLabel(table.rowNumber, table.tableNumber)}
                     {table.isVip && <span className="ml-2 text-[#c9a227] text-xs">★ VIP</span>}
                   </h3>
                   <span className="text-sm text-[#555]">{reservedCount}/{totalSeats} réservés</span>

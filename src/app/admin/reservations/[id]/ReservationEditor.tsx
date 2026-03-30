@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { MEAL_OPTIONS } from "@/types";
+import { MEAL_OPTIONS, getSeatLabel } from "@/types";
 
 interface GuestData {
   id: number;
@@ -108,9 +108,9 @@ export function ReservationEditor({
           >
             <div className="flex items-center gap-2 mb-4">
               <div className="w-6 h-6 rounded-lg bg-[#c9a227]/15 flex items-center justify-center">
-                <span className="text-[10px] font-bold text-[#c9a227]">{guest.seatNumber}</span>
+                <span className="text-[10px] font-bold text-[#c9a227]">{getSeatLabel(guest.seatNumber)}</span>
               </div>
-              <span className="text-sm font-medium text-[#888]">Siège {guest.seatNumber}</span>
+              <span className="text-sm font-medium text-[#888]">Siège {getSeatLabel(guest.seatNumber)}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

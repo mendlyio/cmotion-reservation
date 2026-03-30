@@ -8,6 +8,7 @@ import {
   getHoldExpiry,
   releaseHoldsBySession,
 } from "@/lib/hold";
+import { getSeatLabel } from "@/types";
 
 // Core: hold a flat list of seat IDs (already validated)
 async function holdSeatIds(
@@ -41,7 +42,7 @@ async function holdSeatIds(
       return {
         error: isVip
           ? "Cette table VIP est en cours de réservation par un autre utilisateur"
-          : `Certains sièges ne sont plus disponibles (${unavailable.map((s) => `S${s.seatNumber}`).join(", ")})`,
+          : `Certains sièges ne sont plus disponibles (${unavailable.map((s) => getSeatLabel(s.seatNumber)).join(", ")})`,
         status: 409,
       };
     }
@@ -68,7 +69,7 @@ async function holdSeatIds(
     return {
       error: isVip
         ? "Cette table VIP est réservée par quelqu'un d'autre"
-        : `Certains sièges ne sont plus disponibles (${unavailable.map((s) => `S${s.seatNumber}`).join(", ")})`,
+        : `Certains sièges ne sont plus disponibles (${unavailable.map((s) => getSeatLabel(s.seatNumber)).join(", ")})`,
       status: 409,
     };
   }

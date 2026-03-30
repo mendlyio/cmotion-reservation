@@ -10,7 +10,7 @@ import {
 } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { verifyAdmin } from "@/lib/admin";
-import { MEAL_OPTIONS, DANCER_MEAL_OPTIONS, DESSERT_LABEL } from "@/types";
+import { MEAL_OPTIONS, DANCER_MEAL_OPTIONS, DESSERT_LABEL, getTableLabel, getSeatLabel } from "@/types";
 
 export async function GET(
   _request: NextRequest,
@@ -137,8 +137,8 @@ export async function GET(
       res?.email || "",
       res?.phone || "",
       table?.isVip ? "VIP" : "",
-      table ? `${table.rowNumber}-${table.tableNumber}` : "",
-      seat?.seatNumber?.toString() || "",
+      table ? `${getTableLabel(table.rowNumber, table.tableNumber)}` : "",
+      seat ? getSeatLabel(seat.seatNumber) : "",
       g.firstName,
       g.lastName,
       meal,

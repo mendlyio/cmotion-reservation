@@ -10,7 +10,7 @@ import {
 import { eq, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { MEAL_OPTIONS, UPSELL_OPTIONS } from "@/types";
+import { MEAL_OPTIONS, UPSELL_OPTIONS, getTableLabel, getSeatLabel } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -124,7 +124,7 @@ export default async function ConfirmationPage({ params }: Props) {
               {tableDetail && (
                 <InfoBlock label="Emplacement">
                   <p className="text-sm font-semibold text-white flex items-center gap-2">
-                    Table {tableDetail.rowNumber}-{tableDetail.tableNumber}
+                    Table {getTableLabel(tableDetail.rowNumber, tableDetail.tableNumber)}
                     {tableDetail.isVip && (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-[#c9a227]/15 text-[#c9a227] border border-[#c9a227]/30 uppercase tracking-wider">
                         VIP ★
@@ -156,7 +156,7 @@ export default async function ConfirmationPage({ params }: Props) {
                           {guest.firstName} {guest.lastName}
                           {seat && (
                             <span className="text-[#444] ml-1.5 text-xs font-mono">
-                              S{seat.seatNumber}
+                              {getSeatLabel(seat.seatNumber)}
                             </span>
                           )}
                         </p>

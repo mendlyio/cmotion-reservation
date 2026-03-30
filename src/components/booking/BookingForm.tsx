@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { GuestForm } from "./GuestForm";
 import { UpsellSection } from "./UpsellSection";
 import { OrderSummary } from "./OrderSummary";
-import { TableWithSeats, SeatFormData, BookingFormData, MealChoice, calculateTotal } from "@/types";
+import { TableWithSeats, SeatFormData, BookingFormData, MealChoice, calculateTotal, getTableLabel, getSeatLabel } from "@/types";
 
 interface Props {
   eventId: number;
@@ -81,13 +81,13 @@ export function BookingForm({ eventId, tables, selectedSeatIds, onCancel }: Prop
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             {vip ? (
-              <span className="text-white font-bold text-sm">Table {table.rowNumber}-{table.tableNumber}</span>
+              <span className="text-white font-bold text-sm">Table {getTableLabel(table.rowNumber, table.tableNumber)}</span>
             ) : tables.length > 1 ? (
               <span className="text-white font-bold text-sm">
-                Tables {tables.map((t) => `${t.rowNumber}-${t.tableNumber}`).join(", ")}
+                Tables {tables.map((t) => getTableLabel(t.rowNumber, t.tableNumber)).join(", ")}
               </span>
             ) : (
-              <span className="text-white font-bold text-sm">Table {table.rowNumber}-{table.tableNumber}</span>
+              <span className="text-white font-bold text-sm">Table {getTableLabel(table.rowNumber, table.tableNumber)}</span>
             )}
             {vip && (
               <span className="bg-[#c9a227]/15 text-[#c9a227] border border-[#c9a227]/30 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -162,13 +162,13 @@ export function BookingForm({ eventId, tables, selectedSeatIds, onCancel }: Prop
               </p>
               <AnimatePresence initial={false}>
                 {guests.map((g, i) => {
-                  let seatLabel = `S${i + 1}`;
+                  let seatLabel = getSeatLabel(i + 1);
                   for (const t of tables) {
                     const s = t.seats.find((s) => s.id === g.seatId);
                     if (s) {
                       seatLabel = tables.length > 1
-                        ? `T${t.rowNumber}-${t.tableNumber} S${s.seatNumber}`
-                        : `S${s.seatNumber}`;
+                        ? `T${getTableLabel(t.rowNumber, t.tableNumber)} ${getSeatLabel(s.seatNumber)}`
+                        : getSeatLabel(s.seatNumber);
                       break;
                     }
                   }

@@ -13,6 +13,7 @@ import {
 import { eq, inArray, and } from "drizzle-orm";
 import { resend } from "@/lib/resend";
 import { renderConfirmationEmail } from "@/emails/ConfirmationEmail";
+import { getTableLabel } from "@/types";
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest) {
               .from(tables)
               .where(eq(tables.id, seatRow.tableId));
             if (tableRow) {
-              tableInfo = `${tableRow.rowNumber}-${tableRow.tableNumber}`;
+              tableInfo = `${getTableLabel(tableRow.rowNumber, tableRow.tableNumber)}`;
               isVip = tableRow.isVip;
             }
           }

@@ -1,6 +1,6 @@
 "use client";
 
-import { SeatData, TableWithSeats } from "@/types";
+import { SeatData, TableWithSeats, getTableLabel, getSeatLabel } from "@/types";
 
 interface TableShapeProps {
   table: TableWithSeats;
@@ -74,7 +74,7 @@ export function TableShape({
         fontSize={8} fontWeight="800"
         fill={vip ? "rgba(201,162,39,0.6)" : "rgba(255,255,255,0.25)"}
         fontFamily="system-ui" pointerEvents="none">
-        T{table.tableNumber}
+        T{getTableLabel(table.rowNumber, table.tableNumber)}
       </text>
       {vip && (
         <text x={cx} y={cy + 8} textAnchor="middle" fontSize={5} fontWeight="900"
@@ -115,7 +115,7 @@ export function TableShape({
               fontSize={6}
               fill={seat.status === "reserved" && !sel ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.8)"}
               fontWeight="900" fontFamily="system-ui" pointerEvents="none">
-              {seat.seatNumber}
+              {getSeatLabel(seat.seatNumber)}
             </text>
           </g>
         );
