@@ -55,7 +55,7 @@ async function seed() {
   console.log("Seeding database...");
 
   for (const eventData of EVENTS) {
-    const [event] = await db.insert(events).values(eventData).returning();
+    const [event] = await db.insert(events).values({ ...eventData, isActive: false }).returning();
     console.log(`Created event: ${event.name} (ID: ${event.id})`);
 
     for (const rowConfig of SEATING_PLAN) {
