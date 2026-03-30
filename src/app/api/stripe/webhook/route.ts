@@ -129,6 +129,7 @@ export async function POST(request: NextRequest) {
             type: u.upsellType,
             quantity: u.quantity,
             unitPrice: u.unitPrice,
+            mealChoice: u.mealChoice,
           })),
         });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MEAL_OPTIONS, DESSERT_PRICE, MealChoice, SeatFormData } from "@/types";
+import { MEAL_OPTIONS, DESSERT_PRICE, DESSERT_LABEL, MealChoice, SeatFormData } from "@/types";
 
 interface Props {
   index: number;
@@ -95,7 +95,7 @@ export function GuestForm({ index, seatLabel, data, isVip, onChange }: Props) {
           >
             {MEAL_OPTIONS.map((m) => (
               <option key={m.value} value={m.value}>
-                {m.label} — {(m.price / 100).toFixed(0)}€
+                {m.label}
               </option>
             ))}
           </select>
@@ -114,14 +114,14 @@ export function GuestForm({ index, seatLabel, data, isVip, onChange }: Props) {
               <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-[#444] rounded-full shadow-sm transition-all peer-checked:translate-x-4 peer-checked:bg-[#c9a227]" />
             </div>
             <span className="text-sm text-[#888]">
-              Tiramisu <span className="text-[#555]">(+{(DESSERT_PRICE / 100).toFixed(2)}€)</span>
+              {DESSERT_LABEL} <span className="text-[#555]">(+{(DESSERT_PRICE / 100).toFixed(2)}€)</span>
             </span>
           </label>
         )}
 
         {isVip && (
           <p className="text-[11px] text-[#c9a227]/70 flex items-center gap-1.5">
-            <span className="text-[#c9a227]">★</span> Dessert inclus
+            <span className="text-[#c9a227]">★</span> {DESSERT_LABEL} inclus
           </p>
         )}
       </div>

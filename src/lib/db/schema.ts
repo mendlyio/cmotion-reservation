@@ -108,6 +108,7 @@ export const reservationUpsells = pgTable("reservation_upsells", {
   upsellType: text("upsell_type").notNull(),
   quantity: integer("quantity").notNull().default(1),
   unitPrice: integer("unit_price").notNull(),
+  mealChoice: text("meal_choice"),
 });
 
 // Relations

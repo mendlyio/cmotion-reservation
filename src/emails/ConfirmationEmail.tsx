@@ -1,4 +1,4 @@
-import { MEAL_OPTIONS, UPSELL_OPTIONS } from "@/types";
+import { MEAL_OPTIONS, DANCER_MEAL_OPTIONS, DESSERT_LABEL } from "@/types";
 
 interface ConfirmationEmailProps {
   reservationId: number;
@@ -15,7 +15,7 @@ interface ConfirmationEmailProps {
     mealChoice: string;
     hasDessert: boolean;
   }[];
-  upsells?: { type: string; quantity: number; unitPrice: number }[];
+  upsells?: { type: string; quantity: number; unitPrice: number; mealChoice?: string | null }[];
 }
 
 export function renderConfirmationEmail(props: ConfirmationEmailProps): string {
@@ -41,14 +41,26 @@ export function renderConfirmationEmail(props: ConfirmationEmailProps): string {
 
   const guestRows = guests
     .map((g) => {
-      const meal =
-        MEAL_OPTIONS.find((m) => m.value === g.mealChoice)?.label ||
-        g.mealChoice;
+      const meal = MEAL_OPTIONS.find((m) => m.value === g.mealChoice)?.label || g.mealChoice;
       return `
         <tr>
           <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${g.firstName} ${g.lastName}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${meal}</td>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${g.hasDessert ? "Tiramisu" : "—"}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${g.hasDessert ? DESSERT_LABEL : "—"}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  const dancerRows = upsells
+    .filter((u) => u.type === "repas_danseur")
+    .map((u, i) => {
+      const opt = u.mealChoice ? DANCER_MEAL_OPTIONS.find((o) => o.value === u.mealChoice) : null;
+      return `
+        <tr>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; color: #64748b;">${i + 1}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${opt?.label || u.type}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; text-align: right;">${((u.unitPrice * u.quantity) / 100).toFixed(2)} €</td>
         </tr>
       `;
     })
@@ -93,30 +105,35 @@ export function renderConfirmationEmail(props: ConfirmationEmailProps): string {
                   <th style="padding: 8px 12px; text-align: left; font-size: 13px; color: #64748b;">Dessert</th>
                 </tr>
               </thead>
-              <tbody>
-                ${guestRows}
-              </tbody>
+              <tbody>${guestRows}</tbody>
             </table>
 
-            ${upsells.length > 0 ? `
-            <h2 style="color: #1e293b; font-size: 18px; margin: 0 0 12px;">Extras</h2>
+            ${dancerRows ? `
+            <h2 style="color: #1e293b; font-size: 18px; margin: 0 0 12px;">Repas Danseur</h2>
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
-              ${upsells.map((u) => {
-                const opt = UPSELL_OPTIONS.find((o) => o.type === u.type);
-                return `<tr>
-                  <td style="padding: 6px 0; color: #475569;">${opt?.label || u.type} ×${u.quantity}</td>
-                  <td style="padding: 6px 0; font-weight: 600; text-align: right;">${((u.unitPrice * u.quantity) / 100).toFixed(2)} €</td>
-                </tr>`;
-              }).join("")}
+              <thead>
+                <tr style="background: #f1f5f9;">
+                  <th style="padding: 8px 12px; text-align: left; font-size: 13px; color: #64748b;">#</th>
+                  <th style="padding: 8px 12px; text-align: left; font-size: 13px; color: #64748b;">Plat</th>
+                  <th style="padding: 8px 12px; text-align: right; font-size: 13px; color: #64748b;">Prix</th>
+                </tr>
+              </thead>
+              <tbody>${dancerRows}</tbody>
             </table>` : ""}
 
-            <div style="background: #f1f5f9; border-radius: 8px; padding: 16px; text-align: center;">
+            <div style="background: #f1f5f9; border-radius: 8px; padding: 16px; text-align: center; margin-bottom: 16px;">
               <p style="margin: 0; color: #64748b; font-size: 14px;">Total payé</p>
               <p style="margin: 4px 0 0; color: #1e293b; font-size: 28px; font-weight: 700;">${(totalAmount / 100).toFixed(2)} €</p>
             </div>
+
+            <div style="background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 12px; text-align: center;">
+              <p style="margin: 0; color: #92400e; font-size: 12px; font-weight: 600;">
+                🔒 Cette réservation est non remboursable, non annulable et non modifiable.
+              </p>
+            </div>
           </div>
 
-          <div style="padding: 24px 32px; background: #f8fafc; text-align: center;">
+          <div style="padding: 20px 32px; background: #f8fafc; text-align: center;">
             <p style="margin: 0; color: #94a3b8; font-size: 13px;">
               Cmotion Réservation — Ce mail a été envoyé automatiquement, merci de ne pas y répondre.
             </p>

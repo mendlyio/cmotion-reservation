@@ -12,13 +12,25 @@ import { TableWithSeats, EventData } from "@/types";
 export function ReservationClient({ event }: { event: EventData }) {
   const [tables, setTables] = useState<TableWithSeats[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selTable, setSelTable] = useState<TableWithSeats | null>(null);
   const [selSeats, setSelSeats] = useState<number[]>([]);
+  const [vipTable, setVipTable] = useState<TableWithSeats | null>(null);
   const [holdExp, setHoldExp] = useState<string | null>(null);
   const [holding, setHolding] = useState(false);
   const [floatingHidden, setFloatingHidden] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
-  const has = selTable !== null && selSeats.length > 0;
+
+  // Refs for debounce
+  const tablesRef = useRef<TableWithSeats[]>(tables);
+  const addTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingAddSeats = useRef<number[]>([]);
+  useEffect(() => { tablesRef.current = tables; }, [tables]);
+
+  // Derive involved tables from selection
+  const selTables: TableWithSeats[] = vipTable
+    ? [vipTable]
+    : tables.filter((t) => t.seats.some((s) => selSeats.includes(s.id)));
+
+  const has = selSeats.length > 0;
 
   const fetch_ = useCallback(async () => {
     try {
@@ -30,12 +42,66 @@ export function ReservationClient({ event }: { event: EventData }) {
 
   useEffect(() => { fetch_(); }, [fetch_]);
 
-  const hold = async (tid: number, sids?: number[]) => {
+  const buildSelections = (seatIds: number[]) => {
+    const byTable = new Map<number, number[]>();
+    for (const seatId of seatIds) {
+      const t = tablesRef.current.find((t) => t.seats.some((s) => s.id === seatId));
+      if (!t) continue;
+      if (!byTable.has(t.id)) byTable.set(t.id, []);
+      byTable.get(t.id)!.push(seatId);
+    }
+    return Array.from(byTable.entries()).map(([tableId, tSeatIds]) => ({ tableId, seatIds: tSeatIds }));
+  };
+
+  // Immediate hold — used for DESELECTS (no debounce)
+  const holdNow = useCallback(async (seatIds: number[]) => {
+    if (addTimerRef.current) { clearTimeout(addTimerRef.current); addTimerRef.current = null; }
+    pendingAddSeats.current = [];
+    const selections = buildSelections(seatIds);
+    if (!selections.length) return false;
     setHolding(true);
     try {
       const r = await fetch("/api/hold", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId: event.id, tableId: tid, seatIds: sids }),
+        body: JSON.stringify({ eventId: event.id, selections }),
+      });
+      if (!r.ok) { toast.error((await r.json()).error || "Indisponible"); return false; }
+      setHoldExp((await r.json()).expiresAt);
+      await fetch_();
+      return true;
+    } catch { toast.error("Erreur"); return false; }
+    finally { setHolding(false); }
+  }, [event.id, fetch_]);
+
+  // Debounced hold — used for ADDS (batches rapid clicks)
+  const holdDebounced = useCallback((seatIds: number[]) => {
+    pendingAddSeats.current = seatIds;
+    if (addTimerRef.current) clearTimeout(addTimerRef.current);
+    addTimerRef.current = setTimeout(async () => {
+      const ids = pendingAddSeats.current;
+      if (!ids.length) return;
+      const selections = buildSelections(ids);
+      if (!selections.length) return;
+      setHolding(true);
+      try {
+        const r = await fetch("/api/hold", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ eventId: event.id, selections }),
+        });
+        if (!r.ok) { toast.error((await r.json()).error || "Indisponible"); setSelSeats([]); return; }
+        setHoldExp((await r.json()).expiresAt);
+        await fetch_();
+      } catch { toast.error("Erreur"); setSelSeats([]); }
+      finally { setHolding(false); }
+    }, 380);
+  }, [event.id, fetch_]);
+
+  const holdVip = async (tid: number) => {
+    setHolding(true);
+    try {
+      const r = await fetch("/api/hold", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId: event.id, tableId: tid }),
       });
       if (!r.ok) { toast.error((await r.json()).error || "Indisponible"); return false; }
       setHoldExp((await r.json()).expiresAt);
@@ -46,6 +112,8 @@ export function ReservationClient({ event }: { event: EventData }) {
   };
 
   const release = async () => {
+    if (addTimerRef.current) { clearTimeout(addTimerRef.current); addTimerRef.current = null; }
+    pendingAddSeats.current = [];
     try { await fetch("/api/hold", { method: "DELETE" }); } catch {}
     setHoldExp(null);
   };
@@ -57,31 +125,69 @@ export function ReservationClient({ event }: { event: EventData }) {
 
   const onTable = async (t: TableWithSeats) => {
     if (!t.isVip) return;
-    // Clic sur la table déjà sélectionnée → déselectionne
-    if (selTable?.id === t.id) { await cancel(); return; }
-    if (await hold(t.id)) { setSelTable(t); setSelSeats(t.seats.map((s) => s.id)); }
+    if (vipTable?.id === t.id) { await cancel(); return; }
+    if (await holdVip(t.id)) {
+      setVipTable(t);
+      setSelSeats(t.seats.map((s) => s.id));
+    }
   };
 
   const onSeat = async (tid: number, sids: number[]) => {
     const t = tables.find((x) => x.id === tid);
     if (!t || t.isVip) return;
+    if (vipTable) return;
+
+    const tableSeatSet = new Set(t.seats.map((s) => s.id));
+    const currentFromThisTable = selSeats.filter((id) => tableSeatSet.has(id));
+
+    // ── Table-level click (multiple seats) ──────────────────────────────
+    if (sids.length > 1) {
+      const allAlreadySel = sids.every((id) => currentFromThisTable.includes(id));
+      const otherSeats = selSeats.filter((id) => !tableSeatSet.has(id));
+
+      if (allAlreadySel) {
+        // DESELECT entire table → immediate
+        if (!otherSeats.length) { await release(); setSelSeats([]); await fetch_(); return; }
+        setSelSeats(otherSeats);
+        await holdNow(otherSeats);
+      } else {
+        const n = [...otherSeats, ...sids];
+        const firstTime = selSeats.length === 0;
+        setSelSeats(n);
+        holdDebounced(n);
+        if (firstTime) setFloatingHidden(false);
+      }
+      return;
+    }
+
+    // ── Single seat toggle ───────────────────────────────────────────────
     const sid = sids[0];
-    if (selTable && selTable.id !== tid) { toast.error("Même table uniquement"); return; }
     const isSel = selSeats.includes(sid);
 
     if (isSel) {
+      // DESELECT → immediate
       const n = selSeats.filter((id) => id !== sid);
-      if (!n.length) { await release(); setSelTable(null); setSelSeats([]); await fetch_(); return; }
-      setSelSeats(n); await hold(tid, n);
+      if (!n.length) { await release(); setSelSeats([]); await fetch_(); return; }
+      setSelSeats(n);
+      await holdNow(n);
     } else {
+      // ADD → debounced
       const n = [...selSeats, sid];
-      setSelTable(t); setSelSeats(n);
-      // Pas de scroll automatique — l'utilisateur clique sur le bouton flottant
-      if (!(await hold(tid, n))) { setSelSeats(selSeats); if (!selSeats.length) setSelTable(null); return; }
+      const firstTime = selSeats.length === 0;
+      setSelSeats(n);
+      holdDebounced(n);
+      if (firstTime) setFloatingHidden(false);
     }
   };
 
-  const cancel = async () => { await release(); setSelTable(null); setSelSeats([]); setFloatingHidden(false); await fetch_(); };
+  const cancel = async () => {
+    await release();
+    setVipTable(null);
+    setSelSeats([]);
+    setFloatingHidden(false);
+    await fetch_();
+  };
+
   const expired = async () => { toast.error("Réservation expirée"); await cancel(); };
 
   const dateObj = new Date(event.eventDate);
@@ -99,32 +205,25 @@ export function ReservationClient({ event }: { event: EventData }) {
     </div>
   );
 
+  const primaryTable = selTables[0] ?? null;
+
   return (
     <main className="min-h-screen bg-[#0a0a0a]">
       {/* Sticky header */}
       <header className="sticky top-0 z-40 bg-[#0d0d0d]/95 backdrop-blur-md border-b border-[#1e1a0e]">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-
           <div className="flex items-center gap-3 min-w-0">
-            <Link
-              href="/"
-              className="shrink-0 w-8 h-8 rounded-full bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] flex items-center justify-center text-[#666] hover:text-[#ccc] transition-all"
-            >
+            <Link href="/" className="shrink-0 w-8 h-8 rounded-full bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] flex items-center justify-center text-[#666] hover:text-[#ccc] transition-all">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
             </Link>
-
-            {/* Mini calendar */}
             <div className="shrink-0 w-10 rounded-lg overflow-hidden shadow-md shadow-black/50">
-              <div className="py-0.5 text-[9px] font-black uppercase tracking-widest text-black text-center bg-gradient-to-r from-[#c9a227] to-[#e4c76b]">
-                {monthName}
-              </div>
+              <div className="py-0.5 text-[9px] font-black uppercase tracking-widest text-black text-center bg-gradient-to-r from-[#c9a227] to-[#e4c76b]">{monthName}</div>
               <div className="bg-[#1a1500] border-x border-b border-[#c9a227]/20 py-0.5 text-center">
                 <div className="text-base font-extrabold leading-tight text-[#c9a227]">{dayNum}</div>
               </div>
             </div>
-
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full text-black bg-gradient-to-r from-[#c9a227] to-[#a07818]">
@@ -140,11 +239,8 @@ export function ReservationClient({ event }: { event: EventData }) {
               </div>
             </div>
           </div>
-
           <div className="flex items-center gap-2 shrink-0">
-            {holding && (
-              <div className="w-3.5 h-3.5 border-2 border-[#c9a227]/20 border-t-[#c9a227] rounded-full animate-spin" />
-            )}
+            {holding && <div className="w-3.5 h-3.5 border-2 border-[#c9a227]/20 border-t-[#c9a227] rounded-full animate-spin" />}
             {holdExp && <CountdownTimer expiresAt={holdExp} onExpired={expired} />}
           </div>
         </div>
@@ -155,17 +251,14 @@ export function ReservationClient({ event }: { event: EventData }) {
         <div className="max-w-6xl mx-auto px-2 sm:px-4 py-3">
           {!has && (
             <div className="mb-4 px-3 pt-3 pb-1">
-              {/* Steps */}
               <div className="relative flex items-start justify-center gap-0 mb-5">
                 <div className="absolute top-[18px] left-1/2 -translate-x-1/2 w-[calc(100%-80px)] h-px bg-[#c9a227]/10 hidden sm:block pointer-events-none" />
-                <Step n="1" label="Choisissez" sub="Cliquez sur une place" />
+                <Step n="1" label="Choisissez" sub="Siège, table entière ou multi-table" />
                 <div className="w-8 sm:w-12 shrink-0" />
                 <Step n="2" label="Complétez" sub="Infos et repas de chaque convive" />
                 <div className="w-8 sm:w-12 shrink-0" />
                 <Step n="3" label="Payez" sub="Paiement sécurisé en ligne" />
               </div>
-
-              {/* Place type pills */}
               <div className="flex flex-wrap items-center justify-center gap-2">
                 <div className="flex items-center gap-2 rounded-lg px-3 py-1.5 border border-[#c9a227]/20 bg-[#c9a227]/5">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#c9a227] shrink-0" />
@@ -178,7 +271,7 @@ export function ReservationClient({ event }: { event: EventData }) {
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
                   <span className="text-[11px] font-bold text-emerald-400 tracking-wide">Normal</span>
                   <span className="w-px h-3 bg-white/10" />
-                  <span className="text-[11px] text-[#666]">Cliquer sur les sièges</span>
+                  <span className="text-[11px] text-[#666]">Sièges ou table(s) entière(s)</span>
                   <span className="text-[11px] font-semibold text-[#aaa]">dès 28€</span>
                 </div>
               </div>
@@ -189,7 +282,7 @@ export function ReservationClient({ event }: { event: EventData }) {
             tables={tables}
             onTableSelect={onTable}
             onSeatsSelect={onSeat}
-            selectedTableId={selTable?.id}
+            selectedTableIds={selTables.map((t) => t.id)}
             selectedSeatIds={selSeats}
             readOnly={false}
             hideZoom={floatingHidden}
@@ -197,9 +290,9 @@ export function ReservationClient({ event }: { event: EventData }) {
         </div>
       </section>
 
-      {/* Booking form — revealed after scrolling */}
+      {/* Booking form */}
       <AnimatePresence>
-        {has && selTable && (
+        {has && selTables.length > 0 && (
           <motion.section
             ref={formRef}
             initial={{ opacity: 0, y: 20 }}
@@ -212,7 +305,7 @@ export function ReservationClient({ event }: { event: EventData }) {
               <div className="bg-[#0f0f0f] rounded-2xl border border-[#1e1a0e] overflow-hidden shadow-2xl shadow-black/50">
                 <BookingForm
                   eventId={event.id}
-                  table={selTable}
+                  tables={selTables}
                   selectedSeatIds={selSeats}
                   onCancel={cancel}
                 />
@@ -222,9 +315,9 @@ export function ReservationClient({ event }: { event: EventData }) {
         )}
       </AnimatePresence>
 
-      {/* Floating CTA — disparaît après clic sur Continuer */}
+      {/* Floating CTA */}
       <AnimatePresence>
-        {has && selTable && !floatingHidden && (
+        {has && primaryTable && !floatingHidden && (
           <motion.div
             initial={{ opacity: 0, y: 80 }}
             animate={{ opacity: 1, y: 0 }}
@@ -241,7 +334,6 @@ export function ReservationClient({ event }: { event: EventData }) {
                 backdropFilter: "blur(16px)",
               }}
             >
-              {/* Info sélection */}
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <div className="shrink-0 w-9 h-9 rounded-xl bg-[#c9a227]/15 border border-[#c9a227]/30 flex items-center justify-center">
                   <span className="text-[#c9a227] text-sm font-black tabular-nums">{selSeats.length}</span>
@@ -251,12 +343,13 @@ export function ReservationClient({ event }: { event: EventData }) {
                     {selSeats.length} {selSeats.length > 1 ? "places sélectionnées" : "place sélectionnée"}
                   </p>
                   <p className="text-[#c9a227]/55 text-[11px] leading-tight">
-                    {selTable.isVip ? "VIP · " : ""}Table {selTable.rowNumber}-{selTable.tableNumber}
+                    {selTables.length > 1
+                      ? `Tables ${selTables.map((t) => `${t.rowNumber}-${t.tableNumber}`).join(", ")}`
+                      : `${primaryTable.isVip ? "VIP · " : ""}Table ${primaryTable.rowNumber}-${primaryTable.tableNumber}`}
                   </p>
                 </div>
               </div>
 
-              {/* CTA */}
               <button
                 onClick={scrollToForm}
                 className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#c9a227] to-[#a07818] text-black text-sm font-black shadow-lg shadow-[#c9a227]/20 hover:opacity-90 active:scale-[0.97] transition-all"
@@ -267,7 +360,6 @@ export function ReservationClient({ event }: { event: EventData }) {
                 </svg>
               </button>
 
-              {/* Annuler */}
               <button
                 onClick={cancel}
                 className="shrink-0 w-9 h-9 rounded-xl bg-[#1a1a1a] hover:bg-red-500/12 border border-[#2a2a2a] hover:border-red-500/25 flex items-center justify-center text-[#555] hover:text-red-400 transition-all"

@@ -9,20 +9,21 @@ import { TableWithSeats, SeatFormData, BookingFormData, MealChoice, calculateTot
 
 interface Props {
   eventId: number;
-  table: TableWithSeats;
+  tables: TableWithSeats[];
   selectedSeatIds: number[];
   onCancel: () => void;
 }
 
 type Step = 0 | 1 | 2;
 
-export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props) {
-  const vip = table.isVip;
-  const ids = vip ? table.seats.map((s) => s.id) : selectedSeatIds;
+export function BookingForm({ eventId, tables, selectedSeatIds, onCancel }: Props) {
+  const table = tables[0];
+  const vip = tables.length === 1 && tables[0].isVip;
+  const ids = vip ? tables[0].seats.map((s) => s.id) : selectedSeatIds;
   const map = useRef<Map<number, SeatFormData>>(new Map());
 
   const [guests, setGuests] = useState<SeatFormData[]>(() => build(ids, map.current));
-  const [upsells, setUpsells] = useState<{ type: string; quantity: number }[]>([]);
+  const [upsells, setUpsells] = useState<{ type: string; quantity: number; mealChoice?: string }[]>([]);
   const [ref, setRef] = useState("");
   const [email, setEmail] = useState("");
   const [phonePrefix, setPhonePrefix] = useState("+32");
@@ -41,7 +42,7 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
   }, [selectedSeatIds.join(",")]);
 
   const data: BookingFormData = {
-    eventId, tableId: table.id, seatIds: ids, isVip: vip,
+    eventId, tableId: table?.id ?? 0, seatIds: ids, isVip: vip,
     guests, upsells, referentStudent: ref, email, phone,
   };
   const gOk = guests.every((g) => g.firstName.trim() && g.lastName.trim() && g.mealChoice);
@@ -78,11 +79,24 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
       {/* Header bar */}
       <div className="bg-gradient-to-r from-[#141400] to-[#0f0f0f] border-b border-[#c9a227]/15 px-5 py-4 flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-white font-bold text-sm">Table {table.rowNumber}-{table.tableNumber}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            {vip ? (
+              <span className="text-white font-bold text-sm">Table {table.rowNumber}-{table.tableNumber}</span>
+            ) : tables.length > 1 ? (
+              <span className="text-white font-bold text-sm">
+                Tables {tables.map((t) => `${t.rowNumber}-${t.tableNumber}`).join(", ")}
+              </span>
+            ) : (
+              <span className="text-white font-bold text-sm">Table {table.rowNumber}-{table.tableNumber}</span>
+            )}
             {vip && (
               <span className="bg-[#c9a227]/15 text-[#c9a227] border border-[#c9a227]/30 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
                 VIP ★
+              </span>
+            )}
+            {!vip && tables.length > 1 && (
+              <span className="bg-blue-500/15 text-blue-400 border border-blue-500/30 text-[9px] font-bold px-2 py-0.5 rounded-full">
+                Multi-table
               </span>
             )}
           </div>
@@ -148,10 +162,19 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
               </p>
               <AnimatePresence initial={false}>
                 {guests.map((g, i) => {
-                  const seat = table.seats.find((s) => s.id === g.seatId);
+                  let seatLabel = `S${i + 1}`;
+                  for (const t of tables) {
+                    const s = t.seats.find((s) => s.id === g.seatId);
+                    if (s) {
+                      seatLabel = tables.length > 1
+                        ? `T${t.rowNumber}-${t.tableNumber} S${s.seatNumber}`
+                        : `S${s.seatNumber}`;
+                      break;
+                    }
+                  }
                   return (
                     <motion.div key={g.seatId} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.12 }}>
-                      <GuestForm index={i} seatId={g.seatId} seatLabel={`S${seat?.seatNumber || i + 1}`} data={g} isVip={vip}
+                      <GuestForm index={i} seatId={g.seatId} seatLabel={seatLabel} data={g} isVip={vip}
                         onChange={(u) => { const n = [...guests]; n[i] = u; setGuests(n); map.current.set(u.seatId, u); }} />
                     </motion.div>
                   );
@@ -202,7 +225,7 @@ export function BookingForm({ eventId, table, selectedSeatIds, onCancel }: Props
 
           {step === 2 && (
             <motion.div key="s2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.12 }} className="space-y-4">
-              <OrderSummary data={data} table={table} />
+              <OrderSummary data={data} tables={tables} />
               {error && (
                 <div className="p-3 bg-red-500/8 border border-red-500/20 rounded-xl text-sm text-red-400">
                   {error}

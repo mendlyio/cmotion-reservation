@@ -9,7 +9,7 @@ import {
 } from "@/lib/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { getOrCreateSession } from "@/lib/session";
-import { calculateTotal, BookingFormData, UPSELL_OPTIONS } from "@/types";
+import { calculateTotal, BookingFormData, DANCER_MEAL_OPTIONS } from "@/types";
 
 // Grace period after reservation creation to cover Stripe checkout duration
 const CHECKOUT_GRACE_MS = 45 * 60 * 1000; // 45 minutes
@@ -104,17 +104,18 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // Create upsells
+  // Create upsells — each repas_danseur entry has its own mealChoice
   if (upsells && upsells.length > 0) {
     for (const upsell of upsells) {
-      if (upsell.quantity > 0) {
-        const option = UPSELL_OPTIONS.find((o) => o.type === upsell.type);
-        if (option) {
+      if (upsell.type === "repas_danseur" && upsell.mealChoice) {
+        const opt = DANCER_MEAL_OPTIONS.find((o) => o.value === upsell.mealChoice);
+        if (opt) {
           await db.insert(reservationUpsells).values({
             reservationId: reservation.id,
-            upsellType: upsell.type,
-            quantity: upsell.quantity,
-            unitPrice: option.price,
+            upsellType: "repas_danseur",
+            quantity: upsell.quantity || 1,
+            unitPrice: opt.price,
+            mealChoice: upsell.mealChoice,
           });
         }
       }

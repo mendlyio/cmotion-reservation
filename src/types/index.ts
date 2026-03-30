@@ -15,11 +15,19 @@ export const MEAL_OPTIONS: { value: MealChoice; label: string; price: number }[]
 ];
 
 export const DESSERT_PRICE = 450; // 4.50€ in cents
+export const DESSERT_LABEL = "Panna Cotta";
 export const VIP_TABLE_PRICE = 28000; // 280€ in cents
 
+// Repas danseur options (separate from guest meals)
+export const DANCER_MEAL_OPTIONS: { value: string; label: string; price: number }[] = [
+  { value: "une_boulette", label: "1 Boulette, Frites, Salade", price: 1000 },
+  { value: "lasagne_danseur", label: "Lasagne", price: 1000 },
+  { value: "deux_boulettes", label: "2 Boulettes, Frites, Salade", price: 1200 },
+];
+
+// Only repas_danseur remains (champagne removed)
 export const UPSELL_OPTIONS = [
-  { type: "repas_danseur", label: "Repas Danseur", price: 2800 },
-  { type: "champagne", label: "Bouteille de Champagne", price: 3500 },
+  { type: "repas_danseur", label: "Repas Danseur" },
 ];
 
 export interface SeatingRow {
@@ -81,7 +89,7 @@ export interface BookingFormData {
   seatIds: number[];
   isVip: boolean;
   guests: SeatFormData[];
-  upsells: { type: string; quantity: number }[];
+  upsells: { type: string; quantity: number; mealChoice?: string }[];
   referentStudent: string;
   email: string;
   phone: string;
@@ -103,10 +111,11 @@ export function calculateTotal(data: BookingFormData): number {
     }
   }
 
+  // Dancer meals — each entry has its own mealChoice and price
   for (const upsell of data.upsells) {
-    const option = UPSELL_OPTIONS.find((o) => o.type === upsell.type);
-    if (option) {
-      total += option.price * upsell.quantity;
+    if (upsell.type === "repas_danseur" && upsell.mealChoice) {
+      const opt = DANCER_MEAL_OPTIONS.find((o) => o.value === upsell.mealChoice);
+      if (opt) total += opt.price * (upsell.quantity || 1);
     }
   }
 

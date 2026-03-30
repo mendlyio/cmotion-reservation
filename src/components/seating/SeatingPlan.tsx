@@ -10,7 +10,7 @@ interface SeatingPlanProps {
   tables: TableWithSeats[];
   onTableSelect?: (table: TableWithSeats) => void;
   onSeatsSelect?: (tableId: number, seatIds: number[]) => void;
-  selectedTableId?: number | null;
+  selectedTableIds?: number[];
   selectedSeatIds?: number[];
   readOnly?: boolean;
   hideZoom?: boolean;
@@ -39,7 +39,7 @@ export function SeatingPlan({
   tables: init,
   onTableSelect,
   onSeatsSelect,
-  selectedTableId,
+  selectedTableIds = [],
   selectedSeatIds = [],
   readOnly = false,
   hideZoom = false,
@@ -95,10 +95,17 @@ export function SeatingPlan({
   const H = PT + SH + SGA + totalR * (CD + RG) - RG + PT + 8 + SEP_EXTRA;
 
   const onTClick = useCallback((t: TableWithSeats) => {
-    if (readOnly || !t.isVip) return;
-    if (!t.seats.every((s) => s.status === "available" || selectedSeatIds.includes(s.id))) return;
-    onTableSelect?.(t);
-  }, [readOnly, onTableSelect, selectedSeatIds]);
+    if (readOnly) return;
+    if (t.isVip) {
+      if (!t.seats.every((s) => s.status === "available" || selectedSeatIds.includes(s.id))) return;
+      onTableSelect?.(t);
+    } else {
+      // Non-VIP: pass all available/already-selected seats of this table
+      const candidates = t.seats.filter((s) => s.status === "available" || selectedSeatIds.includes(s.id));
+      if (candidates.length === 0) return;
+      onSeatsSelect?.(t.id, candidates.map((s) => s.id));
+    }
+  }, [readOnly, onTableSelect, onSeatsSelect, selectedSeatIds]);
 
   const onSClick = useCallback((t: TableWithSeats, s: SeatData) => {
     if (readOnly) return;
@@ -252,7 +259,7 @@ export function SeatingPlan({
                       tableRadius={TR}
                       seatRadius={SR}
                       seatDist={SD}
-                      isSelected={selectedTableId === t.id}
+                      isSelected={selectedTableIds.includes(t.id)}
                       hasSelectedSeats={t.seats.some((s) => selectedSeatIds.includes(s.id))}
                       selectedSeatIds={selectedSeatIds}
                       isHovered={hovered === t.id}

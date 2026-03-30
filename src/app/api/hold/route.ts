@@ -9,195 +9,158 @@ import {
   releaseHoldsBySession,
 } from "@/lib/hold";
 
-export async function POST(request: NextRequest) {
-  const sessionId = await getOrCreateSession();
-  const body = await request.json();
-  const { eventId, tableId, seatIds } = body as {
-    eventId: number;
-    tableId: number;
-    seatIds?: number[];
-  };
+// Core: hold a flat list of seat IDs (already validated)
+async function holdSeatIds(
+  sessionId: string,
+  eventId: number,
+  expiresAt: Date,
+  seatToTable: Map<number, number>, // seatId → tableId
+  isVip: boolean
+): Promise<{ error: string; status: number } | { ok: true; seatIds: number[] }> {
+  const targetSeatIds = Array.from(seatToTable.keys());
 
-  if (!eventId || !tableId) {
-    return NextResponse.json(
-      { error: "eventId et tableId requis" },
-      { status: 400 }
-    );
-  }
-
-  await cleanupExpiredHolds();
-  await releaseHoldsBySession(sessionId);
-
-  const [table] = await db
-    .select()
-    .from(tables)
-    .where(eq(tables.id, tableId));
-
-  if (!table) {
-    return NextResponse.json({ error: "Table introuvable" }, { status: 404 });
-  }
-
-  if (table.eventId !== eventId) {
-    return NextResponse.json(
-      { error: "Table n'appartient pas à cet événement" },
-      { status: 400 }
-    );
-  }
-
-  let targetSeatIds: number[];
-
-  if (table.isVip) {
-    const tableSeats = await db
-      .select()
-      .from(seats)
-      .where(eq(seats.tableId, tableId));
-    targetSeatIds = tableSeats.map((s) => s.id);
-  } else {
-    if (!seatIds || seatIds.length === 0) {
-      return NextResponse.json(
-        { error: "seatIds requis pour les tables normales" },
-        { status: 400 }
-      );
-    }
-
-    // Validate seats belong to the specified table
-    const validSeats = await db
-      .select()
-      .from(seats)
-      .where(and(inArray(seats.id, seatIds), eq(seats.tableId, tableId)));
-
-    if (validSeats.length !== seatIds.length) {
-      return NextResponse.json(
-        { error: "Sièges invalides" },
-        { status: 400 }
-      );
-    }
-
-    targetSeatIds = seatIds;
-  }
-
-  // Pre-check: reject if any target seats already have active holds
+  // Pre-check: reject active holds from OTHER sessions
   const existingHolds = await db
     .select()
     .from(holds)
     .where(inArray(holds.seatId, targetSeatIds));
 
   if (existingHolds.length > 0) {
-    // Verify these holds have matching seat states — clean up orphans
     const holdSeatIds = existingHolds.map((h) => h.seatId!).filter(Boolean);
-    const seatStates = await db
-      .select()
-      .from(seats)
-      .where(inArray(seats.id, holdSeatIds));
-    const actuallyHeld = new Set(
-      seatStates.filter((s) => s.status === "held").map((s) => s.id)
-    );
+    const seatStates = await db.select().from(seats).where(inArray(seats.id, holdSeatIds));
+    const actuallyHeld = new Set(seatStates.filter((s) => s.status === "held").map((s) => s.id));
 
     const orphanIds = existingHolds
       .filter((h) => h.seatId && !actuallyHeld.has(h.seatId))
       .map((h) => h.id);
-    if (orphanIds.length > 0) {
-      await db.delete(holds).where(inArray(holds.id, orphanIds));
-    }
+    if (orphanIds.length > 0) await db.delete(holds).where(inArray(holds.id, orphanIds));
 
-    const realConflicts = existingHolds.filter(
-      (h) => h.seatId && actuallyHeld.has(h.seatId)
-    );
+    const realConflicts = existingHolds.filter((h) => h.seatId && actuallyHeld.has(h.seatId));
     if (realConflicts.length > 0) {
       const unavailable = seatStates.filter((s) => s.status !== "available");
-      return NextResponse.json(
-        {
-          error: table.isVip
-            ? "Cette table VIP est en cours de réservation par un autre utilisateur"
-            : "Certains sièges ne sont plus disponibles",
-          details: unavailable.map(
-            (s) =>
-              `Siège ${s.seatNumber}: ${s.status === "held" ? "en cours de réservation" : "réservé"}`
-          ),
-        },
-        { status: 409 }
-      );
+      return {
+        error: isVip
+          ? "Cette table VIP est en cours de réservation par un autre utilisateur"
+          : `Certains sièges ne sont plus disponibles (${unavailable.map((s) => `S${s.seatNumber}`).join(", ")})`,
+        status: 409,
+      };
     }
   }
 
-  // Atomic hold: UPDATE only seats that are still 'available'
-  await db
-    .update(seats)
-    .set({ status: "held" })
-    .where(
-      and(inArray(seats.id, targetSeatIds), eq(seats.status, "available"))
-    );
+  // Atomic hold
+  await db.update(seats).set({ status: "held" })
+    .where(and(inArray(seats.id, targetSeatIds), eq(seats.status, "available")));
 
-  // Verify all target seats are now held (handles race with 'reserved' seats)
-  const nowHeld = await db
-    .select()
-    .from(seats)
+  const nowHeld = await db.select().from(seats)
     .where(and(inArray(seats.id, targetSeatIds), eq(seats.status, "held")));
 
   if (nowHeld.length !== targetSeatIds.length) {
-    // Rollback — release only the seats we just flipped (no prior hold record)
-    const existingHolds = await db
-      .select()
-      .from(holds)
-      .where(inArray(holds.seatId, targetSeatIds));
+    // Rollback seats we just flipped
+    const holdAfter = await db.select().from(holds).where(inArray(holds.seatId, targetSeatIds));
+    const alreadyByOthers = new Set(holdAfter.map((h) => h.seatId));
+    const ours = targetSeatIds.filter((id) => !alreadyByOthers.has(id));
+    if (ours.length > 0)
+      await db.update(seats).set({ status: "available" })
+        .where(and(inArray(seats.id, ours), eq(seats.status, "held")));
 
-    const alreadyHeldByOthers = new Set(existingHolds.map((h) => h.seatId));
-    const ourHeldIds = targetSeatIds.filter(
-      (id) => !alreadyHeldByOthers.has(id)
-    );
-
-    if (ourHeldIds.length > 0) {
-      await db
-        .update(seats)
-        .set({ status: "available" })
-        .where(
-          and(inArray(seats.id, ourHeldIds), eq(seats.status, "held"))
-        );
-    }
-
-    const allTargetSeats = await db
-      .select()
-      .from(seats)
-      .where(inArray(seats.id, targetSeatIds));
-
-    const unavailable = allTargetSeats.filter(
-      (s) => s.status !== "available"
-    );
-
-    return NextResponse.json(
-      {
-        error: table.isVip
-          ? "Cette table VIP est en cours de réservation par un autre utilisateur"
-          : "Certains sièges ne sont plus disponibles",
-        details: unavailable.map(
-          (s) =>
-            `Siège ${s.seatNumber}: ${s.status === "held" ? "en cours de réservation" : "réservé"}`
-        ),
-      },
-      { status: 409 }
-    );
+    const all = await db.select().from(seats).where(inArray(seats.id, targetSeatIds));
+    const unavailable = all.filter((s) => s.status !== "available");
+    return {
+      error: isVip
+        ? "Cette table VIP est réservée par quelqu'un d'autre"
+        : `Certains sièges ne sont plus disponibles (${unavailable.map((s) => `S${s.seatNumber}`).join(", ")})`,
+      status: 409,
+    };
   }
 
-  const expiresAt = getHoldExpiry();
-
+  // Insert hold records with correct tableId per seat
   const holdValues = targetSeatIds.map((seatId) => ({
     sessionId,
     eventId,
-    tableId,
+    tableId: seatToTable.get(seatId)!,
     seatId,
     expiresAt,
   }));
-
   await db.insert(holds).values(holdValues);
 
-  return NextResponse.json({
-    success: true,
-    sessionId,
-    tableId,
-    seatIds: targetSeatIds,
-    expiresAt: expiresAt.toISOString(),
-    isVip: table.isVip,
-  });
+  return { ok: true, seatIds: targetSeatIds };
+}
+
+export async function POST(request: NextRequest) {
+  const sessionId = await getOrCreateSession();
+  const body = await request.json();
+  const { eventId, tableId, selections } = body as {
+    eventId: number;
+    tableId?: number;       // VIP path
+    selections?: { tableId: number; seatIds: number[] }[]; // multi-table path
+  };
+
+  if (!eventId) {
+    return NextResponse.json({ error: "eventId requis" }, { status: 400 });
+  }
+
+  await cleanupExpiredHolds();
+  await releaseHoldsBySession(sessionId);
+
+  const expiresAt = getHoldExpiry();
+
+  // ── VIP path ────────────────────────────────────────────────────────────
+  if (tableId && !selections) {
+    const [table] = await db.select().from(tables).where(eq(tables.id, tableId));
+    if (!table) return NextResponse.json({ error: "Table introuvable" }, { status: 404 });
+    if (table.eventId !== eventId)
+      return NextResponse.json({ error: "Table n'appartient pas à cet événement" }, { status: 400 });
+
+    const tableSeats = await db.select().from(seats).where(eq(seats.tableId, tableId));
+    const seatToTable = new Map(tableSeats.map((s) => [s.id, tableId]));
+
+    const result = await holdSeatIds(sessionId, eventId, expiresAt, seatToTable, true);
+    if ("error" in result)
+      return NextResponse.json({ error: result.error }, { status: result.status });
+
+    return NextResponse.json({
+      success: true, sessionId, tableId, seatIds: result.seatIds,
+      expiresAt: expiresAt.toISOString(), isVip: true,
+    });
+  }
+
+  // ── Multi-table normal path ──────────────────────────────────────────────
+  if (selections && selections.length > 0) {
+    const allTableIds = selections.map((s) => s.tableId);
+    const allSeatIds = selections.flatMap((s) => s.seatIds);
+
+    // Validate tables belong to event
+    const eventTables = await db.select().from(tables).where(inArray(tables.id, allTableIds));
+    if (
+      eventTables.length !== allTableIds.length ||
+      eventTables.some((t) => t.eventId !== eventId)
+    ) {
+      return NextResponse.json({ error: "Tables invalides pour cet événement" }, { status: 400 });
+    }
+
+    // Validate seats belong to their claimed table
+    for (const sel of selections) {
+      const valid = await db.select().from(seats)
+        .where(and(inArray(seats.id, sel.seatIds), eq(seats.tableId, sel.tableId)));
+      if (valid.length !== sel.seatIds.length)
+        return NextResponse.json({ error: "Sièges invalides" }, { status: 400 });
+    }
+
+    const seatToTable = new Map(
+      selections.flatMap(({ tableId: tid, seatIds }) => seatIds.map((sid) => [sid, tid]))
+    );
+
+    const result = await holdSeatIds(sessionId, eventId, expiresAt, seatToTable, false);
+    if ("error" in result)
+      return NextResponse.json({ error: result.error }, { status: result.status });
+
+    return NextResponse.json({
+      success: true, sessionId, seatIds: allSeatIds,
+      expiresAt: expiresAt.toISOString(), isVip: false,
+    });
+  }
+
+  return NextResponse.json({ error: "Paramètres invalides" }, { status: 400 });
 }
 
 export async function DELETE() {

@@ -11,7 +11,7 @@ import { eq, inArray } from "drizzle-orm";
 import { verifyAdmin } from "@/lib/admin";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { UPSELL_OPTIONS } from "@/types";
+import { DANCER_MEAL_OPTIONS } from "@/types";
 import { ReservationEditor } from "./ReservationEditor";
 
 export const dynamic = "force-dynamic";
@@ -181,16 +181,19 @@ export default async function AdminReservationPage({ params }: Props) {
 
       {upsells.length > 0 && (
         <div className="bg-[#0f0f0f] rounded-2xl border border-[#1e1a0e] p-5">
-          <h2 className="text-xs font-semibold text-[#555] uppercase tracking-widest mb-4">Extras</h2>
+          <h2 className="text-xs font-semibold text-[#555] uppercase tracking-widest mb-4">Repas Danseur</h2>
           <div className="space-y-2">
-            {upsells.map((u) => {
-              const option = UPSELL_OPTIONS.find((o) => o.type === u.upsellType);
+            {upsells.map((u, i) => {
+              const opt = u.mealChoice
+                ? DANCER_MEAL_OPTIONS.find((o) => o.value === u.mealChoice)
+                : null;
               return (
-                <div key={u.id} className="flex justify-between items-center text-sm py-2 border-b border-[#141414] last:border-0">
-                  <span className="text-[#aaa]">
-                    {option?.label || u.upsellType} ×{u.quantity}
+                <div key={u.id} className="flex justify-between items-center text-sm py-2 px-3 bg-[#100e1a] border border-purple-500/15 rounded-lg">
+                  <span className="flex items-center gap-2 text-[#aaa]">
+                    <span className="w-5 h-5 rounded-full bg-purple-500/15 text-purple-300 text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
+                    {opt?.label || u.upsellType}
                   </span>
-                  <span className="font-semibold text-[#c9a227]">
+                  <span className="font-semibold text-purple-300">
                     {((u.unitPrice * u.quantity) / 100).toFixed(2)}€
                   </span>
                 </div>

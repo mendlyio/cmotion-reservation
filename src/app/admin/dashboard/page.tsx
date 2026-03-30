@@ -5,12 +5,13 @@ import {
   seats,
   reservations,
   reservationSeats,
+  reservationUpsells,
 } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { verifyAdmin } from "@/lib/admin";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { MEAL_OPTIONS } from "@/types";
+import { MEAL_OPTIONS, DANCER_MEAL_OPTIONS, DESSERT_LABEL } from "@/types";
 import {
   ClientListSection,
   type ClientReservation,
@@ -65,6 +66,7 @@ export default async function AdminDashboardPage() {
 
     const resIds = paidReservations.map((r) => r.id);
     const mealCounts: Record<string, number> = {};
+    const dancerMealCounts: Record<string, number> = {};
     let dessertCount = 0;
     let guestCount = 0;
 
@@ -77,9 +79,19 @@ export default async function AdminDashboardPage() {
       guestCount = allGuests.length;
 
       for (const guest of allGuests) {
-        mealCounts[guest.mealChoice] =
-          (mealCounts[guest.mealChoice] || 0) + 1;
+        mealCounts[guest.mealChoice] = (mealCounts[guest.mealChoice] || 0) + 1;
         if (guest.hasDessert) dessertCount++;
+      }
+
+      const allUpsells = await db
+        .select()
+        .from(reservationUpsells)
+        .where(inArray(reservationUpsells.reservationId, resIds));
+
+      for (const u of allUpsells) {
+        if (u.upsellType === "repas_danseur" && u.mealChoice) {
+          dancerMealCounts[u.mealChoice] = (dancerMealCounts[u.mealChoice] || 0) + u.quantity;
+        }
       }
     }
 
@@ -98,6 +110,7 @@ export default async function AdminDashboardPage() {
       mealCounts,
       dessertCount,
       guestCount,
+      dancerMealCounts,
     });
 
     const allResIds = eventReservations.map((r) => r.id);
@@ -336,27 +349,35 @@ export default async function AdminDashboardPage() {
               {/* Meal counts */}
               <div>
                 <h3 className="text-xs font-semibold text-[#666] uppercase tracking-widest mb-3">
-                  Liste traiteur
+                  Liste traiteur — Convives
                 </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mb-3">
                   {MEAL_OPTIONS.map((meal) => (
-                    <div
-                      key={meal.value}
-                      className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-3"
-                    >
+                    <div key={meal.value} className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-3">
                       <p className="text-xs text-[#666] mb-1 truncate">{meal.label}</p>
-                      <p className="text-2xl font-bold text-white">
-                        {s.mealCounts[meal.value] || 0}
-                      </p>
+                      <p className="text-2xl font-bold text-white">{s.mealCounts[meal.value] || 0}</p>
                     </div>
                   ))}
                   <div className="bg-[#1a1500] border border-[#c9a227]/20 rounded-xl p-3">
-                    <p className="text-xs text-[#c9a227]/70 mb-1">Tiramisu</p>
-                    <p className="text-2xl font-bold text-[#c9a227]">
-                      {s.dessertCount}
-                    </p>
+                    <p className="text-xs text-[#c9a227]/70 mb-1">{DESSERT_LABEL}</p>
+                    <p className="text-2xl font-bold text-[#c9a227]">{s.dessertCount}</p>
                   </div>
                 </div>
+                {Object.values(s.dancerMealCounts).some((c) => c > 0) && (
+                  <>
+                    <h3 className="text-xs font-semibold text-[#666] uppercase tracking-widest mb-3 mt-2">
+                      Repas Danseur
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {DANCER_MEAL_OPTIONS.map((opt) => (
+                        <div key={opt.value} className="bg-[#100e1a] border border-purple-500/20 rounded-xl p-3">
+                          <p className="text-xs text-purple-400/70 mb-1 truncate">{opt.label}</p>
+                          <p className="text-2xl font-bold text-purple-300">{s.dancerMealCounts[opt.value] || 0}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

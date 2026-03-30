@@ -3,7 +3,9 @@ import {
   events,
   tables,
   seats,
+  reservations,
   reservationSeats,
+  reservationUpsells,
 } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { verifyAdmin } from "@/lib/admin";
@@ -11,18 +13,21 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { MEAL_OPTIONS } from "@/types";
 import { AdminSeatingView } from "./AdminSeatingView";
+import { EnveloppeView, type Enveloppe } from "@/components/admin/EnveloppeView";
 
 export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ eventId: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }
 
-export default async function AdminEventPage({ params }: Props) {
+export default async function AdminEventPage({ params, searchParams }: Props) {
   const isAdmin = await verifyAdmin();
   if (!isAdmin) redirect("/admin");
 
   const { eventId: eidStr } = await params;
+  const { tab = "plan" } = await searchParams;
   const eventId = parseInt(eidStr);
   if (isNaN(eventId)) notFound();
 
@@ -38,10 +43,7 @@ export default async function AdminEventPage({ params }: Props) {
   const tableIds = eventTables.map((t) => t.id);
   let allSeats: (typeof seats.$inferSelect)[] = [];
   if (tableIds.length > 0) {
-    allSeats = await db
-      .select()
-      .from(seats)
-      .where(inArray(seats.tableId, tableIds));
+    allSeats = await db.select().from(seats).where(inArray(seats.tableId, tableIds));
   }
 
   const tablesWithSeats = eventTables.map((table) => ({
@@ -49,145 +51,165 @@ export default async function AdminEventPage({ params }: Props) {
     seats: allSeats.filter((s) => s.tableId === table.id),
   }));
 
-  const reservedSeatIds = allSeats
-    .filter((s) => s.status === "reserved")
-    .map((s) => s.id);
-
-  const guestBySeat: Record<
-    number,
-    { firstName: string; lastName: string; mealChoice: string; reservationId: number }
-  > = {};
+  const reservedSeatIds = allSeats.filter((s) => s.status === "reserved").map((s) => s.id);
+  const guestBySeat: Record<number, { firstName: string; lastName: string; mealChoice: string; reservationId: number }> = {};
 
   if (reservedSeatIds.length > 0) {
-    const resSeats = await db
-      .select()
-      .from(reservationSeats)
-      .where(inArray(reservationSeats.seatId, reservedSeatIds));
-
+    const resSeats = await db.select().from(reservationSeats).where(inArray(reservationSeats.seatId, reservedSeatIds));
     for (const rs of resSeats) {
-      guestBySeat[rs.seatId] = {
-        firstName: rs.firstName,
-        lastName: rs.lastName,
-        mealChoice: rs.mealChoice,
-        reservationId: rs.reservationId,
-      };
+      guestBySeat[rs.seatId] = { firstName: rs.firstName, lastName: rs.lastName, mealChoice: rs.mealChoice, reservationId: rs.reservationId };
     }
   }
 
   const tableDetails = eventTables.map((table) => {
     const tableSeats = allSeats.filter((s) => s.tableId === table.id);
     const reserved = tableSeats.filter((s) => s.status === "reserved");
-    const guests = reserved
-      .map((s) => guestBySeat[s.id])
-      .filter(Boolean);
+    const guests = reserved.map((s) => guestBySeat[s.id]).filter(Boolean);
+    return { table, totalSeats: tableSeats.length, reservedCount: reserved.length, guests };
+  });
+
+  // Build envelopes (paid reservations only)
+  const allReservations = await db.select().from(reservations).where(eq(reservations.eventId, eventId));
+  const paidOnes = allReservations.filter((r) => r.stripeStatus === "paid");
+  const paidIds = paidOnes.map((r) => r.id);
+
+  let allResSeats: (typeof reservationSeats.$inferSelect)[] = [];
+  let allUpsells: (typeof reservationUpsells.$inferSelect)[] = [];
+
+  if (paidIds.length > 0) {
+    allResSeats = await db.select().from(reservationSeats).where(inArray(reservationSeats.reservationId, paidIds));
+    allUpsells = await db.select().from(reservationUpsells).where(inArray(reservationUpsells.reservationId, paidIds));
+  }
+
+  // Build seat→table map for envelope table info
+  const seatToTable: Record<number, { rowNumber: number; tableNumber: number; isVip: boolean }> = {};
+  const rsSeatIds = allResSeats.map((rs) => rs.seatId);
+  if (rsSeatIds.length > 0) {
+    const sd = await db.select({ id: seats.id, tableId: seats.tableId }).from(seats).where(inArray(seats.id, rsSeatIds));
+    const tIds = [...new Set(sd.map((s) => s.tableId))];
+    if (tIds.length > 0) {
+      const td = await db
+        .select({ id: tables.id, rowNumber: tables.rowNumber, tableNumber: tables.tableNumber, isVip: tables.isVip })
+        .from(tables)
+        .where(inArray(tables.id, tIds));
+      const tMap: Record<number, { rowNumber: number; tableNumber: number; isVip: boolean }> = {};
+      for (const t of td) tMap[t.id] = t;
+      for (const s of sd) { if (tMap[s.tableId]) seatToTable[s.id] = tMap[s.tableId]; }
+    }
+  }
+
+  const envelopes: Enveloppe[] = paidOnes.map((r) => {
+    const guests = allResSeats
+      .filter((rs) => rs.reservationId === r.id)
+      .map((rs) => ({ firstName: rs.firstName, lastName: rs.lastName, mealChoice: rs.mealChoice, hasDessert: rs.hasDessert }));
+
+    const dancerMeals = allUpsells
+      .filter((u) => u.reservationId === r.id && u.upsellType === "repas_danseur")
+      .map((u) => ({ mealChoice: u.mealChoice, quantity: u.quantity }));
+
+    const firstSeatId = allResSeats.find((rs) => rs.reservationId === r.id)?.seatId;
+    const tableData = firstSeatId ? seatToTable[firstSeatId] : null;
 
     return {
-      table,
-      totalSeats: tableSeats.length,
-      reservedCount: reserved.length,
+      reservationId: r.id,
+      referentStudent: r.referentStudent,
+      tableInfo: tableData ? `${tableData.rowNumber}-${tableData.tableNumber}` : "—",
+      isVip: tableData?.isVip ?? false,
       guests,
+      dancerMeals,
     };
   });
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-      {/* Breadcrumb */}
-      <Link
-        href="/admin/dashboard"
-        className="inline-flex items-center gap-1.5 text-sm text-[#555] hover:text-[#c9a227] transition-colors group"
-      >
-        <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-        </svg>
-        Dashboard
-      </Link>
+  const TABS = [
+    { key: "plan", label: "Plan de salle" },
+    { key: "tables", label: "Détail tables" },
+    { key: "envelopes", label: `Enveloppes (${envelopes.length})` },
+  ];
 
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white">{event.name}</h1>
-        <p className="text-sm text-[#555] mt-0.5">
-          {new Date(event.eventDate).toLocaleDateString("fr-FR", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-          })}{" "}
-          · {event.timeInfo}
-        </p>
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <Link href="/admin/dashboard" className="text-sm text-[#666] hover:text-[#aaa] mb-1 inline-block">← Dashboard</Link>
+          <h1 className="text-2xl font-bold text-white">{event.name}</h1>
+          <p className="text-[#555] text-sm">
+            {new Date(event.eventDate).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} — {event.timeInfo}
+          </p>
+        </div>
       </div>
 
-      {/* Seating plan */}
-      <div className="bg-[#0f0f0f] rounded-2xl border border-[#1e1a0e] overflow-hidden">
-        <div className="px-5 sm:px-6 py-4 border-b border-[#1a1a1a]">
-          <h2 className="text-xs font-semibold text-[#555] uppercase tracking-widest">Plan de salle</h2>
-        </div>
-        <div className="p-5 sm:p-6">
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-[#1e1e1e] mb-6">
+        {TABS.map((t) => (
+          <Link
+            key={t.key}
+            href={`/admin/events/${eventId}?tab=${t.key}`}
+            className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
+              tab === t.key
+                ? "bg-[#1a1a1a] border border-b-[#1a1a1a] border-[#2a2a2a] text-white -mb-px"
+                : "text-[#555] hover:text-[#aaa]"
+            }`}
+          >
+            {t.label}
+          </Link>
+        ))}
+      </div>
+
+      {tab === "plan" && (
+        <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-6">
+          <h2 className="text-lg font-semibold mb-4 text-white">Plan de salle</h2>
           <AdminSeatingView tables={tablesWithSeats} eventId={eventId} />
         </div>
-      </div>
+      )}
 
-      {/* Table-by-table list */}
-      <div className="bg-[#0f0f0f] rounded-2xl border border-[#1e1a0e] overflow-hidden">
-        <div className="px-5 sm:px-6 py-4 border-b border-[#1a1a1a]">
-          <h2 className="text-xs font-semibold text-[#555] uppercase tracking-widest">Détail par table</h2>
-        </div>
-
-        <div className="divide-y divide-[#141414]">
-          {tableDetails.map(({ table, totalSeats, reservedCount, guests }) => (
-            <div key={table.id} className="p-5 sm:px-6">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-white text-sm">
+      {tab === "tables" && (
+        <div className="bg-[#111] rounded-xl border border-[#1e1e1e]">
+          <div className="p-6 border-b border-[#1e1e1e]">
+            <h2 className="text-lg font-semibold text-white">Détail par table</h2>
+          </div>
+          <div className="divide-y divide-[#1a1a1a]">
+            {tableDetails.map(({ table, totalSeats, reservedCount, guests }) => (
+              <div key={table.id} className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium text-white">
                     Table {table.rowNumber}-{table.tableNumber}
+                    {table.isVip && <span className="ml-2 text-[#c9a227] text-xs">★ VIP</span>}
                   </h3>
-                  {table.isVip && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-[#c9a227]/15 text-[#c9a227] border border-[#c9a227]/30 uppercase tracking-wider">
-                      VIP ★
-                    </span>
-                  )}
+                  <span className="text-sm text-[#555]">{reservedCount}/{totalSeats} réservés</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-16 bg-[#1a1a1a] rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-[#c9a227] to-[#e4c76b] rounded-full"
-                      style={{ width: totalSeats > 0 ? `${(reservedCount / totalSeats) * 100}%` : "0%" }}
-                    />
+                {guests.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+                    {guests.map((g, i) => {
+                      const meal = MEAL_OPTIONS.find((m) => m.value === g.mealChoice);
+                      return (
+                        <div key={i} className="bg-[#1a1a1a] rounded-lg p-2 text-sm">
+                          <p className="font-medium text-white">{g.firstName} {g.lastName}</p>
+                          <p className="text-[#555] text-xs">{meal?.label || g.mealChoice}</p>
+                          <Link href={`/admin/reservations/${g.reservationId}`} className="text-[#c9a227] text-xs hover:underline">
+                            Rés. #{g.reservationId}
+                          </Link>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <span className="text-xs text-[#555]">
-                    {reservedCount}/{totalSeats}
-                  </span>
-                </div>
+                ) : (
+                  <p className="text-sm text-[#444]">Aucune réservation</p>
+                )}
               </div>
-
-              {guests.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                  {guests.map((g, i) => {
-                    const meal = MEAL_OPTIONS.find((m) => m.value === g.mealChoice);
-                    return (
-                      <div
-                        key={i}
-                        className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-3"
-                      >
-                        <p className="font-medium text-sm text-[#ddd]">
-                          {g.firstName} {g.lastName}
-                        </p>
-                        <p className="text-xs text-[#555] mt-0.5">{meal?.label || g.mealChoice}</p>
-                        <Link
-                          href={`/admin/reservations/${g.reservationId}`}
-                          className="text-[10px] text-[#c9a227] hover:text-[#e4c76b] font-medium mt-1.5 inline-block transition-colors"
-                        >
-                          Rés. #{g.reservationId} →
-                        </Link>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-sm text-[#444]">Aucune réservation</p>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {tab === "envelopes" && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-white">Enveloppes</h2>
+            <p className="text-sm text-[#555]">{envelopes.length} enveloppe{envelopes.length > 1 ? "s" : ""}</p>
+          </div>
+          <EnveloppeView envelopes={envelopes} />
+        </div>
+      )}
     </div>
   );
 }

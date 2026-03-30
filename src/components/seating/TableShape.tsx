@@ -38,7 +38,8 @@ export function TableShape({
   const anyHeld = table.seats.some((s) => s.status === "held") && !isSelected;
   const vip = table.isVip;
   const vipOk = vip && table.seats.every((s) => s.status === "available" || selectedSeatIds.includes(s.id));
-  const canClick = !readOnly && vip && vipOk && !isSelected;
+  const hasAvailNormal = !vip && table.seats.some((s) => s.status === "available" || selectedSeatIds.includes(s.id));
+  const canClick = !readOnly && ((vip && vipOk && !isSelected) || hasAvailNormal);
 
   // Fond de la table
   let fill = "rgba(255,255,255,0.03)";
@@ -49,9 +50,9 @@ export function TableShape({
   // Bordure de la table
   const stroke = vip
     ? (isHovered && canClick ? "#e4c76b" : "#c9a227")
-    : (isSelected ? "#c9a227" : "rgba(255,255,255,0.07)");
+    : (isSelected ? "#c9a227" : isHovered && hasAvailNormal && !readOnly ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.07)");
 
-  const strokeW = vip ? 1.5 : 0.5;
+  const strokeW = vip ? 1.5 : isSelected ? 1 : 0.5;
 
   return (
     <g onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
@@ -64,7 +65,7 @@ export function TableShape({
       {/* Cercle de table */}
       <circle cx={cx} cy={cy} r={tr} fill={fill} stroke={stroke} strokeWidth={strokeW}
         className={canClick ? "cursor-pointer" : ""}
-        onClick={vip ? onTableClick : undefined}
+        onClick={canClick ? onTableClick : undefined}
         onMouseMove={(e) => onMouseMove(e)}
         style={{ transition: "fill .2s, stroke .2s" }}
       />
