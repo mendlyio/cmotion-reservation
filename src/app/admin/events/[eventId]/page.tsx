@@ -11,7 +11,7 @@ import { eq, inArray } from "drizzle-orm";
 import { verifyAdmin } from "@/lib/admin";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { MEAL_OPTIONS, getTableLabel } from "@/types";
+import { MEAL_OPTIONS, getTableLabel, getSeatLabel } from "@/types";
 import { AdminSeatingView } from "./AdminSeatingView";
 import { EnveloppeView, type Enveloppe } from "@/components/admin/EnveloppeView";
 
@@ -103,7 +103,14 @@ export default async function AdminEventPage({ params, searchParams }: Props) {
   const envelopes: Enveloppe[] = paidOnes.map((r) => {
     const guests = allResSeats
       .filter((rs) => rs.reservationId === r.id)
-      .map((rs) => ({ firstName: rs.firstName, lastName: rs.lastName, mealChoice: rs.mealChoice, hasDessert: rs.hasDessert, seatNumber: seatNumberMap[rs.seatId] ?? 0 }));
+      .map((rs) => {
+        const tableData = seatToTable[rs.seatId];
+        const seatNum = seatNumberMap[rs.seatId] ?? 0;
+        const placement = tableData
+          ? `T${getTableLabel(tableData.rowNumber, tableData.tableNumber)} - ${getSeatLabel(seatNum)}`
+          : getSeatLabel(seatNum);
+        return { firstName: rs.firstName, lastName: rs.lastName, mealChoice: rs.mealChoice, hasDessert: rs.hasDessert, placement };
+      });
 
     const dancerMeals = allUpsells
       .filter((u) => u.reservationId === r.id && u.upsellType === "repas_danseur")

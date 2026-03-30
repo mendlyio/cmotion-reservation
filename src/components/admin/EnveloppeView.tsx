@@ -1,11 +1,11 @@
-import { MEAL_OPTIONS, DANCER_MEAL_OPTIONS, DESSERT_LABEL, getSeatLabel } from "@/types";
+import { MEAL_OPTIONS, DANCER_MEAL_OPTIONS, DESSERT_LABEL } from "@/types";
 
 interface Guest {
   firstName: string;
   lastName: string;
   mealChoice: string;
   hasDessert: boolean;
-  seatNumber: number;
+  placement: string;
 }
 
 interface DancerMeal {
@@ -74,8 +74,8 @@ export function EnveloppeView({ envelopes }: Props) {
                     return (
                       <div key={i} className="flex items-center justify-between bg-[#141414] rounded-lg px-3 py-2">
                         <div className="flex items-center gap-2">
-                          <span className="shrink-0 w-5 h-5 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] text-[#888] text-[10px] font-bold flex items-center justify-center">
-                            {getSeatLabel(g.seatNumber)}
+                          <span className="shrink-0 h-5 px-1.5 rounded bg-[#1c1600] border border-[#c9a227]/30 text-[#c9a227] text-[10px] font-bold flex items-center justify-center tracking-wide">
+                            {g.placement}
                           </span>
                           <span className="text-sm font-medium text-white">{g.firstName} {g.lastName}</span>
                         </div>

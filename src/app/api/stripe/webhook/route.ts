@@ -13,7 +13,7 @@ import {
 import { eq, inArray, and } from "drizzle-orm";
 import { resend } from "@/lib/resend";
 import { renderConfirmationEmail } from "@/emails/ConfirmationEmail";
-import { getTableLabel } from "@/types";
+import { getTableLabel, getSeatLabel } from "@/types";
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -92,35 +92,44 @@ export async function POST(request: NextRequest) {
           .from(reservationUpsells)
           .where(eq(reservationUpsells.reservationId, reservationId));
 
-        // Resolve table info from first guest's seat
+        // Resolve placement (table + seat) for each guest
         let tableInfo: string | undefined;
         let isVip = false;
-        if (guestList.length > 0) {
-          const [seatRow] = await db
-            .select({ tableId: seats.tableId })
-            .from(seats)
-            .where(eq(seats.id, guestList[0].seatId));
-          if (seatRow) {
-            const [tableRow] = await db
-              .select({ rowNumber: tables.rowNumber, tableNumber: tables.tableNumber, isVip: tables.isVip })
-              .from(tables)
-              .where(eq(tables.id, seatRow.tableId));
-            if (tableRow) {
-              tableInfo = `${getTableLabel(tableRow.rowNumber, tableRow.tableNumber)}`;
-              isVip = tableRow.isVip;
-            }
-          }
-        }
+        const placementMap: Record<number, string> = {};
 
-        // Resolve seat numbers for each guest
         const guestSeatIds = guestList.map((g) => g.seatId);
-        const seatNumMap: Record<number, number> = {};
         if (guestSeatIds.length > 0) {
           const seatRows = await db
-            .select({ id: seats.id, seatNumber: seats.seatNumber })
+            .select({ id: seats.id, seatNumber: seats.seatNumber, tableId: seats.tableId })
             .from(seats)
             .where(inArray(seats.id, guestSeatIds));
-          for (const s of seatRows) seatNumMap[s.id] = s.seatNumber;
+
+          const tableIds = [...new Set(seatRows.map((s) => s.tableId))];
+          const tableRows = tableIds.length > 0
+            ? await db
+                .select({ id: tables.id, rowNumber: tables.rowNumber, tableNumber: tables.tableNumber, isVip: tables.isVip })
+                .from(tables)
+                .where(inArray(tables.id, tableIds))
+            : [];
+          const tMap: Record<number, typeof tableRows[0]> = {};
+          for (const t of tableRows) tMap[t.id] = t;
+
+          for (const s of seatRows) {
+            const t = tMap[s.tableId];
+            if (t) {
+              placementMap[s.id] = `T${getTableLabel(t.rowNumber, t.tableNumber)} - ${getSeatLabel(s.seatNumber)}`;
+            }
+          }
+
+          // tableInfo from first guest's seat
+          const firstSeat = seatRows.find((s) => s.id === guestList[0].seatId);
+          if (firstSeat) {
+            const t = tMap[firstSeat.tableId];
+            if (t) {
+              tableInfo = `${getTableLabel(t.rowNumber, t.tableNumber)}`;
+              isVip = t.isVip;
+            }
+          }
         }
 
         const html = renderConfirmationEmail({
@@ -137,7 +146,7 @@ export async function POST(request: NextRequest) {
             lastName: g.lastName,
             mealChoice: g.mealChoice,
             hasDessert: g.hasDessert,
-            seatNumber: seatNumMap[g.seatId],
+            placement: placementMap[g.seatId],
           })),
           upsells: upsellList.map((u) => ({
             type: u.upsellType,

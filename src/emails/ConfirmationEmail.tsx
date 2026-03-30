@@ -1,4 +1,4 @@
-import { MEAL_OPTIONS, DANCER_MEAL_OPTIONS, DESSERT_LABEL, getSeatLabel } from "@/types";
+import { MEAL_OPTIONS, DANCER_MEAL_OPTIONS, DESSERT_LABEL } from "@/types";
 
 interface ConfirmationEmailProps {
   reservationId: number;
@@ -14,7 +14,7 @@ interface ConfirmationEmailProps {
     lastName: string;
     mealChoice: string;
     hasDessert: boolean;
-    seatNumber?: number;
+    placement?: string;
   }[];
   upsells?: { type: string; quantity: number; unitPrice: number; mealChoice?: string | null }[];
 }
@@ -43,12 +43,12 @@ export function renderConfirmationEmail(props: ConfirmationEmailProps): string {
   const guestRows = guests
     .map((g) => {
       const meal = MEAL_OPTIONS.find((m) => m.value === g.mealChoice)?.label || g.mealChoice;
-      const seatBadge = g.seatNumber
-        ? `<span style="display:inline-block;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700;color:#64748b;margin-right:6px;">${getSeatLabel(g.seatNumber)}</span>`
+      const placementBadge = g.placement
+        ? `<span style="display:inline-block;background:#1e293b;border:1px solid #334155;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;color:#e2e8f0;margin-right:7px;letter-spacing:0.5px;">${g.placement}</span>`
         : "";
       return `
         <tr>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${seatBadge}${g.firstName} ${g.lastName}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${placementBadge}${g.firstName} ${g.lastName}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${meal}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${g.hasDessert ? DESSERT_LABEL : "—"}</td>
         </tr>
@@ -80,16 +80,15 @@ export function renderConfirmationEmail(props: ConfirmationEmailProps): string {
     <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
       <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
         <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-          <div style="background: linear-gradient(135deg, #1e293b, #334155); padding: 32px; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">Cmotion Réservation</h1>
-            <p style="color: #94a3b8; margin: 8px 0 0;">Confirmation de votre réservation</p>
+          <div style="background: linear-gradient(135deg, #0f0c00, #1c1600); padding: 36px 32px 28px; text-align: center;">
+            <p style="color: #c9a227; margin: 0 0 4px; font-size: 11px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;">Cmotion</p>
+            <h1 style="color: #e4c76b; margin: 0 0 6px; font-size: 30px; font-weight: 800; letter-spacing: 1px;">Sans filtre</h1>
+            <p style="color: #94a3b8; margin: 0 0 16px; font-size: 13px; font-style: italic;">Et si ce spectacle cachait bien plus que ce que vous imaginez…</p>
+            <div style="display:inline-block;background:#c9a227;color:#0f0c00;font-size:12px;font-weight:700;padding:4px 14px;border-radius:20px;letter-spacing:1px;">✓ Réservation confirmée</div>
           </div>
 
           <div style="padding: 32px;">
-            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-bottom: 24px; text-align: center;">
-              <p style="margin: 0; color: #15803d; font-weight: 600; font-size: 16px;">✓ Paiement confirmé</p>
-              <p style="margin: 4px 0 0; color: #166534; font-size: 14px;">Réservation #${reservationId}</p>
-            </div>
+            <p style="margin: 0 0 24px; color: #64748b; font-size: 13px; text-align: center;">Réservation <strong style="color:#1e293b;">#${reservationId}</strong></p>
 
             <h2 style="color: #1e293b; font-size: 18px; margin: 0 0 16px;">Détails de l'événement</h2>
             <table style="width: 100%; margin-bottom: 24px;">
@@ -104,7 +103,7 @@ export function renderConfirmationEmail(props: ConfirmationEmailProps): string {
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
               <thead>
                 <tr style="background: #f1f5f9;">
-                  <th style="padding: 8px 12px; text-align: left; font-size: 13px; color: #64748b;">Nom</th>
+                  <th style="padding: 8px 12px; text-align: left; font-size: 13px; color: #64748b;">Nom · Place</th>
                   <th style="padding: 8px 12px; text-align: left; font-size: 13px; color: #64748b;">Repas</th>
                   <th style="padding: 8px 12px; text-align: left; font-size: 13px; color: #64748b;">Dessert</th>
                 </tr>
