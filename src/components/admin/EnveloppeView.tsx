@@ -91,6 +91,21 @@ export function EnveloppeView({ envelopes }: Props) {
                 </div>
               </div>
 
+              {/* Récap places */}
+              <div>
+                <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest mb-2">Récap Places</p>
+                <div className="space-y-1">
+                  {env.guests.map((g, i) => (
+                    <div key={i} className="flex items-center justify-between bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg px-3 py-1.5">
+                      <span className="text-sm text-white font-medium">{g.firstName} {g.lastName}</span>
+                      <span className="shrink-0 h-5 px-2 rounded bg-[#1c1600] border border-[#c9a227]/30 text-[#c9a227] text-[10px] font-bold flex items-center justify-center tracking-wide ml-2">
+                        {g.placement}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Récapitulatif tickets */}
               <div>
                 <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest mb-2">Récap Tickets</p>
