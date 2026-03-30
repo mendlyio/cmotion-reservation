@@ -107,15 +107,25 @@ export async function POST(request: NextRequest) {
     .returning();
 
   // Create reservation seats (VIP tables always include dessert)
-  for (const guest of guests) {
-    await db.insert(reservationSeats).values({
-      reservationId: reservation.id,
-      seatId: guest.seatId,
-      firstName: guest.firstName,
-      lastName: guest.lastName,
-      mealChoice: guest.mealChoice,
-      hasDessert: isVip ? true : guest.hasDessert,
-    });
+  // UNIQUE constraint on seatId at DB level prevents any race-condition double-booking
+  try {
+    for (const guest of guests) {
+      await db.insert(reservationSeats).values({
+        reservationId: reservation.id,
+        seatId: guest.seatId,
+        firstName: guest.firstName,
+        lastName: guest.lastName,
+        mealChoice: guest.mealChoice,
+        hasDessert: isVip ? true : guest.hasDessert,
+      });
+    }
+  } catch {
+    // Unique violation: another reservation already claimed one of these seats
+    await db.delete(reservations).where(eq(reservations.id, reservation.id));
+    return NextResponse.json(
+      { error: "Ces sièges viennent d'être réservés par quelqu'un d'autre. Veuillez recommencer." },
+      { status: 409 }
+    );
   }
 
   // Create upsells — each repas_danseur entry has its own mealChoice

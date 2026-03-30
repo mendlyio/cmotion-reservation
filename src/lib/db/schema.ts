@@ -102,7 +102,10 @@ export const reservationSeats = pgTable("reservation_seats", {
   mealChoice: text("meal_choice").notNull(),
   hasDessert: boolean("has_dessert").notNull().default(false),
   adminNotes: text("admin_notes"),
-});
+}, (t) => [
+  // Garantit qu'un siège ne peut apparaître que dans UNE SEULE réservation
+  unique("reservation_seats_seat_id_unique").on(t.seatId),
+]);
 
 export const reservationUpsells = pgTable("reservation_upsells", {
   id: serial("id").primaryKey(),
