@@ -300,7 +300,7 @@ export default async function AdminDashboardPage() {
                   {date} · {s.event.timeInfo}
                 </p>
               </div>
-              <div className="flex gap-2 pl-3.5 sm:pl-0">
+              <div className="flex gap-2 pl-3.5 sm:pl-0 flex-wrap">
                 <Link
                   href={`/admin/events/${s.event.id}`}
                   className="flex items-center gap-1.5 px-3 py-2 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] hover:border-[#c9a227]/30 rounded-xl text-xs font-medium text-[#aaa] hover:text-[#c9a227] transition-all"
@@ -309,6 +309,15 @@ export default async function AdminDashboardPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 20.25H5.25A2.25 2.25 0 013 18V6.75A2.25 2.25 0 015.25 4.5H9m6 15.75h3.75A2.25 2.25 0 0021 18V6.75A2.25 2.25 0 0018.75 4.5H15M12 3v18" />
                   </svg>
                   Plan de salle
+                </Link>
+                <Link
+                  href={`/admin/events/${s.event.id}?tab=envelopes`}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-[#1a1500] hover:bg-[#1c1a00] border border-[#c9a227]/25 hover:border-[#c9a227]/50 rounded-xl text-xs font-medium text-[#c9a227] transition-all"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 9v.906a2.25 2.25 0 01-1.183 1.981l-6.478 3.488M2.25 9v.906a2.25 2.25 0 001.183 1.981l6.478 3.488m8.839 2.51l-4.66-2.51m0 0l-1.023-.55a2.25 2.25 0 00-2.134 0l-1.022.55m0 0l-4.661 2.51m16.5 1.615a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V8.844a2.25 2.25 0 011.183-1.98l7.5-4.04a2.25 2.25 0 012.134 0l7.5 4.04a2.25 2.25 0 011.183 1.98V19.5z" />
+                  </svg>
+                  Enveloppes
                 </Link>
                 <Link
                   href={`/api/admin/export/${s.event.id}`}
