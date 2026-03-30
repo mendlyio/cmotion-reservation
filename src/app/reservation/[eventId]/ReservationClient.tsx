@@ -19,10 +19,14 @@ export function ReservationClient({ event }: { event: EventData }) {
   const [floatingHidden, setFloatingHidden] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
 
-  // Refs for debounce
+  // ── Serialized hold engine ──────────────────────────────────────────────
+  // Ensures only ONE API call is in-flight at a time.
+  // Any request that arrives while a call is in-flight becomes the "next" state
+  // and fires immediately after the current call completes.
   const tablesRef = useRef<TableWithSeats[]>(tables);
-  const addTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingAddSeats = useRef<number[]>([]);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inFlightRef = useRef(false);
+  const nextSeatIds = useRef<number[] | null>(null); // queued desired state
   useEffect(() => { tablesRef.current = tables; }, [tables]);
 
   // Derive involved tables from selection
@@ -53,48 +57,63 @@ export function ReservationClient({ event }: { event: EventData }) {
     return Array.from(byTable.entries()).map(([tableId, tSeatIds]) => ({ tableId, seatIds: tSeatIds }));
   };
 
-  // Immediate hold — used for DESELECTS (no debounce)
-  const holdNow = useCallback(async (seatIds: number[]) => {
-    if (addTimerRef.current) { clearTimeout(addTimerRef.current); addTimerRef.current = null; }
-    pendingAddSeats.current = [];
-    const selections = buildSelections(seatIds);
-    if (!selections.length) return false;
+  // The single API executor — runs one call at a time, drains the queue
+  const executeHold = useCallback(async (seatIds: number[]): Promise<boolean> => {
+    if (inFlightRef.current) {
+      // Another call is running — queue this state, it will fire when done
+      nextSeatIds.current = seatIds;
+      return true;
+    }
+
+    inFlightRef.current = true;
     setHolding(true);
+    let ok = false;
     try {
+      const selections = buildSelections(seatIds);
+      if (!selections.length) { ok = true; return true; }
+
       const r = await fetch("/api/hold", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ eventId: event.id, selections }),
       });
-      if (!r.ok) { toast.error((await r.json()).error || "Indisponible"); return false; }
+      if (!r.ok) {
+        const err = await r.json();
+        toast.error(err.error || "Indisponible");
+        setSelSeats([]);
+        return false;
+      }
       setHoldExp((await r.json()).expiresAt);
       await fetch_();
+      ok = true;
       return true;
-    } catch { toast.error("Erreur"); return false; }
-    finally { setHolding(false); }
+    } catch {
+      toast.error("Erreur");
+      setSelSeats([]);
+      return false;
+    } finally {
+      inFlightRef.current = false;
+      setHolding(false);
+      // Drain queue: if a newer state arrived while we were in-flight, execute it now
+      if (ok && nextSeatIds.current !== null) {
+        const queued = nextSeatIds.current;
+        nextSeatIds.current = null;
+        executeHold(queued);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event.id, fetch_]);
 
-  // Debounced hold — used for ADDS (batches rapid clicks)
-  const holdDebounced = useCallback((seatIds: number[]) => {
-    pendingAddSeats.current = seatIds;
-    if (addTimerRef.current) clearTimeout(addTimerRef.current);
-    addTimerRef.current = setTimeout(async () => {
-      const ids = pendingAddSeats.current;
-      if (!ids.length) return;
-      const selections = buildSelections(ids);
-      if (!selections.length) return;
-      setHolding(true);
-      try {
-        const r = await fetch("/api/hold", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ eventId: event.id, selections }),
-        });
-        if (!r.ok) { toast.error((await r.json()).error || "Indisponible"); setSelSeats([]); return; }
-        setHoldExp((await r.json()).expiresAt);
-        await fetch_();
-      } catch { toast.error("Erreur"); setSelSeats([]); }
-      finally { setHolding(false); }
-    }, 380);
-  }, [event.id, fetch_]);
+  // Schedule hold with delay (for ADDS — batches rapid clicks)
+  const holdAfterDelay = useCallback((seatIds: number[], delayMs: number) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => executeHold(seatIds), delayMs);
+  }, [executeHold]);
+
+  // Immediate hold (for DESELECTS — must fire right away)
+  const holdNow = useCallback((seatIds: number[]) => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    return executeHold(seatIds);
+  }, [executeHold]);
 
   const holdVip = async (tid: number) => {
     setHolding(true);
@@ -112,8 +131,8 @@ export function ReservationClient({ event }: { event: EventData }) {
   };
 
   const release = async () => {
-    if (addTimerRef.current) { clearTimeout(addTimerRef.current); addTimerRef.current = null; }
-    pendingAddSeats.current = [];
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    nextSeatIds.current = null;
     try { await fetch("/api/hold", { method: "DELETE" }); } catch {}
     setHoldExp(null);
   };
@@ -154,7 +173,7 @@ export function ReservationClient({ event }: { event: EventData }) {
         const n = [...otherSeats, ...sids];
         const firstTime = selSeats.length === 0;
         setSelSeats(n);
-        holdDebounced(n);
+        holdAfterDelay(n, 300);
         if (firstTime) setFloatingHidden(false);
       }
       return;
@@ -165,17 +184,17 @@ export function ReservationClient({ event }: { event: EventData }) {
     const isSel = selSeats.includes(sid);
 
     if (isSel) {
-      // DESELECT → immediate
+      // DESELECT → immediate (timer annulé, exécution dès que le vol en cours termine)
       const n = selSeats.filter((id) => id !== sid);
       if (!n.length) { await release(); setSelSeats([]); await fetch_(); return; }
       setSelSeats(n);
-      await holdNow(n);
+      holdNow(n);
     } else {
-      // ADD → debounced
+      // ADD → délai (agrège les clics rapides)
       const n = [...selSeats, sid];
       const firstTime = selSeats.length === 0;
       setSelSeats(n);
-      holdDebounced(n);
+      holdAfterDelay(n, 300);
       if (firstTime) setFloatingHidden(false);
     }
   };
