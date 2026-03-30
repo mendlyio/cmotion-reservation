@@ -83,9 +83,11 @@ export default async function AdminEventPage({ params, searchParams }: Props) {
 
   // Build seat→table map for envelope table info
   const seatToTable: Record<number, { rowNumber: number; tableNumber: number; isVip: boolean }> = {};
+  const seatNumberMap: Record<number, number> = {};
   const rsSeatIds = allResSeats.map((rs) => rs.seatId);
   if (rsSeatIds.length > 0) {
-    const sd = await db.select({ id: seats.id, tableId: seats.tableId }).from(seats).where(inArray(seats.id, rsSeatIds));
+    const sd = await db.select({ id: seats.id, tableId: seats.tableId, seatNumber: seats.seatNumber }).from(seats).where(inArray(seats.id, rsSeatIds));
+    for (const s of sd) seatNumberMap[s.id] = s.seatNumber;
     const tIds = [...new Set(sd.map((s) => s.tableId))];
     if (tIds.length > 0) {
       const td = await db
@@ -101,7 +103,7 @@ export default async function AdminEventPage({ params, searchParams }: Props) {
   const envelopes: Enveloppe[] = paidOnes.map((r) => {
     const guests = allResSeats
       .filter((rs) => rs.reservationId === r.id)
-      .map((rs) => ({ firstName: rs.firstName, lastName: rs.lastName, mealChoice: rs.mealChoice, hasDessert: rs.hasDessert }));
+      .map((rs) => ({ firstName: rs.firstName, lastName: rs.lastName, mealChoice: rs.mealChoice, hasDessert: rs.hasDessert, seatNumber: seatNumberMap[rs.seatId] ?? 0 }));
 
     const dancerMeals = allUpsells
       .filter((u) => u.reservationId === r.id && u.upsellType === "repas_danseur")

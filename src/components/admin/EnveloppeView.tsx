@@ -1,10 +1,11 @@
-import { MEAL_OPTIONS, DANCER_MEAL_OPTIONS, DESSERT_LABEL } from "@/types";
+import { MEAL_OPTIONS, DANCER_MEAL_OPTIONS, DESSERT_LABEL, getSeatLabel } from "@/types";
 
 interface Guest {
   firstName: string;
   lastName: string;
   mealChoice: string;
   hasDessert: boolean;
+  seatNumber: number;
 }
 
 interface DancerMeal {
@@ -72,7 +73,12 @@ export function EnveloppeView({ envelopes }: Props) {
                     const meal = MEAL_OPTIONS.find((m) => m.value === g.mealChoice);
                     return (
                       <div key={i} className="flex items-center justify-between bg-[#141414] rounded-lg px-3 py-2">
-                        <span className="text-sm font-medium text-white">{g.firstName} {g.lastName}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="shrink-0 w-5 h-5 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] text-[#888] text-[10px] font-bold flex items-center justify-center">
+                            {getSeatLabel(g.seatNumber)}
+                          </span>
+                          <span className="text-sm font-medium text-white">{g.firstName} {g.lastName}</span>
+                        </div>
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-[#666]">{meal?.label || g.mealChoice}</span>
                           {g.hasDessert && (

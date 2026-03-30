@@ -112,6 +112,17 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        // Resolve seat numbers for each guest
+        const guestSeatIds = guestList.map((g) => g.seatId);
+        const seatNumMap: Record<number, number> = {};
+        if (guestSeatIds.length > 0) {
+          const seatRows = await db
+            .select({ id: seats.id, seatNumber: seats.seatNumber })
+            .from(seats)
+            .where(inArray(seats.id, guestSeatIds));
+          for (const s of seatRows) seatNumMap[s.id] = s.seatNumber;
+        }
+
         const html = renderConfirmationEmail({
           reservationId: reservation.id,
           eventName: eventData.name,
@@ -126,6 +137,7 @@ export async function POST(request: NextRequest) {
             lastName: g.lastName,
             mealChoice: g.mealChoice,
             hasDessert: g.hasDessert,
+            seatNumber: seatNumMap[g.seatId],
           })),
           upsells: upsellList.map((u) => ({
             type: u.upsellType,

@@ -1,4 +1,4 @@
-import { MEAL_OPTIONS, DANCER_MEAL_OPTIONS, DESSERT_LABEL } from "@/types";
+import { MEAL_OPTIONS, DANCER_MEAL_OPTIONS, DESSERT_LABEL, getSeatLabel } from "@/types";
 
 interface ConfirmationEmailProps {
   reservationId: number;
@@ -14,6 +14,7 @@ interface ConfirmationEmailProps {
     lastName: string;
     mealChoice: string;
     hasDessert: boolean;
+    seatNumber?: number;
   }[];
   upsells?: { type: string; quantity: number; unitPrice: number; mealChoice?: string | null }[];
 }
@@ -42,9 +43,12 @@ export function renderConfirmationEmail(props: ConfirmationEmailProps): string {
   const guestRows = guests
     .map((g) => {
       const meal = MEAL_OPTIONS.find((m) => m.value === g.mealChoice)?.label || g.mealChoice;
+      const seatBadge = g.seatNumber
+        ? `<span style="display:inline-block;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700;color:#64748b;margin-right:6px;">${getSeatLabel(g.seatNumber)}</span>`
+        : "";
       return `
         <tr>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${g.firstName} ${g.lastName}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${seatBadge}${g.firstName} ${g.lastName}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${meal}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${g.hasDessert ? DESSERT_LABEL : "—"}</td>
         </tr>
