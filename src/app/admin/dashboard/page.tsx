@@ -16,6 +16,7 @@ import {
   ClientListSection,
   type ClientReservation,
 } from "@/components/admin/ClientListSection";
+import { EventToggleButton } from "@/components/admin/EventToggleButton";
 
 export const dynamic = "force-dynamic";
 
@@ -301,6 +302,7 @@ export default async function AdminDashboardPage() {
                 </p>
               </div>
               <div className="flex gap-2 pl-3.5 sm:pl-0 flex-wrap">
+                <EventToggleButton eventId={s.event.id} isActive={s.event.isActive} />
                 <Link
                   href={`/admin/events/${s.event.id}`}
                   className="flex items-center gap-1.5 px-3 py-2 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] hover:border-[#c9a227]/30 rounded-xl text-xs font-medium text-[#aaa] hover:text-[#c9a227] transition-all"
