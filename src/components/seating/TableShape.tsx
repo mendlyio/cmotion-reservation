@@ -21,12 +21,11 @@ interface TableShapeProps {
   readOnly: boolean;
 }
 
-// Palette Gala : noir & or
 export const SEAT_COLORS: Record<string, string> = {
-  available: "#4ade80",   // vert vif — libre
+  available: "#4ade80",   // vert — libre
   held:      "#fbbf24",   // ambre — en cours
-  reserved:  "#374151",   // gris sombre — pris
-  selected:  "#c9a227",   // or — ma sélection
+  reserved:  "#374151",   // gris — pris
+  selected:  "#3b82f6",   // bleu — ma sélection
 };
 
 export function TableShape({
@@ -43,14 +42,14 @@ export function TableShape({
 
   // Fond de la table
   let fill = "rgba(255,255,255,0.03)";
-  if (isSelected) fill = "rgba(201,162,39,0.15)";
+  if (isSelected) fill = "rgba(59,130,246,0.15)";
   else if (allRes) fill = "rgba(55,65,81,0.15)";
   else if (anyHeld) fill = "rgba(251,191,36,0.08)";
 
   // Bordure de la table
   const stroke = vip
     ? (isHovered && canClick ? "#e4c76b" : "#c9a227")
-    : (isSelected ? "#c9a227" : isHovered && hasAvailNormal && !readOnly ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.07)");
+    : (isSelected ? "#3b82f6" : isHovered && hasAvailNormal && !readOnly ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.07)");
 
   const strokeW = vip ? 1.5 : isSelected ? 1 : 0.5;
 
@@ -104,11 +103,11 @@ export function TableShape({
             {/* Halo de sélection */}
             {sel && (
               <circle cx={sx} cy={sy} r={sr + 2.5}
-                fill="none" stroke="#c9a227" strokeWidth={1} opacity={0.4} />
+                fill="none" stroke="#3b82f6" strokeWidth={1} opacity={0.5} />
             )}
             {/* Siège */}
             <circle cx={sx} cy={sy} r={sr} fill={color}
-              stroke={sel ? "#e4c76b" : "rgba(0,0,0,0.35)"} strokeWidth={sel ? 1.5 : 0.5}
+              stroke={sel ? "#93c5fd" : "rgba(0,0,0,0.35)"} strokeWidth={sel ? 1.5 : 0.5}
               pointerEvents="none" style={{ transition: "fill .15s" }}
             />
             {/* Numéro de siège */}

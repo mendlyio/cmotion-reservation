@@ -51,15 +51,27 @@ export function SeatingPlan({
   const containerRef = useRef<HTMLDivElement>(null);
   const svgWrapRef = useRef<HTMLDivElement>(null);
 
-  // Zoom initial modeste adapté à l'écran
+  // Zoom initial adapté à l'écran
   useEffect(() => {
     if (typeof window !== "undefined") {
       const w = window.innerWidth;
       if (w < 480) setScale(1.2);
-      else if (w < 640) setScale(1.0);
       else setScale(1.0);
     }
   }, []);
+
+  // Centrage horizontal du plan à l'ouverture
+  useEffect(() => {
+    if (!svgWrapRef.current || tables.length === 0) return;
+    const el = svgWrapRef.current;
+    // Attendre le prochain frame pour que les dimensions soient calculées
+    requestAnimationFrame(() => {
+      const scrollMax = el.scrollWidth - el.clientWidth;
+      if (scrollMax > 0) el.scrollLeft = scrollMax / 2;
+    });
+  // Ne s'exécute qu'une fois au chargement initial
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tables.length > 0]);
 
   useEffect(() => {
     const iv = setInterval(async () => {
@@ -143,7 +155,7 @@ export function SeatingPlan({
 
   const LEGEND = [
     { c: "#4ade80", l: "Libre",        filled: true  },
-    { c: "#c9a227", l: "Ma sélection", filled: true  },
+    { c: "#3b82f6", l: "Ma sélection", filled: true  },
     { c: "#fbbf24", l: "En cours",     filled: true  },
     { c: "#374151", l: "Réservé",      filled: true  },
     { c: "#c9a227", l: "VIP",          filled: false },
