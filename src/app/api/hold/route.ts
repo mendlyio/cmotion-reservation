@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { holds, seats, tables } from "@/lib/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, ne } from "drizzle-orm";
 import { getOrCreateSession } from "@/lib/session";
 import {
   cleanupExpiredHolds,
@@ -73,7 +73,9 @@ async function holdSeatIds(
     };
   }
 
-  // Insert hold records with correct tableId per seat
+  // Insert hold records — UNIQUE constraint on seatId prevents race conditions:
+  // if two sessions both pass the checks and try to insert simultaneously,
+  // the second INSERT will throw a unique violation → we catch it and rollback.
   const holdValues = targetSeatIds.map((seatId) => ({
     sessionId,
     eventId,
@@ -81,7 +83,44 @@ async function holdSeatIds(
     seatId,
     expiresAt,
   }));
-  await db.insert(holds).values(holdValues);
+
+  try {
+    await db.insert(holds).values(holdValues);
+  } catch {
+    // Unique constraint violation: another session grabbed the seat(s) at the same time
+    await db.update(seats).set({ status: "available" })
+      .where(and(inArray(seats.id, targetSeatIds), eq(seats.status, "held")));
+    return {
+      error: isVip
+        ? "Cette table VIP vient d'être réservée par quelqu'un d'autre"
+        : "Certains sièges viennent d'être pris. Veuillez choisir d'autres places.",
+      status: 409,
+    };
+  }
+
+  // Post-insert guard (belt-and-suspenders): check no other session also holds our seats
+  const foreignHolds = await db
+    .select()
+    .from(holds)
+    .where(and(
+      inArray(holds.seatId, targetSeatIds),
+      ne(holds.sessionId, sessionId),
+    ));
+
+  if (foreignHolds.length > 0) {
+    await db.delete(holds).where(and(
+      inArray(holds.seatId, targetSeatIds),
+      eq(holds.sessionId, sessionId),
+    ));
+    await db.update(seats).set({ status: "available" })
+      .where(and(inArray(seats.id, targetSeatIds), eq(seats.status, "held")));
+    return {
+      error: isVip
+        ? "Cette table VIP vient d'être réservée par quelqu'un d'autre"
+        : "Certains sièges viennent d'être pris. Veuillez choisir d'autres places.",
+      status: 409,
+    };
+  }
 
   return { ok: true, seatIds: targetSeatIds };
 }

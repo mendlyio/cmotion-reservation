@@ -61,10 +61,11 @@ export async function POST(request: NextRequest) {
       const seatIds = resSeats.map((rs) => rs.seatId);
 
       if (seatIds.length > 0) {
+        // Only flip seats that are still 'held' — never overwrite an already-reserved seat
         await db
           .update(seats)
           .set({ status: "reserved" })
-          .where(inArray(seats.id, seatIds));
+          .where(and(inArray(seats.id, seatIds), eq(seats.status, "held")));
 
         await db.delete(holds).where(inArray(holds.seatId, seatIds));
       }

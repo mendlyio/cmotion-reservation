@@ -7,6 +7,7 @@ import {
   timestamp,
   date,
   pgEnum,
+  unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -68,7 +69,10 @@ export const holds = pgTable("holds", {
   }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   expiresAt: timestamp("expires_at").notNull(),
-});
+}, (t) => [
+  // Garantit qu'un siège ne peut être hold que par une seule session à la fois
+  unique("holds_seat_id_unique").on(t.seatId),
+]);
 
 export const reservations = pgTable("reservations", {
   id: serial("id").primaryKey(),

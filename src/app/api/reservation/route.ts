@@ -70,6 +70,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Final anti-double-booking guard: check no existing reservationSeats already
+  // claims these seat IDs (handles extreme race conditions that bypassed hold checks)
+  const alreadyBooked = await db
+    .select({ seatId: reservationSeats.seatId })
+    .from(reservationSeats)
+    .where(inArray(reservationSeats.seatId, seatIds));
+
+  if (alreadyBooked.length > 0) {
+    return NextResponse.json(
+      { error: "Ces sièges ont déjà été réservés. Veuillez recommencer." },
+      { status: 409 }
+    );
+  }
+
   const totalAmount = calculateTotal(body);
 
   // Extend hold expiry to cover Stripe checkout window (prevents seat sniping)
