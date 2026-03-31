@@ -28,7 +28,7 @@ const EVENTS = [
   {
     name: "Spectacle +12 ans",
     eventDate: "2026-05-17",
-    timeInfo: "17h30",
+    timeInfo: "17h",
     ageGroup: "+12",
     description: "Spectacle de danse pour les élèves de +12 ans",
   },
