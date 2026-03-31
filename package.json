@@ -12,6 +12,7 @@
     "db:seed": "npx tsx src/lib/db/seed.ts",
     "db:reset": "npx tsx src/lib/db/reset.ts",
     "db:close": "npx tsx src/lib/db/close-events.ts",
+    "db:vip-carly": "npx tsx src/lib/db/seed-vip-carly.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
