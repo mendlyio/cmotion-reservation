@@ -70,12 +70,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Final anti-double-booking guard: check no existing reservationSeats already
-  // claims these seat IDs (handles extreme race conditions that bypassed hold checks)
+  // Final anti-double-booking guard: only block if a PAID reservation already
+  // claims these seats. Pending/failed reservations are abandoned and must not
+  // permanently lock seats.
   const alreadyBooked = await db
     .select({ seatId: reservationSeats.seatId })
     .from(reservationSeats)
-    .where(inArray(reservationSeats.seatId, seatIds));
+    .innerJoin(reservations, eq(reservations.id, reservationSeats.reservationId))
+    .where(
+      and(
+        inArray(reservationSeats.seatId, seatIds),
+        eq(reservations.stripeStatus, "paid")
+      )
+    );
 
   if (alreadyBooked.length > 0) {
     return NextResponse.json(
