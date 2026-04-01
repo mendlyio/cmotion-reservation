@@ -10,7 +10,7 @@ import {
 import { eq, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { MEAL_OPTIONS, UPSELL_OPTIONS, getTableLabel, getSeatLabel } from "@/types";
+import { MEAL_OPTIONS, UPSELL_OPTIONS, DESSERT_LABEL, getTableLabel, getSeatLabel } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -163,7 +163,7 @@ export default async function ConfirmationPage({ params }: Props) {
                         <p className="text-xs text-[#555]">
                           {meal?.label || guest.mealChoice}
                           {guest.hasDessert && (
-                            <span className="text-[#c9a227]/70"> + Tiramisu</span>
+                            <span className="text-[#c9a227]/70"> + {DESSERT_LABEL}</span>
                           )}
                         </p>
                       </div>

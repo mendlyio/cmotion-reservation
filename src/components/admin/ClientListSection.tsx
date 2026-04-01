@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { MEAL_OPTIONS, getSeatLabel } from "@/types";
+import { MEAL_OPTIONS, DESSERT_LABEL, getSeatLabel } from "@/types";
 import { toast } from "sonner";
 
 export interface ClientGuest {
@@ -393,7 +393,7 @@ export function ClientListSection({ reservations, events }: Props) {
                                 className="w-4 h-4 rounded border-[#333] bg-[#1a1a1a] accent-[#c9a227] cursor-pointer"
                               />
                               <span className="text-sm text-[#888] group-hover:text-[#ccc] transition-colors">
-                                Tiramisu
+                                {DESSERT_LABEL}
                               </span>
                             </label>
                           </GuestField>

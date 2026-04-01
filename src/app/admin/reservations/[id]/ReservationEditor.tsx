@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { MEAL_OPTIONS, getSeatLabel } from "@/types";
+import { MEAL_OPTIONS, DESSERT_LABEL, getSeatLabel } from "@/types";
 
 interface GuestData {
   id: number;
@@ -154,7 +154,7 @@ export function ReservationEditor({
                     className="w-4 h-4 rounded border-[#333] bg-[#1a1a1a] accent-[#c9a227] cursor-pointer"
                   />
                   <span className="text-sm text-[#888] group-hover:text-[#ccc] transition-colors">
-                    Tiramisu
+                    {DESSERT_LABEL}
                   </span>
                 </label>
               </EditorField>

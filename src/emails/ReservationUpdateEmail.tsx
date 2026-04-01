@@ -1,4 +1,4 @@
-import { MEAL_OPTIONS } from "@/types";
+import { MEAL_OPTIONS, DESSERT_LABEL } from "@/types";
 
 interface UpdateEmailProps {
   reservationId: number;
@@ -37,7 +37,7 @@ export function renderUpdateEmail(props: UpdateEmailProps): string {
         <tr>
           <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${g.firstName} ${g.lastName}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${meal}</td>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${g.hasDessert ? "Tiramisu" : "—"}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${g.hasDessert ? "${DESSERT_LABEL}" : "—"}</td>
         </tr>
       `;
     })
