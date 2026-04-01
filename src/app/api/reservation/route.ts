@@ -12,7 +12,7 @@ import { getOrCreateSession } from "@/lib/session";
 import { calculateTotal, BookingFormData, DANCER_MEAL_OPTIONS } from "@/types";
 
 // Grace period after reservation creation to cover Stripe checkout duration
-const CHECKOUT_GRACE_MS = 45 * 60 * 1000; // 45 minutes
+const CHECKOUT_GRACE_MS = 15 * 60 * 1000; // 15 minutes
 
 export async function POST(request: NextRequest) {
   const sessionId = await getOrCreateSession();
