@@ -7,7 +7,7 @@ import {
   holds,
   seats,
 } from "@/lib/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, ne } from "drizzle-orm";
 import { getOrCreateSession } from "@/lib/session";
 import { calculateTotal, BookingFormData, DANCER_MEAL_OPTIONS } from "@/types";
 
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
 
   // Create reservation seats (VIP tables always include dessert)
   // UNIQUE constraint on seatId at DB level prevents any race-condition double-booking
-  try {
+  const insertGuests = async () => {
     for (const guest of guests) {
       await db.insert(reservationSeats).values({
         reservationId: reservation.id,
@@ -126,13 +126,47 @@ export async function POST(request: NextRequest) {
         hasDessert: isVip ? true : guest.hasDessert,
       });
     }
+  };
+
+  try {
+    await insertGuests();
   } catch {
-    // Unique violation: another reservation already claimed one of these seats
-    await db.delete(reservations).where(eq(reservations.id, reservation.id));
-    return NextResponse.json(
-      { error: "Ces sièges viennent d'être réservés par quelqu'un d'autre. Veuillez recommencer." },
-      { status: 409 }
-    );
+    // UNIQUE constraint violation: seat_id already exists in reservation_seats.
+    // This happens when a previous non-paid reservation left orphaned rows behind
+    // (holds expired but reservation_seats were never cleaned up).
+    // Self-heal: delete the orphans and retry once.
+    const orphanRS = await db
+      .select({ id: reservationSeats.id })
+      .from(reservationSeats)
+      .innerJoin(reservations, eq(reservations.id, reservationSeats.reservationId))
+      .where(
+        and(
+          inArray(reservationSeats.seatId, seatIds),
+          ne(reservations.stripeStatus, "paid")
+        )
+      );
+
+    if (orphanRS.length > 0) {
+      await db
+        .delete(reservationSeats)
+        .where(inArray(reservationSeats.id, orphanRS.map((r) => r.id)));
+      try {
+        await insertGuests();
+      } catch {
+        await db.delete(reservations).where(eq(reservations.id, reservation.id));
+        return NextResponse.json(
+          { error: "Ces sièges ont déjà été réservés. Veuillez recommencer." },
+          { status: 409 }
+        );
+      }
+    } else {
+      // No orphans found — genuine conflict with a paid reservation
+      await db.delete(reservations).where(eq(reservations.id, reservation.id));
+      return NextResponse.json(
+        { error: "Ces sièges viennent d'être réservés par quelqu'un d'autre. Veuillez recommencer." },
+        { status: 409 }
+      );
+    }
   }
 
   // Create upsells — each repas_danseur entry has its own mealChoice

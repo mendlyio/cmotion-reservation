@@ -202,6 +202,12 @@ export async function POST(request: NextRequest) {
 
         await db.delete(holds).where(inArray(holds.seatId, seatIds));
       }
+
+      // Always delete reservation_seats for a failed/expired session so the
+      // UNIQUE(seat_id) constraint no longer blocks future bookings.
+      await db
+        .delete(reservationSeats)
+        .where(eq(reservationSeats.reservationId, reservationId));
     }
   }
 

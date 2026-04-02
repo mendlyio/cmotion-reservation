@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
 
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ["card"],
+    expires_at: Math.floor((Date.now() + 30 * 60 * 1000) / 1000), // 30 min (Stripe minimum)
     line_items: [
       {
         price_data: {
