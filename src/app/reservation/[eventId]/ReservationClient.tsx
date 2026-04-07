@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -10,6 +11,8 @@ import { BookingForm } from "@/components/booking/BookingForm";
 import { TableWithSeats, EventData, getTableLabel } from "@/types";
 
 export function ReservationClient({ event }: { event: EventData }) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [tables, setTables] = useState<TableWithSeats[]>([]);
   const [loading, setLoading] = useState(true);
   const [selSeats, setSelSeats] = useState<number[]>([]);
@@ -45,6 +48,18 @@ export function ReservationClient({ event }: { event: EventData }) {
   }, [event.id]);
 
   useEffect(() => { fetch_(); }, [fetch_]);
+
+  // Retour depuis Stripe après abandon du paiement : libérer la place immédiatement
+  useEffect(() => {
+    if (searchParams.get("cancelled") !== "true") return;
+    fetch("/api/reservation/cancel", { method: "POST" })
+      .then(() => {
+        toast.info("Paiement annulé — vos places ont été libérées.");
+        router.replace(`/reservation/${event.id}`);
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const buildSelections = (seatIds: number[]) => {
     const byTable = new Map<number, number[]>();

@@ -7,12 +7,15 @@ import {
   holds,
   seats,
 } from "@/lib/db/schema";
-import { eq, and, inArray, ne } from "drizzle-orm";
+import { eq, and, inArray, ne, isNotNull } from "drizzle-orm";
 import { getOrCreateSession } from "@/lib/session";
 import { calculateTotal, BookingFormData, DANCER_MEAL_OPTIONS } from "@/types";
+import { stripe } from "@/lib/stripe";
 
 // Grace period after reservation creation to cover Stripe checkout duration
-const CHECKOUT_GRACE_MS = 15 * 60 * 1000; // 15 minutes
+// Aligned with Stripe's minimum session duration (30 min) to avoid holds expiring
+// while the checkout page is still active.
+const CHECKOUT_GRACE_MS = 30 * 60 * 1000; // 30 minutes
 
 export async function POST(request: NextRequest) {
   const sessionId = await getOrCreateSession();
@@ -136,7 +139,7 @@ export async function POST(request: NextRequest) {
     // (holds expired but reservation_seats were never cleaned up).
     // Self-heal: delete the orphans and retry once.
     const orphanRS = await db
-      .select({ id: reservationSeats.id })
+      .select({ id: reservationSeats.id, stripePaymentId: reservations.stripePaymentId })
       .from(reservationSeats)
       .innerJoin(reservations, eq(reservations.id, reservationSeats.reservationId))
       .where(
@@ -147,6 +150,18 @@ export async function POST(request: NextRequest) {
       );
 
     if (orphanRS.length > 0) {
+      // Expire any open Stripe sessions so the original user can no longer pay
+      const stripeIds = [...new Set(
+        orphanRS.map((r) => r.stripePaymentId).filter((id): id is string => id !== null)
+      )];
+      for (const sessionId of stripeIds) {
+        try {
+          await stripe.checkout.sessions.expire(sessionId);
+        } catch {
+          // Already expired — safe to ignore
+        }
+      }
+
       await db
         .delete(reservationSeats)
         .where(inArray(reservationSeats.id, orphanRS.map((r) => r.id)));

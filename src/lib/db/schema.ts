@@ -32,6 +32,9 @@ export const events = pgTable("events", {
   ageGroup: text("age_group").notNull(),
   description: text("description"),
   isActive: boolean("is_active").notNull().default(true),
+  // Optionnel : heure d'ouverture automatique des réservations (UTC).
+  // Le cron passe isActive à true dès que now() >= openAt.
+  openAt: timestamp("open_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

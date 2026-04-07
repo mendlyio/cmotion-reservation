@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { ReservationClient } from "./ReservationClient";
 
 export const dynamic = "force-dynamic";
@@ -23,5 +24,9 @@ export default async function ReservationPage({ params }: Props) {
 
   if (!event || !event.isActive) notFound();
 
-  return <ReservationClient event={event} />;
+  return (
+    <Suspense>
+      <ReservationClient event={event} />
+    </Suspense>
+  );
 }
