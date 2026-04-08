@@ -8,6 +8,7 @@ import {
   reservationUpsells,
 } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
+
 import { verifyAdmin } from "@/lib/admin";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -17,6 +18,8 @@ import {
   type ClientReservation,
 } from "@/components/admin/ClientListSection";
 import { EventToggleButton } from "@/components/admin/EventToggleButton";
+import { HelpWidgetToggle } from "@/components/admin/HelpWidgetToggle";
+import { appSettings } from "@/lib/db/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +28,7 @@ export default async function AdminDashboardPage() {
   if (!isAdmin) redirect("/admin");
 
   const allEvents = await db.select().from(events);
+  const [settings] = await db.select().from(appSettings).where(eq(appSettings.id, 1));
 
   const stats = [];
   const allClientReservations: ClientReservation[] = [];
@@ -228,9 +232,12 @@ export default async function AdminDashboardPage() {
           </h1>
           <p className="text-sm text-[#666] mt-0.5">Vue d&apos;ensemble des réservations</p>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2 h-2 rounded-full bg-[#c9a227] animate-pulse" />
-          <span className="text-xs text-[#666]">Temps réel</span>
+        <div className="flex items-center gap-2">
+          <HelpWidgetToggle enabled={settings?.helpWidgetEnabled ?? false} />
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-[#c9a227] animate-pulse" />
+            <span className="text-xs text-[#666]">Temps réel</span>
+          </div>
         </div>
       </div>
 

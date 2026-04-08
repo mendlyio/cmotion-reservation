@@ -1,6 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { db } from "@/lib/db";
+import { appSettings, events } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { HelpWidget } from "@/components/HelpWidget";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -25,11 +29,18 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const [settings] = await db.select().from(appSettings).where(eq(appSettings.id, 1));
+  const activeEvents = settings?.helpWidgetEnabled
+    ? await db.select({ id: events.id, name: events.name, timeInfo: events.timeInfo, eventDate: events.eventDate })
+        .from(events)
+        .where(eq(events.isActive, true))
+    : [];
+
   return (
     <html
       lang="fr"
@@ -37,6 +48,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background">
         {children}
+        {settings?.helpWidgetEnabled && <HelpWidget events={activeEvents} />}
         <Toaster position="top-center" richColors />
       </body>
     </html>

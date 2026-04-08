@@ -121,6 +121,12 @@ export const reservationUpsells = pgTable("reservation_upsells", {
   mealChoice: text("meal_choice"),
 });
 
+// Global app settings — single row (id = 1), upserted on first use
+export const appSettings = pgTable("app_settings", {
+  id: serial("id").primaryKey(),
+  helpWidgetEnabled: boolean("help_widget_enabled").notNull().default(false),
+});
+
 // Relations
 export const eventsRelations = relations(events, ({ many }) => ({
   tables: many(tables),
