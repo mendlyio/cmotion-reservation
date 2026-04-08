@@ -72,10 +72,10 @@ export function HelpWidget({ events }: Props) {
   return (
     <>
       {/* Sticky button */}
-      <div className="fixed left-0 top-1/2 -translate-y-1/2 z-50">
+      <div className="fixed left-0 top-1/2 -translate-y-1/2 z-50" style={{ paddingLeft: "env(safe-area-inset-left)" }}>
         <button
           onClick={() => setOpen(true)}
-          className="flex flex-col items-center justify-center gap-1.5 w-10 py-4 bg-[#c9a227] hover:bg-[#e4c76b] text-black rounded-r-xl shadow-xl shadow-[#c9a227]/30 transition-all hover:w-12 group"
+          className="flex flex-col items-center justify-center gap-1.5 w-10 py-4 bg-[#c9a227] hover:bg-[#e4c76b] text-black rounded-r-xl shadow-xl shadow-[#c9a227]/30 transition-all active:scale-95 group"
           title="Aide à la réservation"
         >
           <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -112,6 +112,7 @@ export function HelpWidget({ events }: Props) {
             exit={{ x: "-100%" }}
             transition={{ type: "spring", stiffness: 380, damping: 36 }}
             className="fixed left-0 top-0 bottom-0 z-50 w-full max-w-sm bg-[#0f0f0f] border-r border-[#1e1a0e] shadow-2xl flex flex-col"
+            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e1a0e] bg-gradient-to-r from-[#141000] to-[#0f0f0f]">
