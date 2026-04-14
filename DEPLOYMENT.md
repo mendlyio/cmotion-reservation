@@ -146,9 +146,13 @@ vercel env add STRIPE_SECRET_KEY
 - Tester avec Stripe CLI : `stripe listen --forward-to localhost:3000/api/stripe/webhook`
 
 ### Les holds ne se libèrent pas
-- Le cron Vercel s'exécute toutes les minutes
-- En local, les holds sont nettoyés à chaque requête sur `/api/seating`
+- Le cron Vercel s'exécute toutes les 5 minutes (`/api/cron`) — suffisant pour un hold de 10 minutes ; le nettoyage est aussi déclenché sur les requêtes vers `/api/hold`
 - Vérifier que `CRON_SECRET` est configuré en production
+
+### La base Neon ne se met pas en veille (Compute Units élevés)
+- Un cron **chaque minute** empêchait l’autosuspend : la config utilise maintenant **toutes les 5 minutes** pour laisser la base inactive entre deux exécutions quand il n’y a pas de trafic
+- Éviter d’autres tâches planifiées ou moniteurs qui interrogent la DB en permanence
+- Le client `@neondatabase/serverless` avec `neon-http` est adapté (requêtes HTTP sans connexion TCP persistante) ; utilisez l’URL directe du projet dans le dashboard Neon pour `DATABASE_URL`, pas une connexion « toujours active » externe
 
 ### Problème de concurrence / double réservation
 - Le système utilise `UPDATE ... WHERE status = 'available'` pour garantir l'atomicité
