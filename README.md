@@ -67,5 +67,5 @@ npm run dev
 ### Gestion de la concurrence
 - Hold atomique de 5 minutes par session
 - Double vérification avec `UPDATE ... WHERE status = 'available'`
-- Cleanup automatique des holds expirés (cron Vercel toutes les 5 min + appels `/api/hold`)
+- Cleanup des holds + ouverture auto (`openAt`) déclenchés à l’usage (`/api/ready`, `/api/hold`, `/api/seating`) ; `/api/cron` reste disponible en déclenchement manuel avec `CRON_SECRET`
 - Protection contre les doubles réservations

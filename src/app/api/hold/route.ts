@@ -3,11 +3,8 @@ import { db } from "@/lib/db";
 import { holds, seats, tables } from "@/lib/db/schema";
 import { eq, and, inArray, ne } from "drizzle-orm";
 import { getOrCreateSession } from "@/lib/session";
-import {
-  cleanupExpiredHolds,
-  getHoldExpiry,
-  releaseHoldsBySession,
-} from "@/lib/hold";
+import { getHoldExpiry, releaseHoldsBySession } from "@/lib/hold";
+import { performReservationMaintenance } from "@/lib/maintenance";
 import { getSeatLabel } from "@/types";
 
 // Core: hold a flat list of seat IDs (already validated)
@@ -139,7 +136,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "eventId requis" }, { status: 400 });
   }
 
-  await cleanupExpiredHolds();
+  await performReservationMaintenance();
   await releaseHoldsBySession(sessionId);
 
   const expiresAt = getHoldExpiry();

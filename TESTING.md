@@ -206,7 +206,7 @@
 
 - [ ] Créer un hold (sélectionner des sièges)
 - [ ] Attendre 5 minutes
-- [ ] Vérifier que le cron `/api/cron` nettoie les holds
+- [ ] Vérifier que le nettoyage des holds se fait (après clic accueil + flux réservation, ou `GET /api/cron` avec `CRON_SECRET`)
 - [ ] Les sièges redeviennent disponibles même sans rafraîchir la page (via polling)
 
 ### 11. Mobile responsive
@@ -256,7 +256,7 @@ Vérifier :
 
 ## Bugs connus à surveiller
 
-- **Hold fantôme** : Si le cleanup cron ne tourne pas, les holds expirés ne sont pas libérés → vérifier que le cron Vercel est actif
+- **Hold fantôme** : Sans trafic, le cleanup ne tourne pas → un utilisateur qui charge le plan (`/api/seating`) ou tient une session (`/api/hold`) relance la maintenance ; sinon `GET /api/cron` manuel
 - **Race condition** : Avec un très fort trafic, 2 requêtes simultanées pourraient théoriquement passer la vérification → le double-check post-UPDATE devrait empêcher ça
 - **Email non reçu** : Vérifier les logs Resend, le domaine d'envoi doit être vérifié
 - **Webhook Stripe** : En local, utiliser Stripe CLI pour forward : `stripe listen --forward-to localhost:3000/api/stripe/webhook`

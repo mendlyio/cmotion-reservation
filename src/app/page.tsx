@@ -1,11 +1,19 @@
+import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import Link from "next/link";
+import { ReservationEntryGate } from "@/components/ReservationEntryGate";
+import { RESERVATION_ENTRY_COOKIE } from "@/lib/reservation-entry";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const cookieStore = await cookies();
+  if (cookieStore.get(RESERVATION_ENTRY_COOKIE)?.value !== "1") {
+    return <ReservationEntryGate />;
+  }
+
   const activeEvents = await db
     .select()
     .from(events)

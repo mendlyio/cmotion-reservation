@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { tables, seats } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
+import { performReservationMaintenance } from "@/lib/maintenance";
 
 // Cache Vercel Edge : 8 secondes de fraîcheur, servi jusqu'à 15s en revalidation
 // Réduit les hits DB de N_utilisateurs × 1/10s à 1 hit/8s par edge region
@@ -16,6 +17,8 @@ export async function GET(
   if (isNaN(eventId)) {
     return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
   }
+
+  await performReservationMaintenance();
 
   const eventTables = await db
     .select()

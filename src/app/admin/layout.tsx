@@ -1,4 +1,5 @@
 import { verifyAdmin } from "@/lib/admin";
+import { performReservationMaintenance } from "@/lib/maintenance";
 import Link from "next/link";
 
 export default async function AdminLayout({
@@ -6,6 +7,10 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  if (await verifyAdmin()) {
+    await performReservationMaintenance();
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       <AdminNav />
