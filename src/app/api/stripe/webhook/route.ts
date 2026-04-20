@@ -62,11 +62,12 @@ export async function POST(request: NextRequest) {
       const seatIds = resSeats.map((rs) => rs.seatId);
 
       if (seatIds.length > 0) {
-        // Only flip seats that are still 'held' — never overwrite an already-reserved seat
+        // Mark all seats as reserved unconditionally — the seat is confirmed paid, regardless
+        // of whether the hold already expired and the cron reset it to 'available'.
         await db
           .update(seats)
           .set({ status: "reserved" })
-          .where(and(inArray(seats.id, seatIds), eq(seats.status, "held")));
+          .where(inArray(seats.id, seatIds));
 
         await db.delete(holds).where(inArray(holds.seatId, seatIds));
       }

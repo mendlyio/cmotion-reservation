@@ -20,12 +20,34 @@ export async function cleanupExpiredHolds() {
     .map((h) => h.seatId!);
 
   if (seatIds.length > 0) {
-    await db
-      .update(seats)
-      .set({ status: "available" })
-      .where(
-        and(inArray(seats.id, seatIds), eq(seats.status, "held"))
-      );
+    // Never reset a seat that belongs to a paid reservation — the webhook may have
+    // already processed (or may arrive shortly after) and marked it reserved.
+    // This prevents the race condition where the hold expires just as the user pays.
+    const paidSeatIds = (
+      await db
+        .select({ seatId: reservationSeats.seatId })
+        .from(reservationSeats)
+        .innerJoin(reservations, eq(reservations.id, reservationSeats.reservationId))
+        .where(
+          and(
+            inArray(reservationSeats.seatId, seatIds),
+            eq(reservations.stripeStatus, "paid")
+          )
+        )
+    ).map((r) => r.seatId);
+
+    const safeToRelease = paidSeatIds.length > 0
+      ? seatIds.filter((id) => !paidSeatIds.includes(id))
+      : seatIds;
+
+    if (safeToRelease.length > 0) {
+      await db
+        .update(seats)
+        .set({ status: "available" })
+        .where(
+          and(inArray(seats.id, safeToRelease), eq(seats.status, "held"))
+        );
+    }
 
     // For pending reservations that opened a Stripe session: expire it immediately
     // so the user can no longer pay after their hold has lapsed.
