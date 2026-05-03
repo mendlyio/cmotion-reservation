@@ -339,7 +339,8 @@ export async function GET(
   ];
 
   const guestRows = sortedGuests.map((g) => {
-    if (g.reservationId !== lastResForIndex) {
+    const isFirstOfReservation = g.reservationId !== lastResForIndex;
+    if (isFirstOfReservation) {
       lastResForIndex = g.reservationId;
       partyIndex = 0;
     }
@@ -351,7 +352,10 @@ export async function GET(
     const nGuests = guestCountByRes[g.reservationId] || 0;
 
     const dessertCell = g.hasDessert ? `Oui (${DESSERT_LABEL})` : "Non";
-    const optionsList = (upsellsByRes[g.reservationId] || []).join(" ; ");
+    // Options affichées uniquement sur la 1ère ligne de chaque réservation pour éviter les doublons visuels
+    const optionsList = isFirstOfReservation
+      ? (upsellsByRes[g.reservationId] || []).join(" ; ")
+      : "";
     const seatStatusCode = seat?.status ?? "";
     const seatStatusFr = seat ? SEAT_STATUS_FR[seat.status] ?? seat.status : "";
 
