@@ -15,12 +15,16 @@ export {
   DESSERT_LABEL,
   VIP_TABLE_PRICE,
   VIP_MEAL,
+  VIP_FORMULA,
   getMealPrice,
+  mealLabel,
+  shortMealLabel,
   quoteBooking,
 } from "@/lib/pricing";
 
 export type MealChoice =
   | "lasagne"
+  | "salade_saison"
   | "salade_grecque"
   | "1_boulette_frites"
   | "2_boulettes_frites"

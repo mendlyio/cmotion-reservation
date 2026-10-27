@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MEAL_OPTIONS, DESSERT_PRICE, DESSERT_LABEL, MealChoice, SeatFormData } from "@/types";
+import { MEAL_OPTIONS, DESSERT_PRICE, DESSERT_LABEL, VIP_FORMULA, MealChoice, SeatFormData } from "@/types";
 
 interface Props {
   index: number;
@@ -84,6 +84,9 @@ export function GuestForm({ index, seatLabel, data, isVip, onChange }: Props) {
           </div>
         </div>
 
+        {isVip ? (
+          <p className="text-sm text-[#e4c76b] leading-snug">{VIP_FORMULA}</p>
+        ) : (
         <div>
           <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-widest mb-1">
             Choix du plat <span className="text-red-400">*</span>
@@ -99,7 +102,13 @@ export function GuestForm({ index, seatLabel, data, isVip, onChange }: Props) {
               </option>
             ))}
           </select>
+          {MEAL_OPTIONS.find((m) => m.value === data.mealChoice)?.description && (
+            <p className="mt-1 text-[11px] leading-snug text-[#777]">
+              {MEAL_OPTIONS.find((m) => m.value === data.mealChoice)?.description}
+            </p>
+          )}
         </div>
+        )}
 
         {!isVip && (
           <label className="flex items-center gap-3 py-1 cursor-pointer active:opacity-70 select-none">

@@ -1,13 +1,15 @@
 "use client";
 
-import { BookingFormData, TableWithSeats, calculateTotal, getMealPrice, MEAL_OPTIONS, DESSERT_PRICE, DESSERT_LABEL, VIP_TABLE_PRICE, DANCER_MEAL_OPTIONS, getTableLabel, getSeatLabel } from "@/types";
+import { BookingFormData, TableWithSeats, calculateTotal, getMealPrice, MEAL_OPTIONS, DESSERT_PRICE, DESSERT_LABEL, VIP_TABLE_PRICE, VIP_FORMULA, DANCER_MEAL_OPTIONS, getTableLabel, getSeatLabel, mealLabel } from "@/types";
+import { PolicyNotice } from "@/components/PolicyNotice";
 
 interface Props {
   data: BookingFormData;
   tables?: TableWithSeats[];
+  deadlineLabel?: string;
 }
 
-export function OrderSummary({ data, tables = [] }: Props) {
+export function OrderSummary({ data, tables = [], deadlineLabel }: Props) {
   const total = calculateTotal(data);
 
   const tableLabel = tables.length > 1
@@ -56,7 +58,7 @@ export function OrderSummary({ data, tables = [] }: Props) {
               <div>
                 <p className="text-sm font-semibold text-white">Table VIP · 8 personnes</p>
                 <p className="text-[11px] text-[#c9a227]/70 mt-0.5 flex items-center gap-1">
-                  <span>★</span> Bulles, zakouski, repas et {DESSERT_LABEL} inclus
+                  <span>★</span> {VIP_FORMULA}
                 </p>
               </div>
               <span className="text-sm font-bold text-[#c9a227] tabular-nums shrink-0 ml-3">
@@ -83,7 +85,7 @@ export function OrderSummary({ data, tables = [] }: Props) {
                       )}
                       <p className="text-sm font-semibold text-white truncate">{fullName}</p>
                     </div>
-                    <p className="text-[11px] text-[#555] mt-0.5 ml-7">{m?.label || "—"}</p>
+                    <p className="text-[11px] text-[#555] mt-0.5 ml-7">{m?.label || mealLabel(g.mealChoice)}</p>
                     {g.hasDessert && (
                       <p className="text-[11px] text-[#c9a227]/70 mt-0.5 ml-7 flex items-center gap-1">
                         <span>+</span> {DESSERT_LABEL}{" "}
@@ -132,10 +134,8 @@ export function OrderSummary({ data, tables = [] }: Props) {
       </div>
 
       {/* Non remboursable */}
-      <div className="px-4 py-2.5 bg-[#0a0a0a] border-t border-[#1a1a1a]">
-        <p className="text-[10px] text-[#444] text-center">
-          🔒 Non remboursable · Non annulable · Non modifiable
-        </p>
+      <div className="p-3 bg-[#0a0a0a] border-t border-[#1a1a1a]">
+        <PolicyNotice deadlineLabel={deadlineLabel} />
       </div>
     </div>
   );

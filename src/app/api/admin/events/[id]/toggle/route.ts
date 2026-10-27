@@ -20,7 +20,10 @@ export async function POST(
 
   const [updated] = await db
     .update(events)
-    .set({ isActive: !event.isActive })
+    .set({
+      isActive: !event.isActive,
+      openAt: event.isActive ? null : event.openAt,
+    })
     .where(eq(events.id, eventId))
     .returning({ id: events.id, isActive: events.isActive });
 

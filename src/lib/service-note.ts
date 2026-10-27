@@ -1,0 +1,2 @@
+export const SERVICE_NOTE =
+  "Afin de garantir un service efficace, les repas ont été organisés à l'avance selon la répartition prévue des tables. Si vous changez de place ou constatez une différence dans la répartition des plats, merci de passer voir Arnaud, à l'accueil ou au bar, avant le début du gala afin que nous puissions adapter l'organisation du service. Les choix de repas restent ceux commandés lors de la réservation. Merci pour votre collaboration";

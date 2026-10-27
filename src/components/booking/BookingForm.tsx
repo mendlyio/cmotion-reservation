@@ -6,25 +6,27 @@ import { motion, AnimatePresence } from "framer-motion";
 import { GuestForm } from "./GuestForm";
 import { UpsellSection } from "./UpsellSection";
 import { OrderSummary } from "./OrderSummary";
-import { TableWithSeats, SeatFormData, BookingFormData, MealChoice, calculateTotal, getTableLabel, getSeatLabel } from "@/types";
+import { TableWithSeats, SeatFormData, BookingFormData, MealChoice, VIP_MEAL, calculateTotal, getTableLabel, getSeatLabel } from "@/types";
+import { PolicyNotice } from "@/components/PolicyNotice";
 
 interface Props {
   eventId: number;
   tables: TableWithSeats[];
   selectedSeatIds: number[];
   onCancel: () => void;
+  deadlineLabel?: string;
 }
 
 type Step = 0 | 1 | 2;
 
-export function BookingForm({ eventId, tables, selectedSeatIds, onCancel }: Props) {
+export function BookingForm({ eventId, tables, selectedSeatIds, onCancel, deadlineLabel }: Props) {
   const router = useRouter();
   const table = tables[0];
   const vip = tables.length === 1 && tables[0].isVip;
   const ids = vip ? tables[0].seats.map((s) => s.id) : selectedSeatIds;
   const map = useRef<Map<number, SeatFormData>>(new Map());
 
-  const [guests, setGuests] = useState<SeatFormData[]>(() => build(ids, map.current));
+  const [guests, setGuests] = useState<SeatFormData[]>(() => build(ids, map.current, vip));
   const [upsells, setUpsells] = useState<{ type: string; quantity: number; mealChoice?: string }[]>([]);
   const [ref, setRef] = useState("");
   const [email, setEmail] = useState("");
@@ -39,7 +41,7 @@ export function BookingForm({ eventId, tables, selectedSeatIds, onCancel }: Prop
 
   useEffect(() => {
     for (const g of guests) map.current.set(g.seatId, g);
-    setGuests(build(ids, map.current));
+    setGuests(build(ids, map.current, vip));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSeatIds.join(",")]);
 
@@ -103,7 +105,7 @@ export function BookingForm({ eventId, tables, selectedSeatIds, onCancel }: Prop
             )}
           </div>
           <p className="text-[#555] text-[11px] mt-0.5">
-            {vip ? "8 places · 280€ tout inclus" : `${ids.length} ${ids.length > 1 ? "sièges sélectionnés" : "siège sélectionné"}`}
+            {vip ? "8 places · 280€ · 35€ par personne" : `${ids.length} ${ids.length > 1 ? "sièges sélectionnés" : "siège sélectionné"}`}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -151,7 +153,7 @@ export function BookingForm({ eventId, tables, selectedSeatIds, onCancel }: Prop
             <motion.div key="s0" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.12 }} className="space-y-3">
               {vip && (
                 <div className="flex items-center gap-2 p-3 bg-[#c9a227]/8 border border-[#c9a227]/20 rounded-xl text-xs text-[#c9a227] font-medium">
-                  <span>★</span> Bulles, zakouski et dessert inclus
+                  <span>★</span> Mousseux, dessert inclus, pas de plat
                 </div>
               )}
               {!vip && (
@@ -160,7 +162,7 @@ export function BookingForm({ eventId, tables, selectedSeatIds, onCancel }: Prop
                 </p>
               )}
               <p className="text-[11px] text-[#555] bg-[#141414] border border-[#1e1e1e] px-3 py-2 rounded-xl">
-                Veuillez choisir un plat pour chaque convive ci-dessous.
+                {vip ? "Indiquez le nom de chaque convive. La formule VIP ne comprend pas de plat." : "Veuillez choisir un plat pour chaque convive ci-dessous."}
               </p>
               <AnimatePresence initial={false}>
                 {guests.map((g, i) => {
@@ -227,7 +229,8 @@ export function BookingForm({ eventId, tables, selectedSeatIds, onCancel }: Prop
 
           {step === 2 && (
             <motion.div key="s2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.12 }} className="space-y-4">
-              <OrderSummary data={data} tables={tables} />
+              <PolicyNotice deadlineLabel={deadlineLabel} />
+              <OrderSummary data={data} tables={tables} deadlineLabel={deadlineLabel} />
               {error && (
                 <div className="p-3 bg-red-500/8 border border-red-500/20 rounded-xl text-sm text-red-400">
                   {error}
@@ -308,6 +311,29 @@ function Field({ label, value, set, placeholder, type = "text", required }: {
   );
 }
 
-function build(ids: number[], m: Map<number, SeatFormData>): SeatFormData[] {
-  return ids.map((id) => m.get(id) || { seatId: id, firstName: "", lastName: "", mealChoice: "lasagne" as MealChoice, hasDessert: false });
+function build(ids: number[], saved: Map<number, SeatFormData>, vip: boolean): SeatFormData[] {
+  return ids.map((id) => {
+    const previous = saved.get(id);
+    if (vip) {
+      return {
+        seatId: id,
+        firstName: previous?.firstName ?? "",
+        lastName: previous?.lastName ?? "",
+        mealChoice: VIP_MEAL,
+        hasDessert: true,
+      };
+    }
+    if (!previous || previous.mealChoice === VIP_MEAL || previous.mealChoice === "salade_grecque") {
+      return {
+        seatId: id,
+        firstName: previous?.firstName ?? "",
+        lastName: previous?.lastName ?? "",
+        mealChoice: previous && previous.mealChoice !== VIP_MEAL && previous.mealChoice !== "salade_grecque"
+          ? previous.mealChoice
+          : "lasagne" as MealChoice,
+        hasDessert: previous?.hasDessert ?? false,
+      };
+    }
+    return previous;
+  });
 }

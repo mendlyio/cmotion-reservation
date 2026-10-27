@@ -10,8 +10,11 @@ import {
 import { eq, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { MEAL_OPTIONS, UPSELL_OPTIONS, DESSERT_LABEL, getTableLabel, getSeatLabel } from "@/types";
+import { UPSELL_OPTIONS, DESSERT_LABEL, getTableLabel, getSeatLabel, mealLabel } from "@/types";
 import { maskEmail } from "@/lib/security";
+import { canEditMeals, formatDeadlineFr, mealEditDeadline } from "@/lib/deadline";
+import { PolicyNotice } from "@/components/PolicyNotice";
+import { DisneyBanner } from "@/components/DisneyBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +70,8 @@ export default async function ConfirmationPage({ params }: Props) {
     .where(eq(reservationUpsells.reservationId, reservationId));
 
   const isPaid = reservation.stripeStatus === "paid";
+  const deadlineLabel = formatDeadlineFr(mealEditDeadline(event.eventDate));
+  const canEdit = isPaid && canEditMeals(event.eventDate);
   const date = new Date(event.eventDate).toLocaleDateString("fr-FR", {
     weekday: "long",
     day: "numeric",
@@ -112,6 +117,18 @@ export default async function ConfirmationPage({ params }: Props) {
       {/* Content */}
       <div className="relative flex-1 -mt-2">
         <div className="max-w-lg mx-auto px-4 pb-12 space-y-3">
+          <DisneyBanner compact />
+          <PolicyNotice deadlineLabel={deadlineLabel} />
+          {canEdit ? (
+            <Link
+              href={`/modifier/${token.toLowerCase()}`}
+              className="block text-center rounded-xl bg-[#c9a227] text-black font-bold py-3"
+            >
+              Modifier les plats
+            </Link>
+          ) : isPaid ? (
+            <p className="text-center text-sm text-[#888]">La date limite de modification des plats est passée.</p>
+          ) : null}
 
           {/* Main card */}
           <div className="bg-[#0f0f0f] rounded-2xl border border-[#1e1a0e] overflow-hidden">
@@ -150,7 +167,7 @@ export default async function ConfirmationPage({ params }: Props) {
               <div className="divide-y divide-[#0f0f0f]">
                 {resSeats.map((guest) => {
                   const seat = seatDetails.find((s) => s.id === guest.seatId);
-                  const meal = MEAL_OPTIONS.find((m) => m.value === guest.mealChoice);
+                  const mealName = mealLabel(guest.mealChoice);
                   return (
                     <div key={guest.id} className="px-5 py-3 flex items-center justify-between bg-[#0a0a0a]">
                       <div>
@@ -163,7 +180,7 @@ export default async function ConfirmationPage({ params }: Props) {
                           )}
                         </p>
                         <p className="text-xs text-[#555]">
-                          {meal?.label || guest.mealChoice}
+                          {mealName}
                           {guest.hasDessert && (
                             <span className="text-[#c9a227]/70"> + {DESSERT_LABEL}</span>
                           )}

@@ -84,7 +84,8 @@ export default async function AdminDashboardPage() {
       guestCount = allGuests.length;
 
       for (const guest of allGuests) {
-        mealCounts[guest.mealChoice] = (mealCounts[guest.mealChoice] || 0) + 1;
+        const mealKey = guest.mealChoice === "salade_grecque" ? "salade_saison" : guest.mealChoice;
+        mealCounts[mealKey] = (mealCounts[mealKey] || 0) + 1;
         if (guest.hasDessert) dessertCount++;
       }
 
@@ -336,6 +337,30 @@ export default async function AdminDashboardPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                   </svg>
                   Export CSV
+                </Link>
+                <Link
+                  href={`/api/admin/export/${s.event.id}/xlsx`}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] hover:border-[#c9a227]/30 rounded-xl text-xs font-medium text-[#aaa] hover:text-[#c9a227] transition-all"
+                >
+                  Excel
+                </Link>
+                <Link
+                  href={`/api/admin/export/${s.event.id}/fiches`}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] hover:border-[#c9a227]/30 rounded-xl text-xs font-medium text-[#aaa] hover:text-[#c9a227] transition-all"
+                >
+                  Fiches PDF
+                </Link>
+                <Link
+                  href={`/api/admin/export/${s.event.id}/recap`}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] hover:border-[#c9a227]/30 rounded-xl text-xs font-medium text-[#aaa] hover:text-[#c9a227] transition-all"
+                >
+                  Récap tables
+                </Link>
+                <Link
+                  href={`/admin/events/${s.event.id}/impression`}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-white text-black border border-white rounded-xl text-xs font-bold transition-all"
+                >
+                  Plan blanc
                 </Link>
               </div>
             </div>

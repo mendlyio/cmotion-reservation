@@ -7,6 +7,7 @@ import { getTableLabel, getSeatLabel } from "@/types";
 import { renderConfirmationEmail } from "@/emails/ConfirmationEmail";
 import { resend } from "@/lib/resend";
 import { getBaseUrl } from "@/lib/base-url";
+import { canEditMeals, formatDeadlineFr, mealEditDeadline } from "@/lib/deadline";
 import { alertPaymentAnomaly } from "@/lib/alerts";
 
 export async function markReservationPaid(
@@ -87,8 +88,17 @@ export async function sendPaidConfirmation(reservationId: number): Promise<void>
   }
 
   let confirmationUrl: string | undefined;
+  let editUrl: string | undefined;
+  let posterUrl: string | undefined;
+  let deadlineLabel: string | undefined;
   try {
-    confirmationUrl = `${getBaseUrl()}/confirmation/${reservation.publicToken}`;
+    const base = getBaseUrl();
+    confirmationUrl = `${base}/confirmation/${reservation.publicToken}`;
+    posterUrl = `${base}/disney-affiche.jpg`;
+    deadlineLabel = formatDeadlineFr(mealEditDeadline(eventData.eventDate));
+    if (canEditMeals(eventData.eventDate)) {
+      editUrl = `${base}/modifier/${reservation.publicToken}`;
+    }
   } catch {
     confirmationUrl = undefined;
   }
@@ -103,6 +113,9 @@ export async function sendPaidConfirmation(reservationId: number): Promise<void>
     tableInfo,
     isVip,
     confirmationUrl,
+    editUrl,
+    deadlineLabel,
+    posterUrl,
     guests: guestList.map((g) => ({
       firstName: g.firstName,
       lastName: g.lastName,
@@ -121,7 +134,7 @@ export async function sendPaidConfirmation(reservationId: number): Promise<void>
   await resend.emails.send({
     from,
     to: reservation.email,
-    subject: `Confirmation de réservation - Cmotion`,
+    subject: `Confirmation — Disney Show`,
     html,
   });
 }

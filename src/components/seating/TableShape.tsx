@@ -19,6 +19,7 @@ interface TableShapeProps {
   onMouseLeave: () => void;
   onMouseMove: (e: React.MouseEvent<SVGElement>, seat?: SeatData) => void;
   readOnly: boolean;
+  printMode?: boolean;
 }
 
 export const SEAT_COLORS: Record<string, string> = {
@@ -31,7 +32,7 @@ export const SEAT_COLORS: Record<string, string> = {
 export function TableShape({
   table, cx, cy, tableRadius: tr, seatRadius: sr, seatDist: sd,
   isSelected, selectedSeatIds, isHovered,
-  onTableClick, onSeatClick, onMouseEnter, onMouseLeave, onMouseMove, readOnly,
+  onTableClick, onSeatClick,   onMouseEnter, onMouseLeave, onMouseMove, readOnly, printMode = false,
 }: TableShapeProps) {
   const allRes = table.seats.every((s) => s.status === "reserved");
   const anyHeld = table.seats.some((s) => s.status === "held") && !isSelected;
@@ -41,13 +42,15 @@ export function TableShape({
   const canClick = !readOnly && ((vip && vipOk && !isSelected) || hasAvailNormal);
 
   // Fond de la table
-  let fill = "rgba(255,255,255,0.03)";
-  if (isSelected) fill = "rgba(59,130,246,0.15)";
-  else if (allRes) fill = "rgba(55,65,81,0.15)";
-  else if (anyHeld) fill = "rgba(251,191,36,0.08)";
+  let fill = printMode ? "#ffffff" : "rgba(255,255,255,0.03)";
+  if (isSelected) fill = printMode ? "#dbeafe" : "rgba(59,130,246,0.15)";
+  else if (allRes) fill = printMode ? "#f3f4f6" : "rgba(55,65,81,0.15)";
+  else if (anyHeld) fill = printMode ? "#fff7d6" : "rgba(251,191,36,0.08)";
 
   // Bordure de la table
-  const stroke = vip
+  const stroke = printMode
+    ? (vip ? "#8a6d1a" : "#222222")
+    : vip
     ? (isHovered && canClick ? "#e4c76b" : "#c9a227")
     : (isSelected ? "#3b82f6" : isHovered && hasAvailNormal && !readOnly ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.07)");
 
@@ -72,7 +75,7 @@ export function TableShape({
       {/* Numéro de table */}
       <text x={cx} y={cy + (vip ? -2 : 1)} textAnchor="middle" dominantBaseline="middle"
         fontSize={8} fontWeight="800"
-        fill={vip ? "rgba(201,162,39,0.6)" : "rgba(255,255,255,0.25)"}
+        fill={printMode ? "#111111" : vip ? "rgba(201,162,39,0.6)" : "rgba(255,255,255,0.25)"}
         fontFamily="system-ui" pointerEvents="none">
         T{getTableLabel(table.rowNumber, table.tableNumber)}
       </text>
@@ -89,7 +92,15 @@ export function TableShape({
         const sx = cx + Math.cos(a) * sd;
         const sy = cy + Math.sin(a) * sd;
         const sel = selectedSeatIds.includes(seat.id);
-        const color = sel ? SEAT_COLORS.selected : (SEAT_COLORS[seat.status] ?? SEAT_COLORS.available);
+        const printColors: Record<string, string> = {
+          available: "#ffffff",
+          held: "#fde68a",
+          reserved: "#d4d4d4",
+          selected: "#bfdbfe",
+        };
+        const color = printMode
+          ? (sel ? printColors.selected : printColors[seat.status] ?? "#ffffff")
+          : sel ? SEAT_COLORS.selected : (SEAT_COLORS[seat.status] ?? SEAT_COLORS.available);
         const canClickSeat = !readOnly && !vip && (seat.status === "available" || sel);
 
         return (
@@ -107,13 +118,13 @@ export function TableShape({
             )}
             {/* Siège */}
             <circle cx={sx} cy={sy} r={sr} fill={color}
-              stroke={sel ? "#93c5fd" : "rgba(0,0,0,0.35)"} strokeWidth={sel ? 1.5 : 0.5}
+              stroke={printMode ? "#111111" : sel ? "#93c5fd" : "rgba(0,0,0,0.35)"} strokeWidth={printMode ? 0.8 : sel ? 1.5 : 0.5}
               pointerEvents="none" style={{ transition: "fill .15s" }}
             />
             {/* Numéro de siège */}
             <text x={sx} y={sy + 0.5} textAnchor="middle" dominantBaseline="middle"
               fontSize={6}
-              fill={seat.status === "reserved" && !sel ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.8)"}
+              fill={printMode ? "#111111" : seat.status === "reserved" && !sel ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.8)"}
               fontWeight="900" fontFamily="system-ui" pointerEvents="none">
               {getSeatLabel(seat.seatNumber)}
             </text>

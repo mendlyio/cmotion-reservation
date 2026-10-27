@@ -9,6 +9,8 @@ import { SeatingPlan } from "@/components/seating/SeatingPlan";
 import { CountdownTimer } from "@/components/seating/CountdownTimer";
 import { BookingForm } from "@/components/booking/BookingForm";
 import { TableWithSeats, EventData, getTableLabel } from "@/types";
+import { formatDeadlineFr, mealEditDeadline } from "@/lib/deadline";
+import { PolicyNotice } from "@/components/PolicyNotice";
 
 export function ReservationClient({ event }: { event: EventData }) {
   const searchParams = useSearchParams();
@@ -21,6 +23,7 @@ export function ReservationClient({ event }: { event: EventData }) {
   const [holding, setHolding] = useState(false);
   const [floatingHidden, setFloatingHidden] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
+  const deadlineLabel = formatDeadlineFr(mealEditDeadline(event.eventDate));
 
   // ── Serialized hold engine ──────────────────────────────────────────────
   // Ensures only ONE API call is in-flight at a time.
@@ -280,6 +283,10 @@ export function ReservationClient({ event }: { event: EventData }) {
         </div>
       </header>
 
+      <div className="max-w-6xl mx-auto px-4 pt-4">
+        <PolicyNotice deadlineLabel={deadlineLabel} />
+      </div>
+
       {/* Seating plan area */}
       <section className="plan-bg">
         <div className="max-w-6xl mx-auto px-2 sm:px-4 py-3">
@@ -342,6 +349,7 @@ export function ReservationClient({ event }: { event: EventData }) {
                   tables={selTables}
                   selectedSeatIds={selSeats}
                   onCancel={cancel}
+                  deadlineLabel={deadlineLabel}
                 />
               </div>
             </div>

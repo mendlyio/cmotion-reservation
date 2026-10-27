@@ -32,6 +32,56 @@ WHERE s.id IN (SELECT seat_id FROM gone)
   )
 `;
 
+/** $1 reservation id, $2 convives jsonb, $3 repas danseur jsonb. Tout ou rien. */
+export const UPDATE_MEALS_SQL = `
+WITH guests AS (
+  SELECT * FROM jsonb_to_recordset($2::jsonb) AS x(id int, meal_choice text, has_dessert boolean)
+),
+ups AS (
+  SELECT * FROM jsonb_to_recordset($3::jsonb) AS x(id int, meal_choice text)
+),
+gcount AS (
+  SELECT count(*)::int AS n FROM reservation_seats WHERE reservation_id = $1
+),
+ucount AS (
+  SELECT count(*)::int AS n FROM reservation_upsells WHERE reservation_id = $1
+),
+gate AS (
+  SELECT 1
+  WHERE (SELECT n FROM gcount) = (SELECT count(*)::int FROM guests)
+    AND (SELECT n FROM ucount) = (SELECT count(*)::int FROM ups)
+    AND (SELECT count(*)::int FROM guests g
+         INNER JOIN reservation_seats rs ON rs.id = g.id AND rs.reservation_id = $1) = (SELECT n FROM gcount)
+    AND (
+      (SELECT n FROM ucount) = 0
+      OR (SELECT count(*)::int FROM ups u
+          INNER JOIN reservation_upsells ru ON ru.id = u.id AND ru.reservation_id = $1) = (SELECT n FROM ucount)
+    )
+),
+updated_guests AS (
+  UPDATE reservation_seats rs
+  SET meal_choice = g.meal_choice,
+      has_dessert = g.has_dessert
+  FROM guests g
+  WHERE rs.id = g.id
+    AND rs.reservation_id = $1
+    AND EXISTS (SELECT 1 FROM gate)
+  RETURNING rs.id
+),
+updated_upsells AS (
+  UPDATE reservation_upsells ru
+  SET meal_choice = u.meal_choice
+  FROM ups u
+  WHERE ru.id = u.id
+    AND ru.reservation_id = $1
+    AND EXISTS (SELECT 1 FROM gate)
+  RETURNING ru.id
+)
+SELECT
+  (SELECT count(*)::int FROM updated_guests) AS guests,
+  (SELECT count(*)::int FROM updated_upsells) AS upsells
+`;
+
 /**
  * Réserve tous les sièges demandés, ou aucun.
  * $1 seat ids, $2 event id, $3 count, $4 session, $5 expires_at

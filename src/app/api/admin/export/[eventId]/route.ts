@@ -11,7 +11,6 @@ import {
 import { eq, inArray } from "drizzle-orm";
 import { verifyAdmin } from "@/lib/admin";
 import {
-  MEAL_OPTIONS,
   DANCER_MEAL_OPTIONS,
   DESSERT_LABEL,
   DESSERT_PRICE,
@@ -19,6 +18,7 @@ import {
   getTableLabel,
   getSeatLabel,
   getMealPrice,
+  mealLabel,
 } from "@/types";
 import { escapeCsvCell } from "@/lib/security";
 
@@ -344,7 +344,7 @@ export async function GET(
     const seat = seatMap[g.seatId];
     const table = seat ? tableMap[seat.tableId] : null;
     const res = resMap[g.reservationId];
-    const meal = MEAL_OPTIONS.find((m) => m.value === g.mealChoice)?.label || g.mealChoice;
+    const meal = mealLabel(g.mealChoice);
     const nGuests = guestCountByRes[g.reservationId] || 0;
 
     const dessertCell = g.hasDessert ? `Oui (${DESSERT_LABEL})` : "Non";
@@ -407,7 +407,7 @@ export async function GET(
   const mealTotals: Record<string, number> = {};
   let dessertTotal = 0;
   for (const g of allGuests) {
-    const label = MEAL_OPTIONS.find((m) => m.value === g.mealChoice)?.label || g.mealChoice;
+    const label = mealLabel(g.mealChoice);
     mealTotals[label] = (mealTotals[label] || 0) + 1;
     if (g.hasDessert) dessertTotal++;
   }

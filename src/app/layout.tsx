@@ -21,8 +21,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Cmotion Réservation",
-  description: "Réservez vos places pour les spectacles de danse Cmotion",
+  title: "Cmotion — Disney Show",
+  description: "Réservez vos places pour le Disney Show, 5 et 6 décembre 2026, Centre culturel Spa",
 };
 
 export const viewport: Viewport = {
