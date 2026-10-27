@@ -44,7 +44,7 @@ export async function GET(
   }));
 
   const response = NextResponse.json({ tables: tablesWithSeats });
-  // Cache CDN Vercel : frais 8s, sert du stale jusqu'à 15s pendant la revalidation
+  // Le navigateur ne met rien en cache. Le CDN garde la réponse 2 secondes.
   response.headers.set("Cache-Control", "public, max-age=0, s-maxage=2");
   return response;
 }

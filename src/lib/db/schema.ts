@@ -10,7 +10,7 @@ import {
   unique,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 export const seatStatusEnum = pgEnum("seat_status", [
   "available",
@@ -96,7 +96,12 @@ export const reservations = pgTable(
     sessionId: text("session_id"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("reservations_public_token_unique").on(t.publicToken)]
+  (t) => [
+    uniqueIndex("reservations_public_token_unique").on(t.publicToken),
+    uniqueIndex("reservations_stripe_payment_id_unique")
+      .on(t.stripePaymentId)
+      .where(sql`${t.stripePaymentId} IS NOT NULL`),
+  ]
 );
 
 /** Session admin aléatoire, révocable. Le cookie contient le jeton brut, la base son empreinte. */
