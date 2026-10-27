@@ -1,9 +1,10 @@
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
 import Link from "next/link";
+import { isEventOpen } from "@/lib/open";
 import { ReservationEntryGate } from "@/components/ReservationEntryGate";
+import { DisneyBanner } from "@/components/DisneyBanner";
 import { RESERVATION_ENTRY_COOKIE } from "@/lib/reservation-entry";
 
 export const dynamic = "force-dynamic";
@@ -14,10 +15,7 @@ export default async function HomePage() {
     return <ReservationEntryGate />;
   }
 
-  const activeEvents = await db
-    .select()
-    .from(events)
-    .where(eq(events.isActive, true));
+  const activeEvents = (await db.select().from(events)).filter((event) => isEventOpen(event));
 
   const byDate = new Map<string, typeof activeEvents>();
   for (const ev of activeEvents) {
@@ -35,23 +33,18 @@ export default async function HomePage() {
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-[#c9a227]/8 rounded-full blur-3xl" />
         </div>
-        <div className="relative max-w-lg mx-auto px-5 pt-14 pb-12 text-center">
-          {/* Logo icon */}
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#c9a227] to-[#a07818] mb-5 shadow-xl shadow-[#c9a227]/25">
-            <svg className="w-8 h-8 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-            </svg>
-          </div>
-          <p className="text-[11px] font-bold tracking-[0.3em] uppercase text-[#c9a227]/70 mb-2">
-            Spectacles de danse
+        <div className="relative max-w-lg mx-auto px-5 pt-8 pb-8 text-center">
+          <DisneyBanner />
+          <p className="text-[11px] font-bold tracking-[0.3em] uppercase text-[#c9a227]/70 mt-5 mb-2">
+            CMotion Studio présente
           </p>
-          <h1 className="text-5xl font-extrabold tracking-tight mb-3">
+          <h1 className="text-4xl font-extrabold tracking-tight mb-2">
             <span className="bg-gradient-to-r from-[#e4c76b] via-[#c9a227] to-[#a07818] bg-clip-text text-transparent">
-              Cmotion
+              Disney Show
             </span>
           </h1>
-          <p className="text-sm text-[#666] max-w-xs mx-auto">
-            Réservez vos places en quelques clics
+          <p className="text-sm text-[#888] max-w-xs mx-auto">
+            5 et 6 décembre 2026 · Centre culturel Spa
           </p>
         </div>
       </section>
@@ -75,13 +68,15 @@ export default async function HomePage() {
             </div>
           ) : (
             <>
-              {[...byDate.entries()].map(([dateStr, dateEvents]) => {
+              {[...byDate.entries()]
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([dateStr, dateEvents]) => {
+                const slots = [...dateEvents].sort((a, b) => a.timeInfo.localeCompare(b.timeInfo, "fr"));
                 const d = new Date(dateStr);
                 const dayName = d.toLocaleDateString("fr-FR", { weekday: "long" });
                 const dayNum = d.toLocaleDateString("fr-FR", { day: "numeric" });
                 const month = d.toLocaleDateString("fr-FR", { month: "long" });
                 const year = d.getFullYear();
-                const isPlus12 = dateEvents[0]?.ageGroup === "+12";
 
                 return (
                   <div key={dateStr} className="bg-[#0f0f0f] rounded-2xl border border-[#1e1a0e] overflow-hidden">
@@ -103,9 +98,7 @@ export default async function HomePage() {
                       </div>
 
                       <div>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mb-1.5 bg-[#c9a227]/15 text-[#c9a227] border border-[#c9a227]/30">
-                          {isPlus12 ? "+12 ans" : "−12 ans"}
-                        </span>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-[#c9a227] mb-1">Disney Show</p>
                         <p className="text-sm font-semibold text-white capitalize">
                           {dayName} {dayNum} {month}
                         </p>
@@ -114,13 +107,16 @@ export default async function HomePage() {
 
                     {/* Time slots */}
                     <div className="px-4 pb-4 grid grid-cols-2 gap-2">
-                      {dateEvents.map((event) => (
+                      {slots.map((event) => (
                         <Link
                           key={event.id}
                           href={`/reservation/${event.id}`}
                           className="block group"
                         >
                           <div className="bg-[#141414] hover:bg-[#1a1500] border border-[#2a2a2a] hover:border-[#c9a227]/30 rounded-xl p-3.5 transition-all duration-150 active:scale-[0.97]">
+                            <span className="inline-flex mb-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#c9a227]/15 text-[#c9a227] border border-[#c9a227]/30">
+                              {event.ageGroup === "+12" ? "+12 ans" : "−12 ans"}
+                            </span>
                             <div className="flex items-center gap-2.5 mb-3">
                               <div className="w-9 h-9 rounded-lg bg-[#c9a227]/10 flex items-center justify-center">
                                 <svg className="w-4.5 h-4.5 text-[#c9a227]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -155,9 +151,9 @@ export default async function HomePage() {
                       VIP
                     </div>
                     <div className="text-2xl font-extrabold text-[#c9a227] leading-none mb-0.5">280€</div>
-                    <div className="text-[11px] text-[#c9a227]/50 font-medium">table de 8 pers.</div>
+                    <div className="text-[11px] text-[#c9a227]/50 font-medium">table de 8 · 35 € / pers.</div>
                     <div className="mt-3 space-y-1.5">
-                      {["Rangs 1 – 3", "Une bouteille de bulle par table", "Repas et Dessert inclus", "Zakouski"].map((f) => (
+                      {["Rangs 1 – 3", "35 € par personne", "Bouteille de mousseux", "Dessert inclus", "Pas de plat"].map((f) => (
                         <div key={f} className="flex items-center gap-1.5">
                           <div className="w-1.5 h-1.5 rounded-full bg-[#c9a227] shrink-0" />
                           <span className="text-[11px] text-[#888]">{f}</span>

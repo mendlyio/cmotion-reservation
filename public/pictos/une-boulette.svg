@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="1 boulette">
+  <ellipse cx="24" cy="46" rx="16" ry="6" fill="none" stroke="#222" stroke-width="2"/>
+  <circle cx="24" cy="30" r="10" fill="#6b5344" stroke="#222" stroke-width="1.5"/>
+  <rect x="40" y="22" width="14" height="20" rx="2" fill="#f6e7a8" stroke="#8a6d1a" stroke-width="1.5"/>
+  <path d="M44 22v-6M48 22v-8M52 22v-5" stroke="#c9a227" stroke-width="2" stroke-linecap="round"/>
+</svg>

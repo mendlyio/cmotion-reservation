@@ -2,11 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { tables, seats } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
-import { performReservationMaintenance } from "@/lib/maintenance";
-
-// Cache Vercel Edge : 8 secondes de fraîcheur, servi jusqu'à 15s en revalidation
-// Réduit les hits DB de N_utilisateurs × 1/10s à 1 hit/8s par edge region
-export const revalidate = 8;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET(
   _request: NextRequest,
@@ -17,8 +14,6 @@ export async function GET(
   if (isNaN(eventId)) {
     return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
   }
-
-  await performReservationMaintenance();
 
   const eventTables = await db
     .select()
@@ -49,10 +44,7 @@ export async function GET(
   }));
 
   const response = NextResponse.json({ tables: tablesWithSeats });
-  // Cache CDN Vercel : frais 8s, sert du stale jusqu'à 15s pendant la revalidation
-  response.headers.set(
-    "Cache-Control",
-    "public, s-maxage=8, stale-while-revalidate=15"
-  );
+  // Le navigateur ne met rien en cache. Le CDN garde la réponse 2 secondes.
+  response.headers.set("Cache-Control", "public, max-age=0, s-maxage=2");
   return response;
 }

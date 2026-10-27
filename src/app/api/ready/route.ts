@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { appSettings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { performReservationMaintenance } from "@/lib/maintenance";
+import { claimReadyMaintenance } from "@/lib/ready-maintenance";
 import {
   RESERVATION_ENTRY_COOKIE,
   RESERVATION_ENTRY_MAX_AGE_SEC,
@@ -17,7 +18,9 @@ export async function POST() {
       .where(eq(appSettings.id, 1))
       .limit(1);
 
-    await performReservationMaintenance();
+    if (claimReadyMaintenance()) {
+      await performReservationMaintenance();
+    }
 
     const res = NextResponse.json({ ok: true });
     res.cookies.set(RESERVATION_ENTRY_COOKIE, "1", {

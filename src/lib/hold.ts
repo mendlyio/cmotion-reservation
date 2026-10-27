@@ -1,125 +1,80 @@
-import { db } from "./db";
-import { holds, seats, reservationSeats, reservations } from "./db/schema";
-import { eq, lt, and, inArray, ne, isNotNull } from "drizzle-orm";
-import { stripe } from "./stripe";
+import { and, eq, isNotNull } from "drizzle-orm";
+import { stripe } from "@/lib/stripe";
+import { db } from "@/lib/db";
+import { reservations } from "@/lib/db/schema";
+import { queryRows } from "@/lib/query";
+import { PREPARE_CLAIM_SQL, CLAIM_SEATS_SQL, RELEASE_SESSION_SQL } from "@/lib/sql/booking";
+import { fastCleanup } from "@/lib/cleanup";
+import { markReservationPaid, sendPaidConfirmation } from "@/lib/payments";
 
-const HOLD_DURATION_MS = 10 * 60 * 1000; // 10 minutes
-
-export async function cleanupExpiredHolds() {
-  const now = new Date();
-
-  const expiredHolds = await db
-    .select()
-    .from(holds)
-    .where(lt(holds.expiresAt, now));
-
-  if (expiredHolds.length === 0) return;
-
-  const seatIds = expiredHolds
-    .filter((h) => h.seatId !== null)
-    .map((h) => h.seatId!);
-
-  if (seatIds.length > 0) {
-    // Never reset a seat that belongs to a paid reservation — the webhook may have
-    // already processed (or may arrive shortly after) and marked it reserved.
-    // This prevents the race condition where the hold expires just as the user pays.
-    const paidSeatIds = (
-      await db
-        .select({ seatId: reservationSeats.seatId })
-        .from(reservationSeats)
-        .innerJoin(reservations, eq(reservations.id, reservationSeats.reservationId))
-        .where(
-          and(
-            inArray(reservationSeats.seatId, seatIds),
-            eq(reservations.stripeStatus, "paid")
-          )
-        )
-    ).map((r) => r.seatId);
-
-    const safeToRelease = paidSeatIds.length > 0
-      ? seatIds.filter((id) => !paidSeatIds.includes(id))
-      : seatIds;
-
-    if (safeToRelease.length > 0) {
-      await db
-        .update(seats)
-        .set({ status: "available" })
-        .where(
-          and(inArray(seats.id, safeToRelease), eq(seats.status, "held"))
-        );
-    }
-
-    // For pending reservations that opened a Stripe session: expire it immediately
-    // so the user can no longer pay after their hold has lapsed.
-    // The checkout.session.expired webhook will then handle the canonical cleanup.
-    const pendingWithStripe = await db
-      .select({ stripePaymentId: reservations.stripePaymentId })
-      .from(reservations)
-      .innerJoin(reservationSeats, eq(reservationSeats.reservationId, reservations.id))
-      .where(
-        and(
-          inArray(reservationSeats.seatId, seatIds),
-          eq(reservations.stripeStatus, "pending"),
-          isNotNull(reservations.stripePaymentId)
-        )
-      );
-
-    for (const r of pendingWithStripe) {
-      if (r.stripePaymentId) {
-        try {
-          await stripe.checkout.sessions.expire(r.stripePaymentId);
-        } catch {
-          // Already expired or not found — safe to ignore
-        }
-      }
-    }
-
-    // Delete orphaned reservation_seats for non-paid reservations on these seats.
-    // When a hold expires the seat is freed, but reservation_seats rows linger and
-    // block the UNIQUE(seat_id) constraint for the next booking attempt.
-    const orphanRS = await db
-      .select({ id: reservationSeats.id })
-      .from(reservationSeats)
-      .innerJoin(reservations, eq(reservations.id, reservationSeats.reservationId))
-      .where(
-        and(
-          inArray(reservationSeats.seatId, seatIds),
-          ne(reservations.stripeStatus, "paid")
-        )
-      );
-
-    if (orphanRS.length > 0) {
-      await db
-        .delete(reservationSeats)
-        .where(inArray(reservationSeats.id, orphanRS.map((r) => r.id)));
-    }
-  }
-
-  await db.delete(holds).where(lt(holds.expiresAt, now));
-}
+const HOLD_DURATION_MS = 10 * 60 * 1000;
 
 export function getHoldExpiry(): Date {
   return new Date(Date.now() + HOLD_DURATION_MS);
 }
 
-export async function releaseHoldsBySession(sessionId: string) {
-  const sessionHolds = await db
-    .select()
-    .from(holds)
-    .where(eq(holds.sessionId, sessionId));
+export async function cleanupExpiredHolds(): Promise<void> {
+  await fastCleanup();
+}
 
-  const seatIds = sessionHolds
-    .filter((h) => h.seatId !== null)
-    .map((h) => h.seatId!);
+/**
+ * Rend les places de la session. Si un paiement Stripe est déjà encaissé,
+ * la réservation est confirmée au lieu d'être annulée.
+ */
+export async function releaseHoldsBySession(sessionId: string): Promise<void> {
+  const pending = await db
+    .select({
+      id: reservations.id,
+      stripePaymentId: reservations.stripePaymentId,
+      totalAmount: reservations.totalAmount,
+    })
+    .from(reservations)
+    .where(and(eq(reservations.sessionId, sessionId), eq(reservations.stripeStatus, "pending"), isNotNull(reservations.stripePaymentId)));
 
-  if (seatIds.length > 0) {
-    await db
-      .update(seats)
-      .set({ status: "available" })
-      .where(
-        and(inArray(seats.id, seatIds), eq(seats.status, "held"))
-      );
+  for (const row of pending) {
+    if (!row.stripePaymentId) continue;
+    try {
+      const session = await stripe.checkout.sessions.retrieve(row.stripePaymentId);
+      if (session.payment_status === "paid" && session.amount_total === row.totalAmount && session.currency === "eur") {
+        const marked = await markReservationPaid(row.id, session.id, row.totalAmount);
+        if (marked) {
+          try {
+            await sendPaidConfirmation(row.id);
+          } catch {
+            /* l'email ne doit pas bloquer la libération des autres places */
+          }
+        }
+        continue;
+      }
+      if (session.status === "open") {
+        try {
+          await stripe.checkout.sessions.expire(row.stripePaymentId);
+        } catch {
+          /* déjà expirée */
+        }
+      }
+    } catch {
+      /* session introuvable : la requête suivante passe la réservation en failed */
+    }
   }
 
-  await db.delete(holds).where(eq(holds.sessionId, sessionId));
+  await queryRows(RELEASE_SESSION_SQL, [sessionId]);
+}
+
+export async function claimSeats(input: {
+  seatIds: number[];
+  eventId: number;
+  sessionId: string;
+  expiresAt: Date;
+}): Promise<number[]> {
+  if (input.seatIds.length === 0) return [];
+  await queryRows(PREPARE_CLAIM_SQL, [input.seatIds]);
+  const rows = await queryRows<{ seat_id: number }>(CLAIM_SEATS_SQL, [
+    input.seatIds,
+    input.eventId,
+    input.seatIds.length,
+    input.sessionId,
+    input.expiresAt.toISOString(),
+  ]);
+  return rows.map((row) => Number(row.seat_id));
 }

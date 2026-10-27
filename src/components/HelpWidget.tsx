@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,6 +28,7 @@ export function HelpWidget({ events }: Props) {
   const [seatOrTable, setSeatOrTable] = useState("");
   const [eventId, setEventId] = useState<string>("");
   const [message, setMessage] = useState("");
+  const companyRef = useRef<HTMLInputElement>(null);
 
   // Ne pas afficher sur les pages admin
   if (pathname.startsWith("/admin")) return null;
@@ -47,7 +48,15 @@ export function HelpWidget({ events }: Props) {
       const res = await fetch("/api/help", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, whatsapp, seatOrTable, eventLabel, message }),
+        body: JSON.stringify({
+          name,
+          email,
+          whatsapp,
+          seatOrTable,
+          eventLabel,
+          message,
+          company: companyRef.current?.value ?? "",
+        }),
       });
       if (!res.ok) throw new Error();
       setSent(true);
@@ -163,6 +172,16 @@ export function HelpWidget({ events }: Props) {
                 </motion.div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  <input
+                    ref={companyRef}
+                    type="text"
+                    name="company"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    aria-hidden="true"
+                    defaultValue=""
+                    style={{ position: "absolute", left: "-9999px", height: 0, width: 0, opacity: 0 }}
+                  />
                   <p className="text-xs text-[#555] bg-[#141414] border border-[#1e1e1e] px-3 py-2.5 rounded-xl leading-relaxed">
                     Remplissez ce formulaire et nous vous recontactons par email ou WhatsApp.
                   </p>

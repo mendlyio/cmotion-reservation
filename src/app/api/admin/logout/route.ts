@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { clearAdminCookie } from "@/lib/admin";
+import { getBaseUrl } from "@/lib/base-url";
 
 export async function POST() {
   await clearAdminCookie();
-  return NextResponse.redirect(
-    new URL("/admin", process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"),
-    303
-  );
+  return NextResponse.redirect(new URL("/admin", getBaseUrl()), 303);
 }

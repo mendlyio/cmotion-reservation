@@ -14,6 +14,7 @@ interface SeatingPlanProps {
   selectedSeatIds?: number[];
   readOnly?: boolean;
   hideZoom?: boolean;
+  printMode?: boolean;
 }
 
 const TR = 24;
@@ -43,22 +44,24 @@ export function SeatingPlan({
   selectedSeatIds = [],
   readOnly = false,
   hideZoom = false,
+  printMode = false,
 }: SeatingPlanProps) {
-  const [tables, setTables] = useState<TableWithSeats[]>(init);
+  const [polled, setPolled] = useState<TableWithSeats[] | null>(null);
+  const [source, setSource] = useState(init);
+  let tables = polled ?? init;
+  if (source !== init) {
+    setSource(init);
+    setPolled(null);
+    tables = init;
+  }
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
   const [hovered, setHovered] = useState<number | null>(null);
-  const [scale, setScale] = useState(1);
+  const [scale, setScale] = useState(() => {
+    if (printMode || typeof window === "undefined") return 1;
+    return window.innerWidth < 480 ? 1.2 : 1;
+  });
   const containerRef = useRef<HTMLDivElement>(null);
   const svgWrapRef = useRef<HTMLDivElement>(null);
-
-  // Zoom initial adapté à l'écran
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const w = window.innerWidth;
-      if (w < 480) setScale(1.2);
-      else setScale(1.0);
-    }
-  }, []);
 
   // Centrage horizontal du plan à l'ouverture
   useEffect(() => {
@@ -74,16 +77,15 @@ export function SeatingPlan({
   }, [tables.length > 0]);
 
   useEffect(() => {
+    if (printMode) return;
     const iv = setInterval(async () => {
       try {
         const r = await fetch(`/api/seating/${eventId}`);
-        if (r.ok) setTables((await r.json()).tables);
+        if (r.ok) setPolled((await r.json()).tables);
       } catch { /* */ }
     }, 15000);
     return () => clearInterval(iv);
-  }, [eventId]);
-
-  useEffect(() => { setTables(init); }, [init]);
+  }, [eventId, printMode]);
 
   const rows = groupByRow(tables);
   const maxT = Math.max(...Object.values(rows).map((r) => r.length), 1);
@@ -148,10 +150,6 @@ export function SeatingPlan({
 
   const zoomIn    = () => setScale((s) => Math.min(SCALE_MAX, parseFloat((s + SCALE_STEP).toFixed(2))));
   const zoomOut   = () => setScale((s) => Math.max(SCALE_MIN, parseFloat((s - SCALE_STEP).toFixed(2))));
-  const zoomReset = () => {
-    const w = typeof window !== "undefined" ? window.innerWidth : 768;
-    setScale(w < 480 ? 1.2 : 1.0);
-  };
 
   const LEGEND = [
     { c: "#4ade80", l: "Libre",        filled: true  },
@@ -162,7 +160,7 @@ export function SeatingPlan({
   ];
 
   return (
-    <div ref={containerRef} className="relative w-full rounded-2xl overflow-hidden" style={{ background: "#080700" }}>
+    <div ref={containerRef} className="relative w-full rounded-2xl overflow-hidden" style={{ background: printMode ? "#ffffff" : "#080700" }}>
 
       {/* Légende */}
       <div className="flex items-center justify-center gap-3 sm:gap-4 flex-wrap pt-3 pb-2 px-3">
@@ -175,7 +173,7 @@ export function SeatingPlan({
                 : { background: "transparent", boxShadow: `inset 0 0 0 1.5px ${item.c}` }
               }
             />
-            <span className="text-[10px] font-medium" style={{ color: "rgba(201,162,39,0.45)" }}>
+            <span className="text-[10px] font-medium" style={{ color: printMode ? "#333" : "rgba(201,162,39,0.45)" }}>
               {item.l}
             </span>
           </div>
@@ -217,11 +215,11 @@ export function SeatingPlan({
 
             {/* Scène */}
             <rect x={PX + 20} y={PT} width={W - (PX + 20) * 2} height={SH} rx={SH / 2}
-              fill="url(#sg)" filter="url(#sceneGlow)" />
+              fill={printMode ? "#f4e7b5" : "url(#sg)"} filter={printMode ? undefined : "url(#sceneGlow)"} />
             <rect x={PX + 20} y={PT} width={W - (PX + 20) * 2} height={SH} rx={SH / 2}
-              fill="none" stroke="#c9a227" strokeWidth="0.6" opacity="0.35" />
+              fill="none" stroke={printMode ? "#8a6d1a" : "#c9a227"} strokeWidth="0.6" opacity={printMode ? 1 : 0.35} />
             <text x={W / 2} y={PT + SH / 2 + 4} textAnchor="middle"
-              fill="#e4c76b" fontSize={10} fontWeight="800" fontFamily="system-ui"
+              fill={printMode ? "#3f3208" : "#e4c76b"} fontSize={10} fontWeight="800" fontFamily="system-ui"
               letterSpacing="5" opacity="0.85">
               SCÈNE
             </text>
@@ -241,7 +239,7 @@ export function SeatingPlan({
                   <line x1={W / 2 + 28} y1={sepY} x2={W - PX - 12} y2={sepY}
                     stroke="#c9a227" strokeWidth="0.8" strokeDasharray="4 4" opacity="0.35" />
                   <rect x={W / 2 - 22} y={sepY - 8} width={44} height={16} rx={8}
-                    fill="#0f0c00" stroke="#c9a227" strokeWidth="0.8" opacity="0.95" />
+                    fill={printMode ? "#ffffff" : "#0f0c00"} stroke="#c9a227" strokeWidth="0.8" opacity="0.95" />
                   <text x={W / 2} y={sepY} textAnchor="middle" dominantBaseline="central"
                     fill="#c9a227" fontSize={7} fontWeight="900" fontFamily="system-ui" letterSpacing="3">
                     VIP
@@ -258,7 +256,7 @@ export function SeatingPlan({
               return (
                 <g key={rn}>
                   <text x={10} y={cy + 3} fontSize={7}
-                    fill={rt[0]?.isVip ? "rgba(201,162,39,0.5)" : "rgba(255,255,255,0.1)"}
+                    fill={printMode ? "#222" : rt[0]?.isVip ? "rgba(201,162,39,0.5)" : "rgba(255,255,255,0.1)"}
                     fontWeight="900" fontFamily="system-ui">
                     {rn}
                   </text>
@@ -281,6 +279,7 @@ export function SeatingPlan({
                       onMouseLeave={() => { setHovered(null); setTooltip(null); }}
                       onMouseMove={(e, s) => onMM(e, t, s)}
                       readOnly={readOnly}
+                      printMode={printMode}
                     />
                   ))}
                 </g>

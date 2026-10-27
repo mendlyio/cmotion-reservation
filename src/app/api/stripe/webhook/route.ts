@@ -1,214 +1,131 @@
 import { NextRequest, NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 import { stripe } from "@/lib/stripe";
 import { db } from "@/lib/db";
-import {
-  reservations,
-  reservationSeats,
-  reservationUpsells,
-  seats,
-  tables,
-  holds,
-  events,
-} from "@/lib/db/schema";
-import { eq, inArray, and } from "drizzle-orm";
-import { resend } from "@/lib/resend";
-import { renderConfirmationEmail } from "@/emails/ConfirmationEmail";
-import { getTableLabel, getSeatLabel } from "@/types";
+import { reservationSeats, reservations } from "@/lib/db/schema";
+import { decideCheckoutCompleted, decideCheckoutExpired } from "@/lib/webhook-logic";
+import { alertPaymentAnomaly } from "@/lib/alerts";
+import { failPendingReservation, markReservationPaid, sendPaidConfirmation } from "@/lib/payments";
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
   const sig = request.headers.get("stripe-signature");
-
-  if (!sig) {
-    return NextResponse.json({ error: "No signature" }, { status: 400 });
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!sig || !secret) {
+    return NextResponse.json({ error: "Signature manquante" }, { status: 400 });
   }
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    );
+    event = stripe.webhooks.constructEvent(body, sig, secret);
   } catch {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+    return NextResponse.json({ error: "Signature invalide" }, { status: 400 });
   }
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
-    const reservationId = parseInt(session.metadata?.reservationId || "0");
+    const reservationId = parseInt(session.metadata?.reservationId || "0", 10);
+    const [existing] = reservationId
+      ? await db
+          .select({
+            id: reservations.id,
+            stripeStatus: reservations.stripeStatus,
+            totalAmount: reservations.totalAmount,
+            email: reservations.email,
+          })
+          .from(reservations)
+          .where(eq(reservations.id, reservationId))
+      : [];
 
-    if (reservationId) {
-      // Idempotency: skip if already processed
-      const [existing] = await db
+    const seatCount = existing
+      ? (
+          await db
+            .select({ id: reservationSeats.id })
+            .from(reservationSeats)
+            .where(eq(reservationSeats.reservationId, existing.id))
+        ).length
+      : 0;
+
+    const decision = decideCheckoutCompleted({
+      reservationFound: Boolean(existing),
+      status: existing?.stripeStatus ?? null,
+      expectedAmount: existing?.totalAmount ?? null,
+      amountTotal: session.amount_total,
+      paymentStatus: session.payment_status,
+      currency: session.currency,
+      hasSeats: seatCount > 0,
+    });
+
+    if (decision.type === "ignore_unpaid" || decision.type === "already_paid") {
+      return NextResponse.json({ received: true });
+    }
+
+    if (decision.type === "alert") {
+      const sent = await alertPaymentAnomaly({
+        reason: decision.reason,
+        reservationId: existing?.id ?? null,
+        stripeSessionId: session.id,
+        amountTotal: session.amount_total,
+        expectedAmount: existing?.totalAmount ?? null,
+        customerEmail: session.customer_email ?? existing?.email ?? null,
+      });
+      return sent
+        ? NextResponse.json({ received: true })
+        : NextResponse.json({ error: "Alerte non délivrée" }, { status: 500 });
+    }
+
+    const marked = await markReservationPaid(existing!.id, session.id, existing!.totalAmount);
+    if (!marked) {
+      const [again] = await db
         .select({ stripeStatus: reservations.stripeStatus })
         .from(reservations)
-        .where(eq(reservations.id, reservationId));
-
-      if (existing?.stripeStatus === "paid") {
-        return NextResponse.json({ received: true });
-      }
-
-      await db
-        .update(reservations)
-        .set({ stripeStatus: "paid", stripePaymentId: session.id })
-        .where(eq(reservations.id, reservationId));
-
-      const resSeats = await db
-        .select()
-        .from(reservationSeats)
-        .where(eq(reservationSeats.reservationId, reservationId));
-
-      const seatIds = resSeats.map((rs) => rs.seatId);
-
-      if (seatIds.length > 0) {
-        // Mark all seats as reserved unconditionally — the seat is confirmed paid, regardless
-        // of whether the hold already expired and the cron reset it to 'available'.
-        await db
-          .update(seats)
-          .set({ status: "reserved" })
-          .where(inArray(seats.id, seatIds));
-
-        await db.delete(holds).where(inArray(holds.seatId, seatIds));
-      }
-
-      try {
-        const [reservation] = await db
-          .select()
-          .from(reservations)
-          .where(eq(reservations.id, reservationId));
-
-        const [eventData] = await db
-          .select()
-          .from(events)
-          .where(eq(events.id, reservation.eventId));
-
-        const guestList = await db
-          .select()
-          .from(reservationSeats)
-          .where(eq(reservationSeats.reservationId, reservationId));
-
-        const upsellList = await db
-          .select()
-          .from(reservationUpsells)
-          .where(eq(reservationUpsells.reservationId, reservationId));
-
-        // Resolve placement (table + seat) for each guest
-        let tableInfo: string | undefined;
-        let isVip = false;
-        const placementMap: Record<number, string> = {};
-
-        const guestSeatIds = guestList.map((g) => g.seatId);
-        if (guestSeatIds.length > 0) {
-          const seatRows = await db
-            .select({ id: seats.id, seatNumber: seats.seatNumber, tableId: seats.tableId })
-            .from(seats)
-            .where(inArray(seats.id, guestSeatIds));
-
-          const tableIds = [...new Set(seatRows.map((s) => s.tableId))];
-          const tableRows = tableIds.length > 0
-            ? await db
-                .select({ id: tables.id, rowNumber: tables.rowNumber, tableNumber: tables.tableNumber, isVip: tables.isVip })
-                .from(tables)
-                .where(inArray(tables.id, tableIds))
-            : [];
-          const tMap: Record<number, typeof tableRows[0]> = {};
-          for (const t of tableRows) tMap[t.id] = t;
-
-          for (const s of seatRows) {
-            const t = tMap[s.tableId];
-            if (t) {
-              placementMap[s.id] = `T${getTableLabel(t.rowNumber, t.tableNumber)} - ${getSeatLabel(s.seatNumber)}`;
-            }
-          }
-
-          // tableInfo from first guest's seat
-          const firstSeat = seatRows.find((s) => s.id === guestList[0].seatId);
-          if (firstSeat) {
-            const t = tMap[firstSeat.tableId];
-            if (t) {
-              tableInfo = `${getTableLabel(t.rowNumber, t.tableNumber)}`;
-              isVip = t.isVip;
-            }
-          }
-        }
-
-        const html = renderConfirmationEmail({
-          reservationId: reservation.id,
-          eventName: eventData.name,
-          eventDate: eventData.eventDate,
-          timeInfo: eventData.timeInfo,
-          referentStudent: reservation.referentStudent,
-          totalAmount: reservation.totalAmount,
-          tableInfo,
-          isVip,
-          guests: guestList.map((g) => ({
-            firstName: g.firstName,
-            lastName: g.lastName,
-            mealChoice: g.mealChoice,
-            hasDessert: g.hasDessert,
-            placement: placementMap[g.seatId],
-          })),
-          upsells: upsellList.map((u) => ({
-            type: u.upsellType,
-            quantity: u.quantity,
-            unitPrice: u.unitPrice,
-            mealChoice: u.mealChoice,
-          })),
-        });
-
-        await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL || "noreply@example.com",
-          to: reservation.email,
-          subject: `Confirmation de réservation #${reservation.id} - Cmotion`,
-          html,
-        });
-      } catch (emailError) {
-        console.error("Failed to send confirmation email:", emailError);
-      }
+        .where(eq(reservations.id, existing!.id));
+      if (again?.stripeStatus === "paid") return NextResponse.json({ received: true });
+      const sent = await alertPaymentAnomaly({
+        reason: "confirmation non appliquée",
+        reservationId: existing!.id,
+        stripeSessionId: session.id,
+        amountTotal: session.amount_total,
+        expectedAmount: existing!.totalAmount,
+        customerEmail: existing!.email,
+      });
+      return sent
+        ? NextResponse.json({ received: true })
+        : NextResponse.json({ error: "Alerte non délivrée" }, { status: 500 });
     }
+
+    if (decision.type === "mark_paid_without_seats") {
+      const sent = await alertPaymentAnomaly({
+        reason: "paiement sans places",
+        reservationId: existing!.id,
+        stripeSessionId: session.id,
+        amountTotal: session.amount_total,
+        expectedAmount: existing!.totalAmount,
+        customerEmail: existing!.email,
+      });
+      if (!sent) return NextResponse.json({ error: "Alerte non délivrée" }, { status: 500 });
+    }
+
+    try {
+      await sendPaidConfirmation(existing!.id);
+    } catch (err) {
+      console.error("Email de confirmation", existing!.id, err instanceof Error ? err.name : "error");
+    }
+    return NextResponse.json({ received: true });
   }
 
   if (event.type === "checkout.session.expired") {
     const session = event.data.object;
-    const reservationId = parseInt(session.metadata?.reservationId || "0");
+    const reservationId = parseInt(session.metadata?.reservationId || "0", 10);
+    if (!reservationId) return NextResponse.json({ received: true });
 
-    if (reservationId) {
-      // Only mark as failed if still pending — don't overwrite a paid reservation
-      await db
-        .update(reservations)
-        .set({ stripeStatus: "failed" })
-        .where(
-          and(
-            eq(reservations.id, reservationId),
-            eq(reservations.stripeStatus, "pending")
-          )
-        );
+    const [existing] = await db
+      .select({ stripeStatus: reservations.stripeStatus })
+      .from(reservations)
+      .where(eq(reservations.id, reservationId));
 
-      const resSeats = await db
-        .select()
-        .from(reservationSeats)
-        .where(eq(reservationSeats.reservationId, reservationId));
-
-      const seatIds = resSeats.map((rs) => rs.seatId);
-
-      if (seatIds.length > 0) {
-        // Guard: only release seats that are still 'held', never overwrite 'reserved'
-        await db
-          .update(seats)
-          .set({ status: "available" })
-          .where(
-            and(inArray(seats.id, seatIds), eq(seats.status, "held"))
-          );
-
-        await db.delete(holds).where(inArray(holds.seatId, seatIds));
-      }
-
-      // Always delete reservation_seats for a failed/expired session so the
-      // UNIQUE(seat_id) constraint no longer blocks future bookings.
-      await db
-        .delete(reservationSeats)
-        .where(eq(reservationSeats.reservationId, reservationId));
+    if (decideCheckoutExpired(existing?.stripeStatus ?? null) === "fail") {
+      await failPendingReservation(reservationId);
     }
   }
 

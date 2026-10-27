@@ -11,7 +11,6 @@ import {
 import { eq, inArray } from "drizzle-orm";
 import { verifyAdmin } from "@/lib/admin";
 import {
-  MEAL_OPTIONS,
   DANCER_MEAL_OPTIONS,
   DESSERT_LABEL,
   DESSERT_PRICE,
@@ -19,8 +18,10 @@ import {
   getTableLabel,
   getSeatLabel,
   getMealPrice,
-  type MealChoice,
+  mealLabel,
 } from "@/types";
+import { contentDisposition } from "@/lib/content-disposition";
+import { escapeCsvCell } from "@/lib/security";
 
 const STRIPE_STATUS_FR: Record<string, string> = {
   pending: "En attente de paiement",
@@ -54,10 +55,6 @@ function upsellTypeLabel(type: string): string {
   return UPSELL_OPTIONS.find((o) => o.type === type)?.label || type.replace(/_/g, " ");
 }
 
-function escapeCsvCell(cell: string): string {
-  return `"${cell.replace(/"/g, '""')}"`;
-}
-
 function formatCsvRow(row: string[]): string {
   return row.map(escapeCsvCell).join(",");
 }
@@ -78,9 +75,9 @@ function recapLine(row: readonly string[]): string {
 }
 
 function mealCatalogPriceEur(mealChoice: string): string {
-  const known = MEAL_OPTIONS.some((m) => m.value === mealChoice);
-  if (!known) return "";
-  return eurLabel(getMealPrice(mealChoice as MealChoice));
+  const price = getMealPrice(mealChoice);
+  if (price === null) return "";
+  return eurLabel(price);
 }
 
 function eventDateIso(event: typeof events.$inferSelect): string {
@@ -186,13 +183,11 @@ export async function GET(
     }
     headerLines.push(formatCsvRow(["Message", "Aucune réservation payée pour ce spectacle."]));
     const bom = "\uFEFF";
-    const dateSlug = event.eventDate;
-    const nameSlug = event.name.replace(/\s+/g, "-").toLowerCase();
     const csv = bom + headerLines.join("\n");
     return new NextResponse(csv, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="cmotion-${nameSlug}-${dateSlug}-complet.csv"`,
+        "Content-Disposition": contentDisposition(`cmotion-${event.name}-${event.eventDate}-complet.csv`),
       },
     });
   }
@@ -348,7 +343,7 @@ export async function GET(
     const seat = seatMap[g.seatId];
     const table = seat ? tableMap[seat.tableId] : null;
     const res = resMap[g.reservationId];
-    const meal = MEAL_OPTIONS.find((m) => m.value === g.mealChoice)?.label || g.mealChoice;
+    const meal = mealLabel(g.mealChoice);
     const nGuests = guestCountByRes[g.reservationId] || 0;
 
     const dessertCell = g.hasDessert ? `Oui (${DESSERT_LABEL})` : "Non";
@@ -411,7 +406,7 @@ export async function GET(
   const mealTotals: Record<string, number> = {};
   let dessertTotal = 0;
   for (const g of allGuests) {
-    const label = MEAL_OPTIONS.find((m) => m.value === g.mealChoice)?.label || g.mealChoice;
+    const label = mealLabel(g.mealChoice);
     mealTotals[label] = (mealTotals[label] || 0) + 1;
     if (g.hasDessert) dessertTotal++;
   }
@@ -622,13 +617,10 @@ export async function GET(
   const bom = "\uFEFF";
   const csv = bom + csvLines.join("\n");
 
-  const dateSlug = event.eventDate;
-  const nameSlug = event.name.replace(/\s+/g, "-").toLowerCase();
-
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="cmotion-${nameSlug}-${dateSlug}-complet.csv"`,
+      "Content-Disposition": contentDisposition(`cmotion-${event.name}-${event.eventDate}-complet.csv`),
     },
   });
 }

@@ -8,8 +8,9 @@ import {
   date,
   pgEnum,
   unique,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 export const seatStatusEnum = pgEnum("seat_status", [
   "available",
@@ -77,18 +78,45 @@ export const holds = pgTable("holds", {
   unique("holds_seat_id_unique").on(t.seatId),
 ]);
 
-export const reservations = pgTable("reservations", {
+export const reservations = pgTable(
+  "reservations",
+  {
+    id: serial("id").primaryKey(),
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    referentStudent: text("referent_student").notNull(),
+    email: text("email").notNull(),
+    phone: text("phone"),
+    totalAmount: integer("total_amount").notNull(),
+    stripePaymentId: text("stripe_payment_id"),
+    stripeStatus: stripeStatusEnum("stripe_status").notNull().default("pending"),
+    adminNotes: text("admin_notes"),
+    publicToken: text("public_token").notNull(),
+    sessionId: text("session_id"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("reservations_public_token_unique").on(t.publicToken),
+    uniqueIndex("reservations_stripe_payment_id_unique")
+      .on(t.stripePaymentId)
+      .where(sql`${t.stripePaymentId} IS NOT NULL`),
+  ]
+);
+
+/** Session admin aléatoire, révocable. Le cookie contient le jeton brut, la base son empreinte. */
+export const adminSessions = pgTable("admin_sessions", {
   id: serial("id").primaryKey(),
-  eventId: integer("event_id")
-    .notNull()
-    .references(() => events.id, { onDelete: "cascade" }),
-  referentStudent: text("referent_student").notNull(),
-  email: text("email").notNull(),
-  phone: text("phone"),
-  totalAmount: integer("total_amount").notNull(),
-  stripePaymentId: text("stripe_payment_id"),
-  stripeStatus: stripeStatusEnum("stripe_status").notNull().default("pending"),
-  adminNotes: text("admin_notes"),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+/** Compteur d'essais (login admin, formulaire d'aide). */
+export const requestLimits = pgTable("request_limits", {
+  id: serial("id").primaryKey(),
+  bucket: text("bucket").notNull(),
+  ip: text("ip").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

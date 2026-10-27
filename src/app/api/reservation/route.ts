@@ -1,211 +1,147 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomBytes } from "crypto";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import {
-  reservations,
-  reservationSeats,
-  reservationUpsells,
-  holds,
-  seats,
-} from "@/lib/db/schema";
-import { eq, and, inArray, ne, isNotNull } from "drizzle-orm";
+import { events, seats, tables } from "@/lib/db/schema";
 import { getOrCreateSession } from "@/lib/session";
-import { calculateTotal, BookingFormData, DANCER_MEAL_OPTIONS } from "@/types";
-import { stripe } from "@/lib/stripe";
+import { DANCER_MEAL_OPTIONS, quoteBooking } from "@/lib/pricing";
+import { bookingSchema } from "@/lib/booking-schema";
+import { isEventOpen } from "@/lib/open";
+import { queryRows, isUniqueViolation } from "@/lib/query";
+import { INSERT_RESERVATION_SQL } from "@/lib/sql/booking";
 
-// Grace period after reservation creation to cover Stripe checkout duration
-// Aligned with Stripe's minimum session duration (30 min) to avoid holds expiring
-// while the checkout page is still active.
-const CHECKOUT_GRACE_MS = 30 * 60 * 1000; // 30 minutes
+const CHECKOUT_GRACE_MS = 30 * 60 * 1000;
 
 export async function POST(request: NextRequest) {
   const sessionId = await getOrCreateSession();
-  const body: BookingFormData = await request.json();
-
-  const {
-    eventId,
-    tableId,
-    seatIds,
-    isVip,
-    guests,
-    upsells,
-    referentStudent,
-    email,
-    phone,
-  } = body;
-
-  if (!eventId || !tableId || !guests || guests.length === 0 || !email) {
-    return NextResponse.json(
-      { error: "Données de réservation incomplètes" },
-      { status: 400 }
-    );
+  let json: unknown;
+  try {
+    json = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Données de réservation invalides" }, { status: 400 });
   }
 
-  // Verify the session holds these seats and holds haven't expired
-  const now = new Date();
-  const sessionHolds = await db
-    .select()
-    .from(holds)
-    .where(and(eq(holds.sessionId, sessionId), eq(holds.eventId, eventId)));
+  const parsed = bookingSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Données de réservation invalides" }, { status: 400 });
+  }
+  const body = parsed.data;
 
-  const validHolds = sessionHolds.filter(
-    (h) => h.seatId !== null && new Date(h.expiresAt) > now
-  );
-  const heldSeatIds = validHolds.map((h) => h.seatId!);
-
-  const allSeatsHeld = seatIds.every((id) => heldSeatIds.includes(id));
-  if (!allSeatsHeld) {
-    return NextResponse.json(
-      { error: "Votre réservation a expiré. Veuillez recommencer." },
-      { status: 409 }
-    );
+  const [event] = await db.select().from(events).where(eq(events.id, body.eventId));
+  if (!event || !isEventOpen(event)) {
+    return NextResponse.json({ error: "Les réservations ne sont pas ouvertes pour ce spectacle" }, { status: 403 });
   }
 
-  // Verify seats are still held
-  const heldSeats = await db
-    .select()
-    .from(seats)
-    .where(and(inArray(seats.id, seatIds), eq(seats.status, "held")));
-
-  if (heldSeats.length !== seatIds.length) {
-    return NextResponse.json(
-      { error: "Certains sièges ne sont plus disponibles" },
-      { status: 409 }
-    );
-  }
-
-  // Final anti-double-booking guard: only block if a PAID reservation already
-  // claims these seats. Pending/failed reservations are abandoned and must not
-  // permanently lock seats.
-  const alreadyBooked = await db
-    .select({ seatId: reservationSeats.seatId })
-    .from(reservationSeats)
-    .innerJoin(reservations, eq(reservations.id, reservationSeats.reservationId))
-    .where(
-      and(
-        inArray(reservationSeats.seatId, seatIds),
-        eq(reservations.stripeStatus, "paid")
-      )
-    );
-
-  if (alreadyBooked.length > 0) {
-    return NextResponse.json(
-      { error: "Ces sièges ont déjà été réservés. Veuillez recommencer." },
-      { status: 409 }
-    );
-  }
-
-  const totalAmount = calculateTotal(body);
-
-  // Extend hold expiry to cover Stripe checkout window (prevents seat sniping)
-  const checkoutExpiry = new Date(Date.now() + CHECKOUT_GRACE_MS);
-  await db
-    .update(holds)
-    .set({ expiresAt: checkoutExpiry })
-    .where(eq(holds.sessionId, sessionId));
-
-  // Create reservation
-  const [reservation] = await db
-    .insert(reservations)
-    .values({
-      eventId,
-      referentStudent: referentStudent || "",
-      email,
-      phone: phone || null,
-      totalAmount,
-      stripeStatus: "pending",
+  const seatRows = await db
+    .select({
+      seatId: seats.id,
+      tableId: tables.id,
+      eventId: tables.eventId,
+      isVip: tables.isVip,
+      seatCount: tables.seatCount,
     })
-    .returning();
+    .from(seats)
+    .innerJoin(tables, eq(seats.tableId, tables.id))
+    .where(inArray(seats.id, body.seatIds));
 
-  // Create reservation seats (VIP tables always include dessert)
-  // UNIQUE constraint on seatId at DB level prevents any race-condition double-booking
-  const insertGuests = async () => {
-    for (const guest of guests) {
-      await db.insert(reservationSeats).values({
-        reservationId: reservation.id,
-        seatId: guest.seatId,
-        firstName: guest.firstName,
-        lastName: guest.lastName,
-        mealChoice: guest.mealChoice,
-        hasDessert: isVip ? true : guest.hasDessert,
-      });
+  if (seatRows.length !== body.seatIds.length || seatRows.some((row) => row.eventId !== body.eventId)) {
+    return NextResponse.json({ error: "Sièges invalides pour ce spectacle" }, { status: 400 });
+  }
+
+  const tableIds = [...new Set(seatRows.map((row) => row.tableId))];
+  const tableSeatRows = await db
+    .select({ id: seats.id, tableId: seats.tableId })
+    .from(seats)
+    .where(inArray(seats.tableId, tableIds));
+
+  const vipTableIds = [...new Set(seatRows.filter((row) => row.isVip).map((row) => row.tableId))];
+  const normalTableIds = [...new Set(seatRows.filter((row) => !row.isVip).map((row) => row.tableId))];
+  if (vipTableIds.length > 0 && normalTableIds.length > 0) {
+    return NextResponse.json({ error: "Une table VIP se réserve entière, sans mélange" }, { status: 400 });
+  }
+  if (vipTableIds.length > 1) {
+    return NextResponse.json({ error: "Une seule table VIP à la fois" }, { status: 400 });
+  }
+
+  const isVip = vipTableIds.length === 1;
+  if (isVip) {
+    const tableId = vipTableIds[0];
+    const expected = tableSeatRows.filter((row) => row.tableId === tableId).map((row) => row.id);
+    const got = new Set(body.seatIds);
+    if (expected.length !== body.seatIds.length || expected.some((id) => !got.has(id))) {
+      return NextResponse.json({ error: "La table VIP doit être réservée en entier" }, { status: 400 });
     }
-  };
+  }
+
+  const guests = body.guests.map((guest) => ({
+    ...guest,
+    hasDessert: isVip ? true : guest.hasDessert,
+  }));
+  const upsells = body.upsells ?? [];
+  const quoted = quoteBooking({ isVip, guests, upsells });
+  if (!quoted.ok) {
+    return NextResponse.json({ error: quoted.error }, { status: 400 });
+  }
+
+  const publicToken = randomBytes(16).toString("hex");
+  const checkoutExpiry = new Date(Date.now() + CHECKOUT_GRACE_MS);
+  const guestJson = JSON.stringify(
+    guests.map((guest) => ({
+      seat_id: guest.seatId,
+      first_name: guest.firstName,
+      last_name: guest.lastName,
+      meal_choice: guest.mealChoice,
+      has_dessert: guest.hasDessert,
+    }))
+  );
+  const upsellJson = JSON.stringify(
+    upsells.map((upsell) => {
+      const opt = DANCER_MEAL_OPTIONS.find((item) => item.value === upsell.mealChoice);
+      return {
+        upsell_type: upsell.type,
+        quantity: upsell.quantity,
+        unit_price: opt?.price ?? 0,
+        meal_choice: upsell.mealChoice ?? "",
+      };
+    })
+  );
 
   try {
-    await insertGuests();
-  } catch {
-    // UNIQUE constraint violation: seat_id already exists in reservation_seats.
-    // This happens when a previous non-paid reservation left orphaned rows behind
-    // (holds expired but reservation_seats were never cleaned up).
-    // Self-heal: delete the orphans and retry once.
-    const orphanRS = await db
-      .select({ id: reservationSeats.id, stripePaymentId: reservations.stripePaymentId })
-      .from(reservationSeats)
-      .innerJoin(reservations, eq(reservations.id, reservationSeats.reservationId))
-      .where(
-        and(
-          inArray(reservationSeats.seatId, seatIds),
-          ne(reservations.stripeStatus, "paid")
-        )
-      );
-
-    if (orphanRS.length > 0) {
-      // Expire any open Stripe sessions so the original user can no longer pay
-      const stripeIds = [...new Set(
-        orphanRS.map((r) => r.stripePaymentId).filter((id): id is string => id !== null)
-      )];
-      for (const sessionId of stripeIds) {
-        try {
-          await stripe.checkout.sessions.expire(sessionId);
-        } catch {
-          // Already expired — safe to ignore
-        }
-      }
-
-      await db
-        .delete(reservationSeats)
-        .where(inArray(reservationSeats.id, orphanRS.map((r) => r.id)));
-      try {
-        await insertGuests();
-      } catch {
-        await db.delete(reservations).where(eq(reservations.id, reservation.id));
-        return NextResponse.json(
-          { error: "Ces sièges ont déjà été réservés. Veuillez recommencer." },
-          { status: 409 }
-        );
-      }
-    } else {
-      // No orphans found — genuine conflict with a paid reservation
-      await db.delete(reservations).where(eq(reservations.id, reservation.id));
+    const rows = await queryRows<{ id: number }>(INSERT_RESERVATION_SQL, [
+      sessionId,
+      body.eventId,
+      body.seatIds,
+      checkoutExpiry.toISOString(),
+      body.seatIds.length,
+      guestJson,
+      body.referentStudent,
+      body.email,
+      body.phone,
+      quoted.total,
+      publicToken,
+      upsellJson,
+    ]);
+    const created = rows[0];
+    if (!created) {
       return NextResponse.json(
-        { error: "Ces sièges viennent d'être réservés par quelqu'un d'autre. Veuillez recommencer." },
+        { error: "Votre réservation a expiré ou ces sièges ne sont plus disponibles. Veuillez recommencer." },
         { status: 409 }
       );
     }
-  }
-
-  // Create upsells — each repas_danseur entry has its own mealChoice
-  if (upsells && upsells.length > 0) {
-    for (const upsell of upsells) {
-      if (upsell.type === "repas_danseur" && upsell.mealChoice) {
-        const opt = DANCER_MEAL_OPTIONS.find((o) => o.value === upsell.mealChoice);
-        if (opt) {
-          await db.insert(reservationUpsells).values({
-            reservationId: reservation.id,
-            upsellType: "repas_danseur",
-            quantity: upsell.quantity || 1,
-            unitPrice: opt.price,
-            mealChoice: upsell.mealChoice,
-          });
-        }
-      }
+    return NextResponse.json({
+      success: true,
+      reservationId: Number(created.id),
+      publicToken,
+      totalAmount: quoted.total,
+    });
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return NextResponse.json(
+        { error: "Ces sièges viennent d'être réservés. Veuillez recommencer." },
+        { status: 409 }
+      );
     }
+    console.error("Création de réservation", err instanceof Error ? err.name : "error");
+    return NextResponse.json({ error: "Réservation impossible pour le moment" }, { status: 500 });
   }
-
-  return NextResponse.json({
-    success: true,
-    reservationId: reservation.id,
-    totalAmount,
-    sessionId,
-  });
 }

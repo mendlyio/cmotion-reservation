@@ -9,6 +9,8 @@ import { SeatingPlan } from "@/components/seating/SeatingPlan";
 import { CountdownTimer } from "@/components/seating/CountdownTimer";
 import { BookingForm } from "@/components/booking/BookingForm";
 import { TableWithSeats, EventData, getTableLabel } from "@/types";
+import { formatDeadlineFr, mealEditDeadline } from "@/lib/deadline";
+import { PolicyNotice } from "@/components/PolicyNotice";
 
 export function ReservationClient({ event }: { event: EventData }) {
   const searchParams = useSearchParams();
@@ -21,6 +23,7 @@ export function ReservationClient({ event }: { event: EventData }) {
   const [holding, setHolding] = useState(false);
   const [floatingHidden, setFloatingHidden] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
+  const deadlineLabel = formatDeadlineFr(mealEditDeadline(event.eventDate));
 
   // ── Serialized hold engine ──────────────────────────────────────────────
   // Ensures only ONE API call is in-flight at a time.
@@ -47,7 +50,20 @@ export function ReservationClient({ event }: { event: EventData }) {
     finally { setLoading(false); }
   }, [event.id]);
 
-  useEffect(() => { fetch_(); }, [fetch_]);
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const r = await fetch(`/api/seating/${event.id}`);
+        if (!ignore && r.ok) setTables((await r.json()).tables);
+      } catch {
+        if (!ignore) toast.error("Erreur de chargement");
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    })();
+    return () => { ignore = true; };
+  }, [event.id]);
 
   // Retour depuis Stripe après abandon du paiement : libérer la place immédiatement
   useEffect(() => {
@@ -115,7 +131,6 @@ export function ReservationClient({ event }: { event: EventData }) {
         executeHold(queued);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event.id, fetch_]);
 
   // Schedule hold with delay (for ADDS — batches rapid clicks)
@@ -280,6 +295,10 @@ export function ReservationClient({ event }: { event: EventData }) {
         </div>
       </header>
 
+      <div className="max-w-6xl mx-auto px-4 pt-4">
+        <PolicyNotice deadlineLabel={deadlineLabel} />
+      </div>
+
       {/* Seating plan area */}
       <section className="plan-bg">
         <div className="max-w-6xl mx-auto px-2 sm:px-4 py-3">
@@ -342,6 +361,7 @@ export function ReservationClient({ event }: { event: EventData }) {
                   tables={selTables}
                   selectedSeatIds={selSeats}
                   onCancel={cancel}
+                  deadlineLabel={deadlineLabel}
                 />
               </div>
             </div>

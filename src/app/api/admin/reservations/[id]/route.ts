@@ -123,12 +123,17 @@ export async function PUT(
         })),
       });
 
-      await resend.emails.send({
-        from: process.env.RESEND_FROM_EMAIL || "noreply@example.com",
-        to: reservation.email,
-        subject: `Modification de votre réservation #${reservation.id} - Cmotion`,
-        html,
-      });
+      const from = process.env.RESEND_FROM_EMAIL?.trim();
+      if (!from) {
+        console.error("Email de modification non envoyé : RESEND_FROM_EMAIL manquant", reservation.id);
+      } else {
+        await resend.emails.send({
+          from,
+          to: reservation.email,
+          subject: `Modification de votre réservation #${reservation.id} - Cmotion`,
+          html,
+        });
+      }
     } catch (emailError) {
       console.error("Failed to send update email:", emailError);
     }

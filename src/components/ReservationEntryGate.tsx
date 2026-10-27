@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { DisneyBanner } from "@/components/DisneyBanner";
 
 export function ReservationEntryGate() {
   const router = useRouter();
@@ -34,16 +35,12 @@ export function ReservationEntryGate() {
       </div>
 
       <div className="relative max-w-md w-full rounded-2xl border border-[#1e1a0e] bg-[#0f0f0f]/90 backdrop-blur-sm p-8 shadow-xl shadow-black/40">
-        <div className="flex justify-center mb-5">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#c9a227] to-[#a07818] shadow-lg shadow-[#c9a227]/20">
-            <svg className="w-7 h-7 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-            </svg>
-          </div>
+        <div className="mb-5">
+          <DisneyBanner compact />
         </div>
 
         <h1 className="text-center text-xl font-bold text-white mb-2">
-          Cmotion — réservation
+          Disney Show — Cmotion
         </h1>
         <p className="text-center text-sm text-[#888] leading-relaxed mb-6">
           Pour afficher les spectacles et ouvrir la réservation, confirmez que vous êtes bien présent.

@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { events, tables, seats, reservations, reservationSeats } from "./schema";
@@ -8,7 +9,7 @@ dotenv.config({ path: ".env.local" });
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 const REFERENT   = "Pere Carly";
-const EMAIL      = "carlynemagis@hotmail.com";
+const EMAIL      = process.env.VIP_CARLY_EMAIL?.trim();
 const PHONE      = "+32000000000";
 const VIP_PRICE  = 28000; // 280€ en centimes
 
@@ -29,6 +30,10 @@ const GUESTS = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function seedVipCarly() {
+  if (!EMAIL) {
+    console.error("Définissez VIP_CARLY_EMAIL. Aucun email n'est écrit dans le dépôt.");
+    process.exit(1);
+  }
   const sql = neon(process.env.DATABASE_URL!);
   const db  = drizzle(sql);
 
@@ -103,7 +108,8 @@ async function seedVipCarly() {
         totalAmount:      VIP_PRICE,
         stripeStatus:     "paid",
         stripePaymentId:  `manual_vip_${event.id}`,
-        adminNotes:       "Réservation manuelle — table VIP Pere Carly",
+        publicToken:      randomBytes(16).toString("hex"),
+        adminNotes:       "Réservation manuelle — table VIP",
       })
       .returning();
 
