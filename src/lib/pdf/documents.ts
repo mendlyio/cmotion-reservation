@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { SERVICE_NOTE } from "@/lib/service-note";
 import { buildFiche, buildRecaps, type PictoKey, type SheetExtra, type SheetGuest } from "@/lib/service-sheet";
+import { toPdfText } from "@/lib/pdf/text";
 
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
@@ -10,7 +11,7 @@ const MUTED = rgb(0.35, 0.35, 0.35);
 const LINE = rgb(0.75, 0.75, 0.75);
 
 function pdfText(value: string): string {
-  return value.replace(/[^\u0020-\u00FF]/g, " ");
+  return toPdfText(value);
 }
 
 function wrap(text: string, font: PDFFont, size: number, maxWidth: number): string[] {

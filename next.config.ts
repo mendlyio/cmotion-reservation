@@ -1,4 +1,8 @@
 import type { NextConfig } from "next";
+import { getBaseUrl } from "./src/lib/base-url";
+
+// Le build Vercel échoue ici tant que la variable n'est pas définie.
+getBaseUrl();
 
 const contentSecurityPolicy = [
   "default-src 'self'",

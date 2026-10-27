@@ -79,8 +79,15 @@ export async function POST(request: NextRequest) {
 
   const check = validateMealEdit({
     isVip,
-    currentGuestIds: guestRows.map((guest) => guest.id),
-    currentUpsellIds: upsellRows.map((upsell) => upsell.id),
+    currentGuests: guestRows.map((guest) => ({
+      id: guest.id,
+      mealChoice: guest.mealChoice,
+      hasDessert: guest.hasDessert,
+    })),
+    currentUpsells: upsellRows.map((upsell) => ({
+      id: upsell.id,
+      mealChoice: upsell.mealChoice,
+    })),
     guests: body.guests,
     upsells: body.upsells,
   });

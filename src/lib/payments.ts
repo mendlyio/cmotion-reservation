@@ -2,7 +2,7 @@ import { eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { events, reservationSeats, reservationUpsells, reservations, seats, tables } from "@/lib/db/schema";
 import { queryRows } from "@/lib/query";
-import { MARK_PAID_SQL, RESERVE_SEATS_SQL, FAIL_PENDING_SQL } from "@/lib/sql/booking";
+import { FAIL_PENDING_SQL, FULFILL_PAID_SQL } from "@/lib/sql/booking";
 import { getTableLabel, getSeatLabel } from "@/types";
 import { renderConfirmationEmail } from "@/emails/ConfirmationEmail";
 import { resend } from "@/lib/resend";
@@ -15,14 +15,13 @@ export async function markReservationPaid(
   stripeSessionId: string,
   amountTotal: number
 ): Promise<boolean> {
-  const updated = await queryRows<{ id: number }>(MARK_PAID_SQL, [
+  const updated = await queryRows<{ id: number | string | null }>(FULFILL_PAID_SQL, [
     reservationId,
     stripeSessionId,
     amountTotal,
   ]);
-  if (updated.length === 0) return false;
-  await queryRows(RESERVE_SEATS_SQL, [reservationId]);
-  return true;
+  const id = updated[0]?.id;
+  return id !== null && id !== undefined && id !== "";
 }
 
 export async function failPendingReservation(reservationId: number): Promise<void> {

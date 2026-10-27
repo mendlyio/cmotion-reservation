@@ -2,7 +2,9 @@
 export function getBaseUrl(): string {
   const raw = process.env.NEXT_PUBLIC_BASE_URL?.trim();
   if (!raw) {
-    throw new Error("NEXT_PUBLIC_BASE_URL manquant");
+    throw new Error(
+      "NEXT_PUBLIC_BASE_URL manquant : définissez-la dans Vercel pour Production et Preview. Sans cette origine, le paiement Stripe et les emails ne peuvent pas construire leurs liens."
+    );
   }
   let url: URL;
   try {

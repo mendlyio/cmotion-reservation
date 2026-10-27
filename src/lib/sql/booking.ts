@@ -199,27 +199,44 @@ ups AS (
 SELECT id FROM ins
 `;
 
-/** Passe une réservation pending en paid seulement si le montant correspond encore. */
-export const MARK_PAID_SQL = `
-UPDATE reservations
-SET stripe_status = 'paid', stripe_payment_id = $2
-WHERE id = $1
-  AND stripe_status = 'pending'
-  AND total_amount = $3
-RETURNING id
-`;
-
-export const RESERVE_SEATS_SQL = `
-WITH target AS (
-  SELECT seat_id FROM reservation_seats WHERE reservation_id = $1
+/**
+ * Passe la réservation en paid et réserve ses sièges dans la même requête.
+ * $1 id, $2 session Stripe, $3 montant en centimes.
+ * Un montant différent ou un statut autre que pending ne change rien.
+ * Le DELETE des holds est référencé par l'UPDATE (UNION) pour qu'il s'exécute.
+ */
+export const FULFILL_PAID_SQL = `
+WITH paid AS (
+  UPDATE reservations
+  SET stripe_status = 'paid', stripe_payment_id = $2
+  WHERE id = $1
+    AND stripe_status = 'pending'
+    AND total_amount = $3
+  RETURNING id
+),
+target AS (
+  SELECT seat_id
+  FROM reservation_seats
+  WHERE reservation_id IN (SELECT id FROM paid)
 ),
 cleared AS (
-  DELETE FROM holds WHERE seat_id IN (SELECT seat_id FROM target)
+  DELETE FROM holds
+  WHERE seat_id IN (SELECT seat_id FROM target)
   RETURNING seat_id
+),
+reserved AS (
+  UPDATE seats
+  SET status = 'reserved'
+  WHERE id IN (
+    SELECT seat_id FROM target
+    UNION
+    SELECT seat_id FROM cleared
+  )
+  RETURNING id
 )
-UPDATE seats
-SET status = 'reserved'
-WHERE id IN (SELECT seat_id FROM target)
+SELECT
+  (SELECT id FROM paid) AS id,
+  (SELECT count(*)::int FROM reserved) AS seats
 `;
 
 export const FAIL_PENDING_SQL = `
@@ -286,7 +303,11 @@ WHERE status = 'held'
   )
 `;
 
-/** Pending sans session Stripe, sièges held orphelins, holds expirés sans checkout. */
+/**
+ * Pending sans session Stripe, sièges held orphelins, holds expirés sans checkout.
+ * Répare aussi une réservation déjà paid dont les sièges sont restés held
+ * (ancien enchaînement en deux requêtes interrompu après le paiement).
+ */
 export const FAST_CLEANUP_SQL = `
 WITH stale AS (
   SELECT r.id
@@ -333,10 +354,35 @@ reserved_holds AS (
   WHERE s.id = h.seat_id
     AND s.status = 'reserved'
   RETURNING h.seat_id
+),
+paid_held AS (
+  SELECT rs.seat_id
+  FROM reservation_seats rs
+  INNER JOIN reservations r ON r.id = rs.reservation_id
+  INNER JOIN seats s ON s.id = rs.seat_id
+  WHERE r.stripe_status = 'paid'
+    AND s.status = 'held'
+),
+drop_paid_holds AS (
+  DELETE FROM holds h
+  WHERE h.seat_id IN (SELECT seat_id FROM paid_held)
+  RETURNING h.seat_id
+),
+fix_paid_seats AS (
+  UPDATE seats s
+  SET status = 'reserved'
+  WHERE s.status = 'held'
+    AND s.id IN (
+      SELECT seat_id FROM paid_held
+      UNION
+      SELECT seat_id FROM drop_paid_holds
+    )
+  RETURNING s.id
 )
 UPDATE seats s
 SET status = 'available'
 WHERE s.status = 'held'
+  AND NOT EXISTS (SELECT 1 FROM fix_paid_seats f WHERE f.id = s.id)
   AND NOT EXISTS (
     SELECT 1 FROM holds h
     WHERE h.seat_id = s.id AND h.expires_at > now()

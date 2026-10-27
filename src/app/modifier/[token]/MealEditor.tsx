@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { DANCER_MEAL_OPTIONS, DESSERT_LABEL, DESSERT_PRICE, MEAL_OPTIONS, VIP_FORMULA, VIP_MEAL } from "@/lib/pricing";
+import { DESSERT_LABEL, MEAL_OPTIONS, VIP_FORMULA, VIP_MEAL, mealLabel } from "@/lib/pricing";
+import {
+  MEAL_EDIT_MESSAGE,
+  dessertEditable,
+  editableDancerMeals,
+  editableGuestMeals,
+} from "@/lib/meals";
 import { PolicyNotice } from "@/components/PolicyNotice";
 
 export interface EditorGuest {
@@ -77,6 +83,7 @@ export function MealEditor({
       {closedReason ? (
         <p className="rounded-xl border border-[#2a2a2a] bg-[#141414] px-4 py-3 text-sm text-[#ccc]">{closedReason}</p>
       ) : null}
+      <p className="rounded-xl border border-[#2a2a2a] bg-[#141414] px-4 py-3 text-sm text-[#ccc]">{MEAL_EDIT_MESSAGE}</p>
       {isVip ? (
         <p className="rounded-xl border border-[#c9a227]/30 bg-[#1a1500] px-4 py-3 text-sm text-[#e4c76b]">{VIP_FORMULA}</p>
       ) : null}
@@ -90,42 +97,15 @@ export function MealEditor({
             {isVip ? (
               <p className="text-sm text-[#aaa]">Sans plat · dessert inclus</p>
             ) : (
-              <>
-                <select
-                  disabled={!editable}
-                  value={row.mealChoice}
-                  onChange={(event) => {
-                    const next = [...rows];
-                    next[index] = { ...row, mealChoice: event.target.value };
-                    setRows(next);
-                  }}
-                  className="w-full h-11 px-3 rounded-lg border border-[#2a2a2a] bg-[#141414] text-sm text-white disabled:opacity-60"
-                >
-                  {MEAL_OPTIONS.map((meal) => (
-                    <option key={meal.value} value={meal.value}>
-                      {meal.label}
-                    </option>
-                  ))}
-                </select>
-                {MEAL_OPTIONS.find((meal) => meal.value === row.mealChoice)?.description ? (
-                  <p className="text-[11px] text-[#777]">
-                    {MEAL_OPTIONS.find((meal) => meal.value === row.mealChoice)?.description}
-                  </p>
-                ) : null}
-                <label className="flex items-center gap-2 text-sm text-[#aaa]">
-                  <input
-                    type="checkbox"
-                    disabled={!editable}
-                    checked={row.hasDessert}
-                    onChange={(event) => {
-                      const next = [...rows];
-                      next[index] = { ...row, hasDessert: event.target.checked };
-                      setRows(next);
-                    }}
-                  />
-                  {DESSERT_LABEL} (+{(DESSERT_PRICE / 100).toFixed(2)} €). Le montant déjà payé ne change pas.
-                </label>
-              </>
+              <GuestMealFields
+                editable={editable}
+                row={row}
+                onMeal={(mealChoice) => {
+                  const next = [...rows];
+                  next[index] = { ...row, mealChoice };
+                  setRows(next);
+                }}
+              />
             )}
           </div>
         ))}
@@ -133,27 +113,31 @@ export function MealEditor({
       {extras.length > 0 ? (
         <div className="space-y-2">
           <p className="text-xs font-bold uppercase tracking-widest text-[#666]">Repas élèves</p>
-          {extras.map((extra, index) => (
-            <div key={extra.id} className="flex items-center gap-3">
-              <span className="text-xs text-[#888] w-16">×{extra.quantity}</span>
-              <select
-                disabled={!editable}
-                value={extra.mealChoice}
-                onChange={(event) => {
-                  const next = [...extras];
-                  next[index] = { ...extra, mealChoice: event.target.value };
-                  setExtras(next);
-                }}
-                className="flex-1 h-11 px-3 rounded-lg border border-[#2a2a2a] bg-[#141414] text-sm text-white disabled:opacity-60"
-              >
-                {DANCER_MEAL_OPTIONS.map((meal) => (
-                  <option key={meal.value} value={meal.value}>
-                    {meal.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ))}
+          {extras.map((extra, index) => {
+            const options = editableDancerMeals(extra.mealChoice);
+            const locked = !editable || options.length < 2;
+            return (
+              <div key={extra.id} className="flex items-center gap-3">
+                <span className="text-xs text-[#888] w-16">×{extra.quantity}</span>
+                <select
+                  disabled={locked}
+                  value={extra.mealChoice}
+                  onChange={(event) => {
+                    const next = [...extras];
+                    next[index] = { ...extra, mealChoice: event.target.value };
+                    setExtras(next);
+                  }}
+                  className="flex-1 h-11 px-3 rounded-lg border border-[#2a2a2a] bg-[#141414] text-sm text-white disabled:opacity-60"
+                >
+                  {(options.length > 0 ? options : [{ value: extra.mealChoice, label: mealLabel(extra.mealChoice) }]).map((meal) => (
+                    <option key={meal.value} value={meal.value}>
+                      {meal.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            );
+          })}
         </div>
       ) : null}
       <p className="text-sm text-[#888]">
@@ -172,5 +156,50 @@ export function MealEditor({
       {message ? <p className="text-sm text-emerald-400">{message}</p> : null}
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
     </div>
+  );
+}
+
+function GuestMealFields({
+  editable,
+  row,
+  onMeal,
+}: {
+  editable: boolean;
+  row: EditorGuest;
+  onMeal: (mealChoice: string) => void;
+}) {
+  const options = editableGuestMeals(row);
+  const locked = !editable || options.length < 2;
+  const description = MEAL_OPTIONS.find((meal) => meal.value === row.mealChoice)?.description;
+  return (
+    <>
+      <select
+        disabled={locked}
+        value={row.mealChoice}
+        onChange={(event) => onMeal(event.target.value)}
+        className="w-full h-11 px-3 rounded-lg border border-[#2a2a2a] bg-[#141414] text-sm text-white disabled:opacity-60"
+      >
+        {(options.length > 0 ? options : [{ value: row.mealChoice, label: mealLabel(row.mealChoice) }]).map((meal) => (
+          <option key={meal.value} value={meal.value}>
+            {meal.label}
+          </option>
+        ))}
+      </select>
+      {locked && editable ? (
+        <p className="text-[11px] text-[#777]">Ce plat n&apos;a pas d&apos;équivalent au même prix : il reste inchangé.</p>
+      ) : null}
+      {description ? <p className="text-[11px] text-[#777]">{description}</p> : null}
+      <label className="flex items-center gap-2 text-sm text-[#aaa]">
+        <input
+          type="checkbox"
+          disabled={!editable || !dessertEditable()}
+          checked={row.hasDessert}
+          onChange={() => undefined}
+        />
+        {row.hasDessert
+          ? `${DESSERT_LABEL} inclus. Il ne peut pas être retiré après le paiement.`
+          : `${DESSERT_LABEL} non compris. Il ne peut pas être ajouté après le paiement.`}
+      </label>
+    </>
   );
 }
