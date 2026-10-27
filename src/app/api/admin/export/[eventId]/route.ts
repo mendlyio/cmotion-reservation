@@ -20,6 +20,7 @@ import {
   getMealPrice,
   mealLabel,
 } from "@/types";
+import { contentDisposition } from "@/lib/content-disposition";
 import { escapeCsvCell } from "@/lib/security";
 
 const STRIPE_STATUS_FR: Record<string, string> = {
@@ -182,13 +183,11 @@ export async function GET(
     }
     headerLines.push(formatCsvRow(["Message", "Aucune réservation payée pour ce spectacle."]));
     const bom = "\uFEFF";
-    const dateSlug = event.eventDate;
-    const nameSlug = event.name.replace(/\s+/g, "-").toLowerCase();
     const csv = bom + headerLines.join("\n");
     return new NextResponse(csv, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="cmotion-${nameSlug}-${dateSlug}-complet.csv"`,
+        "Content-Disposition": contentDisposition(`cmotion-${event.name}-${event.eventDate}-complet.csv`),
       },
     });
   }
@@ -618,13 +617,10 @@ export async function GET(
   const bom = "\uFEFF";
   const csv = bom + csvLines.join("\n");
 
-  const dateSlug = event.eventDate;
-  const nameSlug = event.name.replace(/\s+/g, "-").toLowerCase();
-
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="cmotion-${nameSlug}-${dateSlug}-complet.csv"`,
+      "Content-Disposition": contentDisposition(`cmotion-${event.name}-${event.eventDate}-complet.csv`),
     },
   });
 }

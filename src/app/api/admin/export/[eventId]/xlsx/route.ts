@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 import { verifyAdmin } from "@/lib/admin";
 import { loadEventOrders } from "@/lib/orders";
 import { mealLabel } from "@/lib/pricing";
+import { contentDisposition } from "@/lib/content-disposition";
 import { neutralizeFormula } from "@/lib/security";
 
 const STATUS_FR: Record<string, string> = {
@@ -77,7 +78,7 @@ export async function GET(
   return new NextResponse(Buffer.from(buffer), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="commandes-${orders.event.id}.xlsx"`,
+      "Content-Disposition": contentDisposition(`commandes-${orders.event.name}.xlsx`),
       "Cache-Control": "no-store",
     },
   });

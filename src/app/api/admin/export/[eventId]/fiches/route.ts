@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/lib/admin";
 import { loadEventOrders, paidReservations } from "@/lib/orders";
+import { contentDisposition } from "@/lib/content-disposition";
 import { renderFichesPdf } from "@/lib/pdf/documents";
 
 async function guard(eventIdRaw: string) {
@@ -17,7 +18,7 @@ function pdfResponse(bytes: Uint8Array, filename: string) {
   return new NextResponse(Buffer.from(bytes), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": contentDisposition(filename),
       "Cache-Control": "no-store",
     },
   });
@@ -40,5 +41,5 @@ export async function GET(
       extras: reservation.extras,
     })),
   });
-  return pdfResponse(bytes, `fiches-${orders.event.id}.pdf`);
+  return pdfResponse(bytes, `fiches-${orders.event.name}.pdf`);
 }

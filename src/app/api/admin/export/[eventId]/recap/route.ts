@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/lib/admin";
 import { loadEventOrders, paidReservations } from "@/lib/orders";
+import { contentDisposition } from "@/lib/content-disposition";
 import { renderRecapPdf } from "@/lib/pdf/documents";
 
 export async function GET(
@@ -29,7 +30,7 @@ export async function GET(
   return new NextResponse(Buffer.from(bytes), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="recap-tables-${orders.event.id}.pdf"`,
+      "Content-Disposition": contentDisposition(`recap-tables-${orders.event.name}.pdf`),
       "Cache-Control": "no-store",
     },
   });
