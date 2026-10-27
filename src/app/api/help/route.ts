@@ -45,8 +45,9 @@ export async function POST(request: NextRequest) {
   }
 
   const to = process.env.ALERT_EMAIL?.trim();
+  if (!to) return NextResponse.json({ success: true });
   const from = process.env.RESEND_FROM_EMAIL?.trim();
-  if (!to || !from) {
+  if (!from) {
     return NextResponse.json({ error: "Envoi indisponible" }, { status: 503 });
   }
 

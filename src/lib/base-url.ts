@@ -1,19 +1,40 @@
-/** Origine publique du site. Aucun repli vers localhost ni vers l'en-tête Host. */
-export function getBaseUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_BASE_URL?.trim();
-  if (!raw) {
-    throw new Error(
-      "NEXT_PUBLIC_BASE_URL manquant : définissez-la dans Vercel pour Production et Preview. Sans cette origine, le paiement Stripe et les emails ne peuvent pas construire leurs liens."
-    );
-  }
-  let url: URL;
+/**
+ * Origine publique, sans slash final et sans l'en-tête Host.
+ * 1. NEXT_PUBLIC_BASE_URL si elle est définie
+ * 2. en production : https://VERCEL_PROJECT_PRODUCTION_URL
+ * 3. en preview : https://VERCEL_URL
+ * 4. en dev : http://localhost:3000
+ * En production, les retours Stripe et les liens d'e-mail passent par cette
+ * origine stable, jamais par l'URL d'un déploiement de preview.
+ */
+const DEV_ORIGIN = "http://localhost:3000";
+
+function origin(value: string | undefined): string | null {
+  const raw = value?.trim();
+  if (!raw) return null;
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
   try {
-    url = new URL(raw);
+    const url = new URL(withProtocol);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    return url.origin;
   } catch {
-    throw new Error("NEXT_PUBLIC_BASE_URL invalide");
+    return null;
   }
-  if (url.protocol !== "https:" && url.protocol !== "http:") {
-    throw new Error("NEXT_PUBLIC_BASE_URL invalide");
+}
+
+export function getBaseUrl(): string {
+  const explicit = origin(process.env.NEXT_PUBLIC_BASE_URL);
+  if (explicit) return explicit;
+
+  if (process.env.VERCEL_ENV === "production") {
+    const production = origin(process.env.VERCEL_PROJECT_PRODUCTION_URL);
+    if (production) return production;
   }
-  return url.origin;
+
+  if (process.env.VERCEL_ENV === "preview") {
+    const preview = origin(process.env.VERCEL_URL);
+    if (preview) return preview;
+  }
+
+  return DEV_ORIGIN;
 }

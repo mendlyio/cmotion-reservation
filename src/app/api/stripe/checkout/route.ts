@@ -19,12 +19,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "reservationId requis" }, { status: 400 });
   }
 
-  let baseUrl: string;
-  try {
-    baseUrl = getBaseUrl();
-  } catch {
-    return NextResponse.json({ error: "NEXT_PUBLIC_BASE_URL manquant" }, { status: 500 });
-  }
+  const baseUrl = getBaseUrl();
 
   const sessionId = await getOrCreateSession();
   const [reservation] = await db.select().from(reservations).where(eq(reservations.id, reservationId));

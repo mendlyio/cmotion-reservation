@@ -24,14 +24,15 @@ Ajoute :
 
 Retour arrière : `migrations/001_security_rollback.sql`, puis redéployer le code précédent. Les jetons déjà envoyés par email deviennent inutiles si on revient en arrière, et l'inverse aussi : les anciens liens `/confirmation/123` ne fonctionnent plus avec le nouveau code.
 
-## Variables à poser sur Vercel (aucune valeur dans le dépôt)
+## Variables
 
-- `NEXT_PUBLIC_BASE_URL` = origine publique, sans slash final, par exemple `https://cmotion-reservation.vercel.app`
-- `ALERT_EMAIL` = destinataire des alertes paiement et du formulaire d'aide
-- `RESEND_FROM_EMAIL` = expéditeur déjà vérifié (plus aucun repli `example.com`)
-- `VIP_CARLY_EMAIL` seulement si le script manuel `db:vip-carly` est relancé
+Aucune variable nouvelle n'est à ajouter dans Vercel.
 
-Les secrets existants (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `DATABASE_URL`, `ADMIN_PASSWORD`, `CRON_SECRET`, `RESEND_API_KEY`) ne changent pas de nom. Les passer en sensitive et les retirer de Preview et Development se fait dans le dashboard, pas dans le code.
+L'origine publique est l'URL du projet : en production `https://$VERCEL_PROJECT_PRODUCTION_URL` (par exemple `https://cmotion-reservation.vercel.app`), en preview `https://$VERCEL_URL`, en local `http://localhost:3000`. Pas de slash final. Les retours Stripe et les liens d'e-mail envoyés en production utilisent cette URL de production stable, jamais l'URL d'un déploiement de preview. `NEXT_PUBLIC_BASE_URL` reste un remplacement facultatif.
+
+`ALERT_EMAIL` est facultatif. Sans cette variable, aucune alerte e-mail n'est envoyée et cela ne produit pas d'erreur.
+
+`VIP_CARLY_EMAIL` seulement si le script manuel `db:vip-carly` est relancé. Les secrets déjà en place (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `DATABASE_URL`, `ADMIN_PASSWORD`, `CRON_SECRET`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`) ne changent pas de nom.
 
 ## 002 — spectacles de décembre
 

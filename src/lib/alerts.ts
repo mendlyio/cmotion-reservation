@@ -10,13 +10,14 @@ export interface PaymentAlert {
   customerEmail?: string | null;
 }
 
-/** Prévient l'organisateur. Retourne false si l'envoi est impossible. */
+/** Prévient l'organisateur. Sans ALERT_EMAIL, aucune alerte et aucune erreur. */
 export async function alertPaymentAnomaly(alert: PaymentAlert): Promise<boolean> {
   const to = process.env.ALERT_EMAIL?.trim();
+  if (!to) return true;
   const from = process.env.RESEND_FROM_EMAIL?.trim();
-  if (!to || !from) {
+  if (!from) {
     console.error(
-      "Alerte paiement non envoyée : ALERT_EMAIL ou RESEND_FROM_EMAIL manquant",
+      "Alerte paiement non envoyée : RESEND_FROM_EMAIL manquant",
       alert.reason,
       alert.reservationId ?? "",
       alert.stripeSessionId ?? ""
