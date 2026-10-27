@@ -34,6 +34,16 @@ L'origine publique est l'URL du projet : en production `https://$VERCEL_PROJECT_
 
 `VIP_CARLY_EMAIL` seulement si le script manuel `db:vip-carly` est relancé. Les secrets déjà en place (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `DATABASE_URL`, `ADMIN_PASSWORD`, `CRON_SECRET`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`) ne changent pas de nom.
 
+## Crons Vercel
+
+`vercel.json` n'appelle plus `/api/cron` chaque minute. Trois plannings UTC, le même chemin et le même `CRON_SECRET` :
+
+- `50-59 18 4 11 *` — 4 novembre, de 18h50 à 18h59 UTC
+- `* 19-23 4 11 *` — 4 novembre, chaque minute de 19h00 à 23h59 UTC
+- `* * 5-6 11 *` — 5 et 6 novembre, chaque minute
+
+Une expression cron n'a pas d'année : ces plages recommencent chaque novembre. Les retirer de `vercel.json` après le spectacle.
+
 ## 002 — spectacles de décembre
 
 Fichier : `migrations/002_december_events.sql`
