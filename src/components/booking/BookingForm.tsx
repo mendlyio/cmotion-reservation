@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { GuestForm } from "./GuestForm";
@@ -24,9 +24,15 @@ export function BookingForm({ eventId, tables, selectedSeatIds, onCancel, deadli
   const table = tables[0];
   const vip = tables.length === 1 && tables[0].isVip;
   const ids = vip ? tables[0].seats.map((s) => s.id) : selectedSeatIds;
-  const map = useRef<Map<number, SeatFormData>>(new Map());
+  const selectionKey = ids.join(",");
 
-  const [guests, setGuests] = useState<SeatFormData[]>(() => build(ids, map.current, vip));
+  const [guests, setGuests] = useState<SeatFormData[]>(() => build(ids, new Map(), vip));
+  const [seenSelection, setSeenSelection] = useState(selectionKey);
+  if (seenSelection !== selectionKey) {
+    const saved = new Map(guests.map((guest) => [guest.seatId, guest]));
+    setSeenSelection(selectionKey);
+    setGuests(build(ids, saved, vip));
+  }
   const [upsells, setUpsells] = useState<{ type: string; quantity: number; mealChoice?: string }[]>([]);
   const [ref, setRef] = useState("");
   const [email, setEmail] = useState("");
@@ -38,12 +44,6 @@ export function BookingForm({ eventId, tables, selectedSeatIds, onCancel, deadli
   const [phoneTouched, setPhoneTouched] = useState(false);
 
   const phone = phoneLocal.trim() ? `${phonePrefix} ${phoneLocal.trim()}` : "";
-
-  useEffect(() => {
-    for (const g of guests) map.current.set(g.seatId, g);
-    setGuests(build(ids, map.current, vip));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSeatIds.join(",")]);
 
   const data: BookingFormData = {
     eventId, tableId: table?.id ?? 0, seatIds: ids, isVip: vip,
@@ -179,7 +179,7 @@ export function BookingForm({ eventId, tables, selectedSeatIds, onCancel, deadli
                   return (
                     <motion.div key={g.seatId} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.12 }}>
                       <GuestForm index={i} seatId={g.seatId} seatLabel={seatLabel} data={g} isVip={vip}
-                        onChange={(u) => { const n = [...guests]; n[i] = u; setGuests(n); map.current.set(u.seatId, u); }} />
+                        onChange={(u) => { const n = [...guests]; n[i] = u; setGuests(n); }} />
                     </motion.div>
                   );
                 })}

@@ -50,7 +50,20 @@ export function ReservationClient({ event }: { event: EventData }) {
     finally { setLoading(false); }
   }, [event.id]);
 
-  useEffect(() => { fetch_(); }, [fetch_]);
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const r = await fetch(`/api/seating/${event.id}`);
+        if (!ignore && r.ok) setTables((await r.json()).tables);
+      } catch {
+        if (!ignore) toast.error("Erreur de chargement");
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    })();
+    return () => { ignore = true; };
+  }, [event.id]);
 
   // Retour depuis Stripe après abandon du paiement : libérer la place immédiatement
   useEffect(() => {
@@ -118,7 +131,6 @@ export function ReservationClient({ event }: { event: EventData }) {
         executeHold(queued);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event.id, fetch_]);
 
   // Schedule hold with delay (for ADDS — batches rapid clicks)

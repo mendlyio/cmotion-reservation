@@ -46,7 +46,14 @@ export function SeatingPlan({
   hideZoom = false,
   printMode = false,
 }: SeatingPlanProps) {
-  const [tables, setTables] = useState<TableWithSeats[]>(init);
+  const [polled, setPolled] = useState<TableWithSeats[] | null>(null);
+  const [source, setSource] = useState(init);
+  let tables = polled ?? init;
+  if (source !== init) {
+    setSource(init);
+    setPolled(null);
+    tables = init;
+  }
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
   const [hovered, setHovered] = useState<number | null>(null);
   const [scale, setScale] = useState(() => {
@@ -74,13 +81,11 @@ export function SeatingPlan({
     const iv = setInterval(async () => {
       try {
         const r = await fetch(`/api/seating/${eventId}`);
-        if (r.ok) setTables((await r.json()).tables);
+        if (r.ok) setPolled((await r.json()).tables);
       } catch { /* */ }
     }, 15000);
     return () => clearInterval(iv);
   }, [eventId, printMode]);
-
-  useEffect(() => { setTables(init); }, [init]);
 
   const rows = groupByRow(tables);
   const maxT = Math.max(...Object.values(rows).map((r) => r.length), 1);
@@ -145,10 +150,6 @@ export function SeatingPlan({
 
   const zoomIn    = () => setScale((s) => Math.min(SCALE_MAX, parseFloat((s + SCALE_STEP).toFixed(2))));
   const zoomOut   = () => setScale((s) => Math.max(SCALE_MIN, parseFloat((s - SCALE_STEP).toFixed(2))));
-  const zoomReset = () => {
-    const w = typeof window !== "undefined" ? window.innerWidth : 768;
-    setScale(w < 480 ? 1.2 : 1.0);
-  };
 
   const LEGEND = [
     { c: "#4ade80", l: "Libre",        filled: true  },
