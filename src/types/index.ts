@@ -1,29 +1,30 @@
+import { quoteBooking, type QuoteGuest, type QuoteUpsell } from "@/lib/pricing";
+
 export type SeatStatus = "available" | "held" | "reserved";
 export type StripeStatus = "pending" | "paid" | "failed" | "refunded";
+
+export type {
+  QuoteGuest,
+  QuoteUpsell,
+} from "@/lib/pricing";
+
+export {
+  MEAL_OPTIONS,
+  DANCER_MEAL_OPTIONS,
+  DESSERT_PRICE,
+  DESSERT_LABEL,
+  VIP_TABLE_PRICE,
+  VIP_MEAL,
+  getMealPrice,
+  quoteBooking,
+} from "@/lib/pricing";
 
 export type MealChoice =
   | "lasagne"
   | "salade_grecque"
   | "1_boulette_frites"
-  | "2_boulettes_frites";
-
-export const MEAL_OPTIONS: { value: MealChoice; label: string; price: number }[] = [
-  { value: "lasagne", label: "Lasagne", price: 2800 },
-  { value: "salade_grecque", label: "Salade Grecque", price: 2800 },
-  { value: "1_boulette_frites", label: "1 Boulette, Frites, Salade", price: 2800 },
-  { value: "2_boulettes_frites", label: "2 Boulettes, Frites, Salade", price: 3000 },
-];
-
-export const DESSERT_PRICE = 450; // 4.50€ in cents
-export const DESSERT_LABEL = "Panna Cotta";
-export const VIP_TABLE_PRICE = 28000; // 280€ in cents
-
-// Repas danseur options (separate from guest meals)
-export const DANCER_MEAL_OPTIONS: { value: string; label: string; price: number }[] = [
-  { value: "une_boulette", label: "1 Boulette, Frites, Salade", price: 1000 },
-  { value: "lasagne_danseur", label: "Lasagne", price: 1000 },
-  { value: "deux_boulettes", label: "2 Boulettes, Frites, Salade", price: 1200 },
-];
+  | "2_boulettes_frites"
+  | "vip_inclus";
 
 // Only repas_danseur remains (champagne removed)
 export const UPSELL_OPTIONS = [
@@ -113,29 +114,11 @@ export function getSeatLabel(seatNumber: number): string {
   return String.fromCharCode(64 + seatNumber);
 }
 
-export function getMealPrice(meal: MealChoice): number {
-  return MEAL_OPTIONS.find((m) => m.value === meal)?.price ?? 2800;
-}
-
-export function calculateTotal(data: BookingFormData): number {
-  let total = data.isVip ? VIP_TABLE_PRICE : 0;
-
-  if (!data.isVip) {
-    for (const guest of data.guests) {
-      total += getMealPrice(guest.mealChoice);
-      if (guest.hasDessert) {
-        total += DESSERT_PRICE;
-      }
-    }
-  }
-
-  // Dancer meals — each entry has its own mealChoice and price
-  for (const upsell of data.upsells) {
-    if (upsell.type === "repas_danseur" && upsell.mealChoice) {
-      const opt = DANCER_MEAL_OPTIONS.find((o) => o.value === upsell.mealChoice);
-      if (opt) total += opt.price * (upsell.quantity || 1);
-    }
-  }
-
-  return total;
+export function calculateTotal(data: Pick<BookingFormData, "isVip" | "guests" | "upsells">): number {
+  const quoted = quoteBooking({
+    isVip: data.isVip,
+    guests: data.guests satisfies QuoteGuest[],
+    upsells: data.upsells satisfies QuoteUpsell[],
+  });
+  return quoted.ok ? quoted.total : 0;
 }

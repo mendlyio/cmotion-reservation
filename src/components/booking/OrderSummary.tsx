@@ -67,7 +67,7 @@ export function OrderSummary({ data, tables = [] }: Props) {
         ) : (
           data.guests.map((g, i) => {
             const m = MEAL_OPTIONS.find((x) => x.value === g.mealChoice);
-            const p = getMealPrice(g.mealChoice);
+            const p = getMealPrice(g.mealChoice) ?? 0;
             const seatLabel = findSeatLabel(g.seatId);
             const fullName = [g.firstName, g.lastName].filter(Boolean).join(" ") || `Convive ${i + 1}`;
 

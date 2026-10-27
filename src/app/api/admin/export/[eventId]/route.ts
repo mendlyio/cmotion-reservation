@@ -19,8 +19,8 @@ import {
   getTableLabel,
   getSeatLabel,
   getMealPrice,
-  type MealChoice,
 } from "@/types";
+import { escapeCsvCell } from "@/lib/security";
 
 const STRIPE_STATUS_FR: Record<string, string> = {
   pending: "En attente de paiement",
@@ -54,10 +54,6 @@ function upsellTypeLabel(type: string): string {
   return UPSELL_OPTIONS.find((o) => o.type === type)?.label || type.replace(/_/g, " ");
 }
 
-function escapeCsvCell(cell: string): string {
-  return `"${cell.replace(/"/g, '""')}"`;
-}
-
 function formatCsvRow(row: string[]): string {
   return row.map(escapeCsvCell).join(",");
 }
@@ -78,9 +74,9 @@ function recapLine(row: readonly string[]): string {
 }
 
 function mealCatalogPriceEur(mealChoice: string): string {
-  const known = MEAL_OPTIONS.some((m) => m.value === mealChoice);
-  if (!known) return "";
-  return eurLabel(getMealPrice(mealChoice as MealChoice));
+  const price = getMealPrice(mealChoice);
+  if (price === null) return "";
+  return eurLabel(price);
 }
 
 function eventDateIso(event: typeof events.$inferSelect): string {

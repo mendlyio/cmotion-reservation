@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { db } from "@/lib/db";
 import { appSettings, events } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { isEventOpen } from "@/lib/open";
 import { HelpWidget } from "@/components/HelpWidget";
 import { RESERVATION_ENTRY_COOKIE } from "@/lib/reservation-entry";
 import "./globals.css";
@@ -46,15 +47,17 @@ export default async function RootLayout({
     const [row] = await db.select().from(appSettings).where(eq(appSettings.id, 1));
     settings = row;
     if (row?.helpWidgetEnabled) {
-      activeEvents = await db
+      activeEvents = (await db
         .select({
           id: events.id,
           name: events.name,
           timeInfo: events.timeInfo,
           eventDate: events.eventDate,
+          isActive: events.isActive,
+          openAt: events.openAt,
         })
-        .from(events)
-        .where(eq(events.isActive, true));
+        .from(events))
+        .filter((event) => isEventOpen(event));
     }
   }
 

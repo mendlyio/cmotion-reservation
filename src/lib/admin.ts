@@ -1,37 +1,60 @@
 import { cookies } from "next/headers";
-import { createHmac, timingSafeEqual } from "crypto";
+import { randomBytes } from "crypto";
+import { and, eq, gt } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { adminSessions } from "@/lib/db/schema";
+import { safeEqual, sha256Hex } from "@/lib/security";
 
 const ADMIN_COOKIE = "cmotion_admin";
-const AUTH_SALT = "cmotion-admin-v2";
+const SESSION_MS = 8 * 60 * 60 * 1000;
 
-function generateToken(): string {
-  const password = process.env.ADMIN_PASSWORD || "";
-  return createHmac("sha256", password).update(AUTH_SALT).digest("hex");
+export function adminPasswordConfigured(): boolean {
+  return Boolean(process.env.ADMIN_PASSWORD);
+}
+
+export function passwordMatches(password: string): boolean {
+  const expected = process.env.ADMIN_PASSWORD;
+  if (!expected || !password) return false;
+  return safeEqual(password, expected);
 }
 
 export async function verifyAdmin(): Promise<boolean> {
+  if (!adminPasswordConfigured()) return false;
   const cookieStore = await cookies();
   const token = cookieStore.get(ADMIN_COOKIE)?.value;
-  if (!token) return false;
+  if (!token || !/^[a-f0-9]{64}$/i.test(token)) return false;
 
-  const expected = generateToken();
-  if (token.length !== expected.length) return false;
-
-  return timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+  const [row] = await db
+    .select({ id: adminSessions.id })
+    .from(adminSessions)
+    .where(
+      and(eq(adminSessions.tokenHash, sha256Hex(token)), gt(adminSessions.expiresAt, new Date()))
+    );
+  return Boolean(row);
 }
 
-export async function setAdminCookie() {
+export async function setAdminCookie(): Promise<void> {
+  const token = randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + SESSION_MS);
+  await db.insert(adminSessions).values({
+    tokenHash: sha256Hex(token),
+    expiresAt,
+  });
   const cookieStore = await cookies();
-  cookieStore.set(ADMIN_COOKIE, generateToken(), {
+  cookieStore.set(ADMIN_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: SESSION_MS / 1000,
     path: "/",
   });
 }
 
-export async function clearAdminCookie() {
+export async function clearAdminCookie(): Promise<void> {
   const cookieStore = await cookies();
+  const token = cookieStore.get(ADMIN_COOKIE)?.value;
+  if (token && /^[a-f0-9]{64}$/i.test(token)) {
+    await db.delete(adminSessions).where(eq(adminSessions.tokenHash, sha256Hex(token)));
+  }
   cookieStore.delete(ADMIN_COOKIE);
 }

@@ -11,29 +11,31 @@ import { eq, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { MEAL_OPTIONS, UPSELL_OPTIONS, DESSERT_LABEL, getTableLabel, getSeatLabel } from "@/types";
+import { maskEmail } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
 interface Props {
-  params: Promise<{ reservationId: string }>;
+  params: Promise<{ token: string }>;
 }
 
 export default async function ConfirmationPage({ params }: Props) {
-  const { reservationId: ridStr } = await params;
-  const reservationId = parseInt(ridStr);
-  if (isNaN(reservationId)) notFound();
+  const { token } = await params;
+  if (!/^[a-f0-9]{32}$/i.test(token)) notFound();
 
   const [reservation] = await db
     .select()
     .from(reservations)
-    .where(eq(reservations.id, reservationId));
+    .where(eq(reservations.publicToken, token.toLowerCase()));
 
   if (!reservation) notFound();
+  const reservationId = reservation.id;
 
   const [event] = await db
     .select()
     .from(events)
     .where(eq(events.id, reservation.eventId));
+  if (!event) notFound();
 
   const resSeats = await db
     .select()
@@ -136,7 +138,7 @@ export default async function ConfirmationPage({ params }: Props) {
 
               <InfoBlock label="Contact">
                 <p className="text-sm text-white">{reservation.referentStudent}</p>
-                <p className="text-sm text-[#666]">{reservation.email}</p>
+                <p className="text-sm text-[#666]">{maskEmail(reservation.email)}</p>
               </InfoBlock>
             </div>
 

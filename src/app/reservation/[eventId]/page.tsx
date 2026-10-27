@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ReservationClient } from "./ReservationClient";
+import { isEventOpen } from "@/lib/open";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export default async function ReservationPage({ params }: Props) {
     .from(events)
     .where(eq(events.id, eventId));
 
-  if (!event || !event.isActive) notFound();
+  if (!event || !isEventOpen(event)) notFound();
 
   return (
     <Suspense>

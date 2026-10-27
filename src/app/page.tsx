@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
 import Link from "next/link";
+import { isEventOpen } from "@/lib/open";
 import { ReservationEntryGate } from "@/components/ReservationEntryGate";
 import { RESERVATION_ENTRY_COOKIE } from "@/lib/reservation-entry";
 
@@ -14,10 +14,7 @@ export default async function HomePage() {
     return <ReservationEntryGate />;
   }
 
-  const activeEvents = await db
-    .select()
-    .from(events)
-    .where(eq(events.isActive, true));
+  const activeEvents = (await db.select().from(events)).filter((event) => isEventOpen(event));
 
   const byDate = new Map<string, typeof activeEvents>();
   for (const ev of activeEvents) {

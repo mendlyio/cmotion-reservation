@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { GuestForm } from "./GuestForm";
 import { UpsellSection } from "./UpsellSection";
@@ -17,6 +18,7 @@ interface Props {
 type Step = 0 | 1 | 2;
 
 export function BookingForm({ eventId, tables, selectedSeatIds, onCancel }: Props) {
+  const router = useRouter();
   const table = tables[0];
   const vip = tables.length === 1 && tables[0].isVip;
   const ids = vip ? tables[0].seats.map((s) => s.id) : selectedSeatIds;
@@ -55,10 +57,10 @@ export function BookingForm({ eventId, tables, selectedSeatIds, onCancel }: Prop
     try {
       const rr = await fetch("/api/reservation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
       if (!rr.ok) throw new Error((await rr.json()).error);
-      const { reservationId, totalAmount } = await rr.json();
+      const { reservationId, publicToken, totalAmount } = await rr.json();
       if (sim || totalAmount === 0) {
         if (sim) { const p = await fetch("/api/stripe/simulate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reservationId }) }); if (!p.ok) throw new Error("Erreur"); }
-        window.location.href = `/confirmation/${reservationId}`; return;
+        router.push(`/confirmation/${publicToken}`); return;
       }
       const sr = await fetch("/api/stripe/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reservationId }) });
       if (!sr.ok) throw new Error((await sr.json()).error);
