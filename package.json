@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test src/lib/pricing.test.ts src/lib/webhook-logic.test.ts src/lib/deadline.test.ts src/lib/meals.test.ts src/lib/pdf/text.test.ts src/lib/base-url.test.ts src/lib/content-disposition.test.ts src/lib/ready-maintenance.test.ts src/lib/sql/claim.test.ts src/lib/sql/fulfill.test.ts",
+    "test": "tsx --test src/lib/pricing.test.ts src/lib/webhook-logic.test.ts src/lib/deadline.test.ts src/lib/meals.test.ts src/lib/pdf/text.test.ts src/lib/base-url.test.ts src/lib/content-disposition.test.ts src/lib/ready-maintenance.test.ts src/lib/event-access.test.ts src/lib/sql/claim.test.ts src/lib/sql/fulfill.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:seed": "npx tsx src/lib/db/seed.ts",

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { tables, seats } from "@/lib/db/schema";
+import { events, tables, seats } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
+import { guardPublicFlow } from "@/lib/event-guard";
+import { isAwaitingOpen } from "@/lib/open";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -14,6 +16,20 @@ export async function GET(
   if (isNaN(eventId)) {
     return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
   }
+
+  const [event] = await db
+    .select({ isActive: events.isActive, openAt: events.openAt })
+    .from(events)
+    .where(eq(events.id, eventId));
+  if (!(await guardPublicFlow(event))) {
+    const denied = NextResponse.json(
+      { error: "Les réservations ne sont pas ouvertes pour ce spectacle" },
+      { status: 403 }
+    );
+    denied.headers.set("Cache-Control", "private, no-store");
+    return denied;
+  }
+  const awaiting = Boolean(event && isAwaitingOpen(event));
 
   const eventTables = await db
     .select()
@@ -44,7 +60,11 @@ export async function GET(
   }));
 
   const response = NextResponse.json({ tables: tablesWithSeats });
-  // Le navigateur ne met rien en cache. Le CDN garde la réponse 2 secondes.
-  response.headers.set("Cache-Control", "public, max-age=0, s-maxage=2");
+  if (awaiting) {
+    response.headers.set("Cache-Control", "private, no-store");
+  } else {
+    // Le navigateur ne met rien en cache. Le CDN garde la réponse 2 secondes.
+    response.headers.set("Cache-Control", "public, max-age=0, s-maxage=2");
+  }
   return response;
 }

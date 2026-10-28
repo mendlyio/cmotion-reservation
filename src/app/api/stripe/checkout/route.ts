@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { stripe } from "@/lib/stripe";
 import { db } from "@/lib/db";
-import { holds, reservationSeats, reservations } from "@/lib/db/schema";
+import { events, holds, reservationSeats, reservations } from "@/lib/db/schema";
+import { guardPublicFlow } from "@/lib/event-guard";
 import { getOrCreateSession } from "@/lib/session";
 import { getBaseUrl } from "@/lib/base-url";
 import { queryRows } from "@/lib/query";
@@ -31,6 +32,14 @@ export async function POST(request: NextRequest) {
   }
   if (!Number.isInteger(reservation.totalAmount) || reservation.totalAmount <= 0) {
     return NextResponse.json({ error: "Montant invalide" }, { status: 400 });
+  }
+
+  const [eventGate] = await db
+    .select({ isActive: events.isActive, openAt: events.openAt })
+    .from(events)
+    .where(eq(events.id, reservation.eventId));
+  if (!(await guardPublicFlow(eventGate))) {
+    return NextResponse.json({ error: "Les réservations ne sont pas ouvertes pour ce spectacle" }, { status: 403 });
   }
 
   const seatRows = await db
