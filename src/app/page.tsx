@@ -2,20 +2,24 @@ import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema";
 import Link from "next/link";
+import { verifyAdmin } from "@/lib/admin";
+import { eventsVisibleTo } from "@/lib/event-access";
 import { isEventOpen } from "@/lib/open";
 import { ReservationEntryGate } from "@/components/ReservationEntryGate";
 import { DisneyBanner } from "@/components/DisneyBanner";
+import { TestAccess } from "@/components/TestAccess";
 import { RESERVATION_ENTRY_COOKIE } from "@/lib/reservation-entry";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const cookieStore = await cookies();
-  if (cookieStore.get(RESERVATION_ENTRY_COOKIE)?.value !== "1") {
+  const preview = await verifyAdmin();
+  if (cookieStore.get(RESERVATION_ENTRY_COOKIE)?.value !== "1" && !preview) {
     return <ReservationEntryGate />;
   }
 
-  const activeEvents = (await db.select().from(events)).filter((event) => isEventOpen(event));
+  const activeEvents = eventsVisibleTo(await db.select().from(events), preview);
 
   const byDate = new Map<string, typeof activeEvents>();
   for (const ev of activeEvents) {
@@ -114,9 +118,16 @@ export default async function HomePage() {
                           className="block group"
                         >
                           <div className="bg-[#141414] hover:bg-[#1a1500] border border-[#2a2a2a] hover:border-[#c9a227]/30 rounded-xl p-3.5 transition-all duration-150 active:scale-[0.97]">
-                            <span className="inline-flex mb-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#c9a227]/15 text-[#c9a227] border border-[#c9a227]/30">
-                              {event.ageGroup === "+12" ? "+12 ans" : "−12 ans"}
-                            </span>
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#c9a227]/15 text-[#c9a227] border border-[#c9a227]/30">
+                                {event.ageGroup === "+12" ? "+12 ans" : "−12 ans"}
+                              </span>
+                              {!isEventOpen(event) ? (
+                                <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-black/40 text-[#e4c76b] border border-[#e4c76b]/40">
+                                  Pas encore ouvert au public
+                                </span>
+                              ) : null}
+                            </div>
                             <div className="flex items-center gap-2.5 mb-3">
                               <div className="w-9 h-9 rounded-lg bg-[#c9a227]/10 flex items-center justify-center">
                                 <svg className="w-4.5 h-4.5 text-[#c9a227]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -188,6 +199,11 @@ export default async function HomePage() {
               </div>
             </>
           )}
+          {!preview ? (
+            <div className="pt-6 text-center">
+              <TestAccess />
+            </div>
+          ) : null}
         </div>
       </section>
     </main>

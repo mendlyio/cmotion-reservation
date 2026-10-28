@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DisneyBanner } from "@/components/DisneyBanner";
+import { TestAccess } from "@/components/TestAccess";
 
 export function ReservationEntryGate() {
   const router = useRouter();
@@ -62,6 +63,9 @@ export function ReservationEntryGate() {
         >
           {loading ? "Connexion…" : "Voir les spectacles"}
         </Button>
+        <div className="mt-6 text-center">
+          <TestAccess />
+        </div>
       </div>
     </main>
   );

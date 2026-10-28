@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { events, seats, tables } from "@/lib/db/schema";
 import { getOrCreateSession } from "@/lib/session";
 import { claimSeats, getHoldExpiry, releaseHoldsBySession } from "@/lib/hold";
-import { isEventOpen } from "@/lib/open";
+import { guardEvent } from "@/lib/event-guard";
 import { getSeatLabel } from "@/types";
 import { isUniqueViolation } from "@/lib/query";
 
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   }
 
   const [event] = await db.select().from(events).where(eq(events.id, eventId));
-  if (!event || !isEventOpen(event)) {
+  if (!(await guardEvent(event))) {
     return NextResponse.json({ error: "Les réservations ne sont pas ouvertes pour ce spectacle" }, { status: 403 });
   }
 

@@ -61,3 +61,7 @@ Retour arrière : `migrations/002_december_events_rollback.sql`. Il supprime ces
 Fichier : `migrations/003_wipe_old_reservations.sql`
 
 Valentin le lance lui-même. Il efface réservations, places, options et blocages des événements 19 à 22, puis remet leurs sièges disponibles. Les spectacles eux-mêmes restent en base, inactifs. Aucun script inverse : la seule marche arrière est la branche de sauvegarde Neon.
+
+## Mode test
+
+Avec le mot de passe admin déjà en place, l'accueil propose un accès test : la session `cmotion_admin` affiche les spectacles dont l'ouverture est encore devant et débloque leur réservation, sans migration ni variable nouvelle.

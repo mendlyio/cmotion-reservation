@@ -1,8 +1,10 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { randomBytes } from "crypto";
-import { and, eq, gt } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { adminSessions } from "@/lib/db/schema";
+import { adminTokenDigest, previewSessionActive } from "@/lib/event-access";
 import { safeEqual, sha256Hex } from "@/lib/security";
 
 const ADMIN_COOKIE = "cmotion_admin";
@@ -18,20 +20,19 @@ export function passwordMatches(password: string): boolean {
   return safeEqual(password, expected);
 }
 
-export async function verifyAdmin(): Promise<boolean> {
+export const verifyAdmin = cache(async (): Promise<boolean> => {
   if (!adminPasswordConfigured()) return false;
   const cookieStore = await cookies();
   const token = cookieStore.get(ADMIN_COOKIE)?.value;
-  if (!token || !/^[a-f0-9]{64}$/i.test(token)) return false;
+  const digest = adminTokenDigest(token);
+  if (!digest) return false;
 
   const [row] = await db
-    .select({ id: adminSessions.id })
+    .select({ tokenHash: adminSessions.tokenHash, expiresAt: adminSessions.expiresAt })
     .from(adminSessions)
-    .where(
-      and(eq(adminSessions.tokenHash, sha256Hex(token)), gt(adminSessions.expiresAt, new Date()))
-    );
-  return Boolean(row);
-}
+    .where(eq(adminSessions.tokenHash, digest));
+  return previewSessionActive(row, token);
+});
 
 export async function setAdminCookie(): Promise<void> {
   const token = randomBytes(32).toString("hex");

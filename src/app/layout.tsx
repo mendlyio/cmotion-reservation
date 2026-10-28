@@ -2,11 +2,13 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import { Toaster } from "@/components/ui/sonner";
+import { verifyAdmin } from "@/lib/admin";
+import { eventsVisibleTo } from "@/lib/event-access";
 import { db } from "@/lib/db";
 import { appSettings, events } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { isEventOpen } from "@/lib/open";
 import { HelpWidget } from "@/components/HelpWidget";
+import { TestModeBanner } from "@/components/TestModeBanner";
 import { RESERVATION_ENTRY_COOKIE } from "@/lib/reservation-entry";
 import "./globals.css";
 
@@ -39,6 +41,7 @@ export default async function RootLayout({
 }>) {
   const cookieStore = await cookies();
   const entryOk = cookieStore.get(RESERVATION_ENTRY_COOKIE)?.value === "1";
+  const preview = await verifyAdmin();
 
   let settings: { helpWidgetEnabled: boolean | null } | undefined;
   let activeEvents: { id: number; name: string; timeInfo: string; eventDate: string }[] = [];
@@ -47,7 +50,7 @@ export default async function RootLayout({
     const [row] = await db.select().from(appSettings).where(eq(appSettings.id, 1));
     settings = row;
     if (row?.helpWidgetEnabled) {
-      activeEvents = (await db
+      const rows = await db
         .select({
           id: events.id,
           name: events.name,
@@ -56,8 +59,8 @@ export default async function RootLayout({
           isActive: events.isActive,
           openAt: events.openAt,
         })
-        .from(events))
-        .filter((event) => isEventOpen(event));
+        .from(events);
+      activeEvents = eventsVisibleTo(rows, preview);
     }
   }
 
@@ -67,6 +70,7 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background">
+        {preview ? <TestModeBanner /> : null}
         {children}
         {entryOk && settings?.helpWidgetEnabled && (
           <HelpWidget events={activeEvents} />
