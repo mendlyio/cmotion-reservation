@@ -19,17 +19,25 @@ interface GuestData {
 interface ReservationEditorProps {
   reservationId: number;
   adminNotes: string;
+  referentLastName: string;
+  referentFirstName: string;
+  legacyReferent: string | null;
   guests: GuestData[];
 }
 
 export function ReservationEditor({
   reservationId,
   adminNotes: initialNotes,
+  referentLastName: initialLastName,
+  referentFirstName: initialFirstName,
+  legacyReferent,
   guests: initialGuests,
 }: ReservationEditorProps) {
   const router = useRouter();
   const [guests, setGuests] = useState<GuestData[]>(initialGuests);
   const [adminNotes, setAdminNotes] = useState(initialNotes);
+  const [referentLastName, setReferentLastName] = useState(initialLastName);
+  const [referentFirstName, setReferentFirstName] = useState(initialFirstName);
   const [loading, setLoading] = useState(false);
 
   const handleGuestChange = (index: number, field: string, value: string | boolean | null) => {
@@ -39,6 +47,10 @@ export function ReservationEditor({
   };
 
   const handleSave = async () => {
+    if (!referentLastName.trim() || !referentFirstName.trim()) {
+      toast.error("Indiquez le nom et le prénom de l'élève référent");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch(`/api/admin/reservations/${reservationId}`, {
@@ -46,6 +58,8 @@ export function ReservationEditor({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           adminNotes,
+          referentLastName,
+          referentFirstName,
           guests: guests.map((g) => ({
             id: g.id,
             firstName: g.firstName,
@@ -101,6 +115,38 @@ export function ReservationEditor({
       </div>
 
       <div className="px-5 sm:px-6 py-5 space-y-3">
+        <div className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-xl p-4">
+          <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest mb-3">Élève référent</p>
+          {legacyReferent ? (
+            <p className="text-xs text-[#c9a227] mb-3">
+              Saisie antérieure, non séparée : {legacyReferent}. Indiquez le nom et le prénom pour le tri à l&apos;accueil.
+            </p>
+          ) : null}
+          <div className="grid grid-cols-2 gap-3">
+            <EditorField label="Nom de l'élève référent">
+              <input
+                type="text"
+                value={referentLastName}
+                onChange={(e) => setReferentLastName(e.target.value)}
+                autoComplete="family-name"
+                maxLength={80}
+                required
+                className="w-full h-10 px-3 rounded-xl bg-[#141414] border border-[#2a2a2a] text-sm text-white focus:outline-none focus:border-[#c9a227]/50 focus:ring-1 focus:ring-[#c9a227]/15 transition-all"
+              />
+            </EditorField>
+            <EditorField label="Prénom de l'élève référent">
+              <input
+                type="text"
+                value={referentFirstName}
+                onChange={(e) => setReferentFirstName(e.target.value)}
+                autoComplete="given-name"
+                maxLength={80}
+                required
+                className="w-full h-10 px-3 rounded-xl bg-[#141414] border border-[#2a2a2a] text-sm text-white focus:outline-none focus:border-[#c9a227]/50 focus:ring-1 focus:ring-[#c9a227]/15 transition-all"
+              />
+            </EditorField>
+          </div>
+        </div>
         {guests.map((guest, i) => (
           <div
             key={guest.id}

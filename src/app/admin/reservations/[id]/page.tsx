@@ -13,6 +13,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { DANCER_MEAL_OPTIONS, getTableLabel } from "@/types";
 import { ReservationEditor } from "./ReservationEditor";
+import { hasSplitReferent } from "@/lib/referent";
 
 export const dynamic = "force-dynamic";
 
@@ -122,7 +123,14 @@ export default async function AdminReservationPage({ params }: Props) {
         <div className="bg-[#0f0f0f] rounded-2xl border border-[#1e1a0e] p-5">
           <h2 className="text-xs font-semibold text-[#555] uppercase tracking-widest mb-4">Contact</h2>
           <dl className="space-y-3">
-            <InfoRow label="Élève référent" value={reservation.referentStudent} />
+            {hasSplitReferent(reservation) ? (
+              <>
+                <InfoRow label="Nom de l'élève référent" value={reservation.referentLastName} />
+                <InfoRow label="Prénom de l'élève référent" value={reservation.referentFirstName} />
+              </>
+            ) : (
+              <InfoRow label="Élève référent" value={reservation.referentStudent} />
+            )}
             <InfoRow label="Email" value={reservation.email} />
             {reservation.phone && <InfoRow label="Téléphone" value={reservation.phone} />}
           </dl>
@@ -164,6 +172,9 @@ export default async function AdminReservationPage({ params }: Props) {
       <ReservationEditor
         reservationId={reservation.id}
         adminNotes={reservation.adminNotes || ""}
+        referentLastName={reservation.referentLastName ?? ""}
+        referentFirstName={reservation.referentFirstName ?? ""}
+        legacyReferent={hasSplitReferent(reservation) ? null : reservation.referentStudent}
         guests={resSeats.map((rs) => {
           const seat = seatDetails.find((s) => s.id === rs.seatId);
           return {

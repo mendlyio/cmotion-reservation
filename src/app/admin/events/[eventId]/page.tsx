@@ -14,6 +14,7 @@ import Link from "next/link";
 import { MEAL_OPTIONS, getTableLabel, getSeatLabel } from "@/types";
 import { AdminSeatingView } from "./AdminSeatingView";
 import { EnveloppeView, type Enveloppe } from "@/components/admin/EnveloppeView";
+import { sortByReferentName } from "@/lib/referent";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +71,7 @@ export default async function AdminEventPage({ params, searchParams }: Props) {
 
   // Build envelopes (paid reservations only)
   const allReservations = await db.select().from(reservations).where(eq(reservations.eventId, eventId));
-  const paidOnes = allReservations.filter((r) => r.stripeStatus === "paid");
+  const paidOnes = sortByReferentName(allReservations.filter((r) => r.stripeStatus === "paid"));
   const paidIds = paidOnes.map((r) => r.id);
 
   let allResSeats: (typeof reservationSeats.$inferSelect)[] = [];
@@ -122,6 +123,8 @@ export default async function AdminEventPage({ params, searchParams }: Props) {
     return {
       reservationId: r.id,
       referentStudent: r.referentStudent,
+      referentLastName: r.referentLastName,
+      referentFirstName: r.referentFirstName,
       tableInfo: tableData ? `${getTableLabel(tableData.rowNumber, tableData.tableNumber)}` : "—",
       isVip: tableData?.isVip ?? false,
       guests,

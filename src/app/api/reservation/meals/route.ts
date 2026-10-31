@@ -119,6 +119,9 @@ export async function POST(request: NextRequest) {
       eventName: event.name,
       eventDate: event.eventDate,
       timeInfo: event.timeInfo,
+      referentStudent: reservation.referentStudent,
+      referentLastName: reservation.referentLastName,
+      referentFirstName: reservation.referentFirstName,
       changes,
       guests: body.guests.map((guest) => {
         const previous = guestRows.find((row) => row.id === guest.id);

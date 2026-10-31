@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { events, reservationSeats, reservationUpsells, reservations, seats, tables } from "@/lib/db/schema";
 import { getSeatLabel, getTableLabel } from "@/types";
 import type { SheetExtra, SheetGuest } from "@/lib/service-sheet";
+import { formatReferentDisplay, sortByReferentName } from "@/lib/referent";
 
 export interface LoadedGuest extends SheetGuest {
   reservationId: number;
@@ -14,6 +15,9 @@ export interface LoadedGuest extends SheetGuest {
 export interface LoadedReservation {
   id: number;
   referent: string;
+  referentStudent: string;
+  referentLastName: string | null;
+  referentFirstName: string | null;
   email: string;
   phone: string | null;
   status: string;
@@ -85,7 +89,10 @@ export async function loadEventOrders(eventId: number): Promise<LoadedEventOrder
         .map((upsell) => ({ mealChoice: upsell.mealChoice as string, quantity: upsell.quantity }));
       return {
         id: reservation.id,
-        referent: reservation.referentStudent,
+        referent: formatReferentDisplay(reservation),
+        referentStudent: reservation.referentStudent,
+        referentLastName: reservation.referentLastName,
+        referentFirstName: reservation.referentFirstName,
         email: reservation.email,
         phone: reservation.phone,
         status: reservation.stripeStatus,
@@ -94,10 +101,9 @@ export async function loadEventOrders(eventId: number): Promise<LoadedEventOrder
         guests,
         extras,
       };
-    })
-    .sort((a, b) => a.id - b.id);
+    });
 
-  return { event, reservations: reservationsLoaded };
+  return { event, reservations: sortByReferentName(reservationsLoaded) };
 }
 
 export function paidReservations(orders: LoadedEventOrders): LoadedReservation[] {

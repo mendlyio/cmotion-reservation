@@ -34,7 +34,8 @@ export function BookingForm({ eventId, tables, selectedSeatIds, onCancel, deadli
     setGuests(build(ids, saved, vip));
   }
   const [upsells, setUpsells] = useState<{ type: string; quantity: number; mealChoice?: string }[]>([]);
-  const [ref, setRef] = useState("");
+  const [refLast, setRefLast] = useState("");
+  const [refFirst, setRefFirst] = useState("");
   const [email, setEmail] = useState("");
   const [phonePrefix, setPhonePrefix] = useState("+32");
   const [phoneLocal, setPhoneLocal] = useState("");
@@ -47,10 +48,10 @@ export function BookingForm({ eventId, tables, selectedSeatIds, onCancel, deadli
 
   const data: BookingFormData = {
     eventId, tableId: table?.id ?? 0, seatIds: ids, isVip: vip,
-    guests, upsells, referentStudent: ref, email, phone,
+    guests, upsells, referentLastName: refLast, referentFirstName: refFirst, email, phone,
   };
   const gOk = guests.every((g) => g.firstName.trim() && g.lastName.trim() && g.mealChoice);
-  const cOk = !!ref.trim() && !!email.trim() && !!phoneLocal.trim();
+  const cOk = !!refLast.trim() && !!refFirst.trim() && !!email.trim() && !!phoneLocal.trim();
   const total = calculateTotal(data);
 
   const pay = async (sim: boolean) => {
@@ -192,7 +193,8 @@ export function BookingForm({ eventId, tables, selectedSeatIds, onCancel, deadli
               <UpsellSection upsells={upsells} onChange={setUpsells} />
               <div className="space-y-3">
                 <p className="text-xs font-bold text-[#888] uppercase tracking-widest">Contact</p>
-                <Field label="Élève référent" value={ref} set={setRef} placeholder="Nom de l'élève" required />
+                <Field label="Nom de l'élève référent" value={refLast} set={setRefLast} placeholder="Dupont" autoComplete="family-name" required />
+                <Field label="Prénom de l'élève référent" value={refFirst} set={setRefFirst} placeholder="Marie" autoComplete="given-name" required />
                 <Field label="Email" value={email} set={setEmail} placeholder="votre@email.com" type="email" required />
                 {/* Phone with country prefix */}
                 <div>
@@ -284,8 +286,8 @@ export function BookingForm({ eventId, tables, selectedSeatIds, onCancel, deadli
   );
 }
 
-function Field({ label, value, set, placeholder, type = "text", required }: {
-  label: string; value: string; set: (v: string) => void; placeholder: string; type?: string; required?: boolean;
+function Field({ label, value, set, placeholder, type = "text", required, autoComplete }: {
+  label: string; value: string; set: (v: string) => void; placeholder: string; type?: string; required?: boolean; autoComplete?: string;
 }) {
   const [touched, setTouched] = useState(false);
   const invalid = required && touched && value.trim() === "";
@@ -296,7 +298,9 @@ function Field({ label, value, set, placeholder, type = "text", required }: {
       </label>
       <input
         type={type}
-        autoComplete={type === "email" ? "email" : undefined}
+        autoComplete={autoComplete ?? (type === "email" ? "email" : undefined)}
+        required={required}
+        maxLength={type === "email" ? 160 : 80}
         value={value}
         onChange={(e) => set(e.target.value)}
         onBlur={() => setTouched(true)}

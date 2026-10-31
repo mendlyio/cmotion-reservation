@@ -36,7 +36,9 @@ export async function GET(
   const bytes = await renderFichesPdf({
     timeInfo: orders.event.timeInfo,
     reservations: paid.map((reservation) => ({
-      referent: reservation.referent,
+      referentStudent: reservation.referentStudent,
+      referentLastName: reservation.referentLastName,
+      referentFirstName: reservation.referentFirstName,
       guests: reservation.guests,
       extras: reservation.extras,
     })),

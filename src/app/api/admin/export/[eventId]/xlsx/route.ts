@@ -5,6 +5,7 @@ import { loadEventOrders } from "@/lib/orders";
 import { mealLabel } from "@/lib/pricing";
 import { contentDisposition } from "@/lib/content-disposition";
 import { neutralizeFormula } from "@/lib/security";
+import { referentCsvCells } from "@/lib/referent";
 
 const STATUS_FR: Record<string, string> = {
   pending: "En attente",
@@ -35,20 +36,32 @@ export async function GET(
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "Cmotion";
   const summary = workbook.addWorksheet("Réservations");
-  summary.addRow(["Réservation", "Statut", "Référent", "Email", "Téléphone", "Tables", "Convives", "Montant EUR"]);
+  summary.addRow([
+    "Réservation",
+    "Statut",
+    "Nom de l'élève référent",
+    "Prénom de l'élève référent",
+    "Email",
+    "Téléphone",
+    "Tables",
+    "Convives",
+    "Montant EUR",
+  ]);
   for (const reservation of orders.reservations) {
     const tables = [...new Set(reservation.guests.map((guest) => guest.tableNumber))].sort((a, b) => a - b).join(", ");
+    const [lastName, firstName] = referentCsvCells(reservation);
     const row = summary.addRow([
       reservation.id,
       text(STATUS_FR[reservation.status] ?? reservation.status),
-      text(reservation.referent),
+      text(lastName),
+      text(firstName),
       text(reservation.email),
       text(reservation.phone ?? ""),
       text(tables),
       reservation.guests.length,
       reservation.totalAmount / 100,
     ]);
-    row.getCell(8).numFmt = "0.00";
+    row.getCell(9).numFmt = "0.00";
   }
 
   const guests = workbook.addWorksheet("Convives");

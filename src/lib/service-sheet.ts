@@ -23,6 +23,8 @@ export interface FicheRow {
 
 export interface ReservationFiche {
   title: string;
+  referentLastName: string;
+  referentFirstName: string;
   tablesLabel: string;
   rows: FicheRow[];
 }
@@ -94,6 +96,8 @@ function expandExtras(extras: SheetExtra[]): string[] {
 export function buildFiche(input: {
   timeInfo: string;
   referent: string;
+  referentLastName?: string;
+  referentFirstName?: string;
   guests: SheetGuest[];
   extras: SheetExtra[];
 }): ReservationFiche {
@@ -112,6 +116,8 @@ export function buildFiche(input: {
   }
   return {
     title: `${input.timeInfo} ${input.referent}`.trim(),
+    referentLastName: input.referentLastName?.trim() ?? "",
+    referentFirstName: input.referentFirstName?.trim() ?? "",
     tablesLabel: tablesLabel(guests.map((guest) => guest.tableNumber)),
     rows,
   };

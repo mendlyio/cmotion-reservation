@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { SERVICE_NOTE } from "@/lib/service-note";
+import { referentParts } from "@/lib/referent";
 import { buildFiche, buildRecaps, type PictoKey, type SheetExtra, type SheetGuest } from "@/lib/service-sheet";
 import { toPdfText } from "@/lib/pdf/text";
 
@@ -126,7 +127,13 @@ function drawFooter(page: PDFPage, font: PDFFont, yStart: number) {
 
 export async function renderFichesPdf(input: {
   timeInfo: string;
-  reservations: { referent: string; guests: SheetGuest[]; extras: SheetExtra[] }[];
+  reservations: {
+    referentStudent?: string | null;
+    referentLastName?: string | null;
+    referentFirstName?: string | null;
+    guests: SheetGuest[];
+    extras: SheetExtra[];
+  }[];
 }): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const regular = await doc.embedFont(StandardFonts.Helvetica);
@@ -146,9 +153,12 @@ export async function renderFichesPdf(input: {
   }
 
   for (const reservation of paid) {
+    const parts = referentParts(reservation);
     const fiche = buildFiche({
       timeInfo: input.timeInfo,
-      referent: reservation.referent,
+      referent: [parts.lastName, parts.firstName].filter(Boolean).join(" "),
+      referentLastName: parts.lastName,
+      referentFirstName: parts.firstName,
       guests: reservation.guests,
       extras: reservation.extras,
     });
@@ -157,14 +167,25 @@ export async function renderFichesPdf(input: {
     chunks.forEach((rows, index) => {
       const page = doc.addPage([PAGE_W, PAGE_H]);
       page.drawText(pdfText(fiche.title), { x: 40, y: PAGE_H - 70, size: 22, font: bold, color: BLUE });
-      page.drawText(pdfText(fiche.tablesLabel), { x: 40, y: PAGE_H - 100, size: 18, font: bold, color: BLUE });
+      const split = Boolean(fiche.referentFirstName);
+      if (split) {
+        page.drawText(pdfText(`Nom : ${fiche.referentLastName}    Prénom : ${fiche.referentFirstName}`), {
+          x: 40,
+          y: PAGE_H - 94,
+          size: 12,
+          font: regular,
+          color: INK,
+        });
+      }
+      const tablesY = split ? PAGE_H - 118 : PAGE_H - 100;
+      page.drawText(pdfText(fiche.tablesLabel), { x: 40, y: tablesY, size: 18, font: bold, color: BLUE });
       if (chunks.length > 1) {
         page.drawText(`${index + 1}/${chunks.length}`, { x: PAGE_W - 70, y: PAGE_H - 70, size: 10, font: regular, color: MUTED });
       }
       const headers = ["Place", "Repas", "Dessert", "Repas supplémentaire"];
       const widths = [70, 150, 80, 180];
       let x = 40;
-      const headerY = PAGE_H - 140;
+      const headerY = tablesY - 40;
       headers.forEach((header, col) => {
         page.drawText(header, { x, y: headerY, size: 10, font: bold, color: INK });
         x += widths[col];

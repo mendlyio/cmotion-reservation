@@ -10,6 +10,8 @@ import { verifyAdmin } from "@/lib/admin";
 import { resend } from "@/lib/resend";
 import { renderUpdateEmail } from "@/emails/ReservationUpdateEmail";
 import { MEAL_OPTIONS } from "@/types";
+import { parseReferentUpdate } from "@/lib/booking-schema";
+import { formatReferentDisplay } from "@/lib/referent";
 
 export async function PUT(
   request: NextRequest,
@@ -25,6 +27,10 @@ export async function PUT(
 
   const body = await request.json();
   const { adminNotes, guests, sendEmail } = body;
+  const referentParsed = parseReferentUpdate(body);
+  if (!referentParsed.ok) {
+    return NextResponse.json({ error: referentParsed.error }, { status: 400 });
+  }
 
   // Update reservation notes
   if (adminNotes !== undefined) {
@@ -36,6 +42,33 @@ export async function PUT(
 
   // Track changes for email
   const changes: string[] = [];
+
+  if (referentParsed.update) {
+    const [existingReservation] = await db
+      .select()
+      .from(reservations)
+      .where(eq(reservations.id, reservationId));
+    if (!existingReservation) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    const next = referentParsed.update;
+    const unchanged =
+      (existingReservation.referentLastName ?? "") === next.referentLastName &&
+      (existingReservation.referentFirstName ?? "") === next.referentFirstName;
+    if (!unchanged) {
+      const previous = formatReferentDisplay(existingReservation);
+      const display = formatReferentDisplay(next);
+      changes.push(`Élève référent : ${previous} → ${display}`);
+      await db
+        .update(reservations)
+        .set({
+          referentLastName: next.referentLastName,
+          referentFirstName: next.referentFirstName,
+          referentStudent: display,
+        })
+        .where(eq(reservations.id, reservationId));
+    }
+  }
 
   // Update guests
   if (guests && Array.isArray(guests)) {
@@ -114,6 +147,9 @@ export async function PUT(
         eventName: event.name,
         eventDate: event.eventDate,
         timeInfo: event.timeInfo,
+        referentStudent: reservation.referentStudent,
+        referentLastName: reservation.referentLastName,
+        referentFirstName: reservation.referentFirstName,
         changes,
         guests: updatedGuests.map((g) => ({
           firstName: g.firstName,
