@@ -95,7 +95,8 @@ export interface BookingFormData {
   isVip: boolean;
   guests: SeatFormData[];
   upsells: { type: string; quantity: number; mealChoice?: string }[];
-  referentStudent: string;
+  referentLastName: string;
+  referentFirstName: string;
   email: string;
   phone: string;
 }

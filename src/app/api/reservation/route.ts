@@ -6,6 +6,7 @@ import { events, seats, tables } from "@/lib/db/schema";
 import { getOrCreateSession } from "@/lib/session";
 import { DANCER_MEAL_OPTIONS, quoteBooking } from "@/lib/pricing";
 import { bookingSchema } from "@/lib/booking-schema";
+import { formatReferentDisplay } from "@/lib/referent";
 import { guardEvent } from "@/lib/event-guard";
 import { queryRows, isUniqueViolation } from "@/lib/query";
 import { INSERT_RESERVATION_SQL } from "@/lib/sql/booking";
@@ -114,12 +115,17 @@ export async function POST(request: NextRequest) {
       checkoutExpiry.toISOString(),
       body.seatIds.length,
       guestJson,
-      body.referentStudent,
+      formatReferentDisplay({
+        referentLastName: body.referentLastName,
+        referentFirstName: body.referentFirstName,
+      }),
       body.email,
       body.phone,
       quoted.total,
       publicToken,
       upsellJson,
+      body.referentLastName,
+      body.referentFirstName,
     ]);
     const created = rows[0];
     if (!created) {

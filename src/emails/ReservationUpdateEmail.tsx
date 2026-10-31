@@ -1,6 +1,7 @@
 import { mealLabel } from "@/lib/pricing";
 import { POLICY_TEXT } from "@/lib/deadline";
 import { escapeHtml } from "@/lib/security";
+import { referentMailLines, type ReferentSource } from "@/lib/referent";
 
 interface UpdateEmailProps {
   reservationId: number;
@@ -8,6 +9,9 @@ interface UpdateEmailProps {
   eventDate: string;
   timeInfo: string;
   changes: string[];
+  referentStudent?: string | null;
+  referentLastName?: string | null;
+  referentFirstName?: string | null;
   guests: {
     firstName: string;
     lastName: string;
@@ -18,6 +22,12 @@ interface UpdateEmailProps {
 
 export function renderUpdateEmail(props: UpdateEmailProps): string {
   const { reservationId, eventName, eventDate, timeInfo, changes, guests } = props;
+  const referentRows = referentMailLines(props satisfies ReferentSource)
+    .map(
+      (line) =>
+        `<tr><td style="padding: 4px 0; color: #64748b;">${escapeHtml(line.label)}</td><td style="padding: 4px 0; font-weight: 600;">${escapeHtml(line.value)}</td></tr>`
+    )
+    .join("");
 
   const formattedDate = new Date(eventDate).toLocaleDateString("fr-FR", {
     weekday: "long",
@@ -64,6 +74,10 @@ export function renderUpdateEmail(props: UpdateEmailProps): string {
               <p style="margin: 4px 0 0; color: #3b82f6; font-size: 13px;">${escapeHtml(formattedDate)} à ${escapeHtml(timeInfo)}</p>
               <p style="margin: 8px 0 0; color: #1e40af; font-size: 14px;">Les plats ont été mis à jour. Le montant déjà payé ne change pas.</p>
             </div>
+
+            <table style="width: 100%; margin-bottom: 24px;">
+              ${referentRows}
+            </table>
 
             <ul style="padding-left: 20px; margin-bottom: 24px;">
               ${changesList}

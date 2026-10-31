@@ -175,6 +175,8 @@ export default async function AdminDashboardPage() {
       allClientReservations.push({
         id: r.id,
         referentStudent: r.referentStudent,
+        referentLastName: r.referentLastName,
+        referentFirstName: r.referentFirstName,
         email: r.email,
         phone: r.phone,
         totalAmount: r.totalAmount,

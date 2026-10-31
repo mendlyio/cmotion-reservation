@@ -22,6 +22,7 @@ import {
 } from "@/types";
 import { contentDisposition } from "@/lib/content-disposition";
 import { escapeCsvCell } from "@/lib/security";
+import { REFERENT_CSV_HEADERS, referentCsvCells, sortByReferentName } from "@/lib/referent";
 
 const STRIPE_STATUS_FR: Record<string, string> = {
   pending: "En attente de paiement",
@@ -158,20 +159,19 @@ export async function GET(
           "Id rés.",
           "Statut paiement",
           "Créée le",
-          "Élève référent",
+          ...REFERENT_CSV_HEADERS,
           "Email",
           "Tél.",
           "Montant (€)",
           "Id session Stripe Checkout",
         ]),
-        ...unpaidReservations
-          .sort((a, b) => b.id - a.id)
+        ...sortByReferentName(unpaidReservations)
           .map((r) =>
             formatCsvRow([
               String(r.id),
               STRIPE_STATUS_FR[r.stripeStatus] ?? r.stripeStatus,
               formatDateFr(r.createdAt),
-              r.referentStudent,
+              ...referentCsvCells(r),
               r.email,
               r.phone || "",
               eurLabel(r.totalAmount),
@@ -249,14 +249,17 @@ export async function GET(
   const resMap: Record<number, (typeof paidReservations)[0]> = {};
   for (const r of paidReservations) resMap[r.id] = r;
 
-  const paidReservationOrder = [...paidReservations].sort((a, b) => {
+  const paidByName = sortByReferentName(paidReservations);
+  const nameOrder = new Map<number, number>();
+  paidByName.forEach((r, idx) => nameOrder.set(r.id, idx));
+  const paidByTime = [...paidReservations].sort((a, b) => {
     const ca = new Date(a.createdAt).getTime();
     const cb = new Date(b.createdAt).getTime();
     if (ca !== cb) return ca - cb;
     return a.id - b.id;
   });
   const reservationChronology = new Map<number, number>();
-  paidReservationOrder.forEach((r, idx) => reservationChronology.set(r.id, idx));
+  paidByTime.forEach((r, idx) => reservationChronology.set(r.id, idx));
 
   const guestCountByRes: Record<number, number> = {};
   for (const g of allGuests) {
@@ -288,8 +291,8 @@ export async function GET(
   };
 
   const sortedGuests = [...allGuests].sort((a, b) => {
-    const oa = reservationChronology.get(a.reservationId) ?? 0;
-    const ob = reservationChronology.get(b.reservationId) ?? 0;
+    const oa = nameOrder.get(a.reservationId) ?? 0;
+    const ob = nameOrder.get(b.reservationId) ?? 0;
     if (oa !== ob) return oa - ob;
     return cmpHall(seatMap[a.seatId], seatMap[b.seatId]);
   });
@@ -308,7 +311,7 @@ export async function GET(
     "Id session Stripe Checkout",
     "Nombre de convives dans la réservation",
     "Position du convive dans le groupe (ex. 2/4)",
-    "Élève référent / contact principal",
+    ...REFERENT_CSV_HEADERS,
     "Email de contact",
     "Téléphone",
     "Notes internes (niveau réservation)",
@@ -365,7 +368,7 @@ export async function GET(
       res?.stripePaymentId || "",
       String(nGuests),
       `${partyIndex}/${nGuests || "?"}`,
-      res?.referentStudent || "",
+      ...(res ? referentCsvCells(res) : ["", ""]),
       res?.email || "",
       res?.phone || "",
       res?.adminNotes?.replace(/\r?\n/g, " ") || "",
@@ -420,8 +423,8 @@ export async function GET(
   }
 
   const sortedUpsells = [...allUpsells].sort((a, b) => {
-    const ra = reservationChronology.get(a.reservationId) ?? Number.MAX_SAFE_INTEGER;
-    const rb = reservationChronology.get(b.reservationId) ?? Number.MAX_SAFE_INTEGER;
+    const ra = nameOrder.get(a.reservationId) ?? Number.MAX_SAFE_INTEGER;
+    const rb = nameOrder.get(b.reservationId) ?? Number.MAX_SAFE_INTEGER;
     if (ra !== rb) return ra - rb;
     return a.id - b.id;
   });
@@ -434,7 +437,7 @@ export async function GET(
     "Statut paiement",
     "Id réservation",
     "Réservation créée le",
-    "Élève référent / contact principal",
+    ...REFERENT_CSV_HEADERS,
     "Email",
     "Téléphone",
     "Nombre de convives",
@@ -443,17 +446,17 @@ export async function GET(
     "Options et suppléments (résumé texte)",
     "Notes internes réservation",
   ];
-  const nPaid = paidReservationOrder.length;
-  const synthRows = paidReservationOrder.map((r, idx) =>
+  const nPaid = paidByName.length;
+  const synthRows = paidByName.map((r) =>
     formatCsvRow([
       String(event.id),
       event.name,
       specDateIso,
-      `${idx + 1}/${nPaid}`,
+      `${(reservationChronology.get(r.id) ?? 0) + 1}/${nPaid}`,
       STRIPE_STATUS_FR[r.stripeStatus] ?? r.stripeStatus,
       String(r.id),
       formatDateFr(r.createdAt),
-      r.referentStudent,
+      ...referentCsvCells(r),
       r.email,
       r.phone || "",
       String(guestCountByRes[r.id] ?? 0),
@@ -470,7 +473,7 @@ export async function GET(
     "Date spectacle (ISO)",
     "Id ligne option (base de données)",
     "Id réservation",
-    "Élève référent",
+    ...REFERENT_CSV_HEADERS,
     "Email réservation",
     "Type de l'option",
     "Détail (plat / variante sélectionné)",
@@ -488,7 +491,7 @@ export async function GET(
       specDateIso,
       String(u.id),
       String(u.reservationId),
-      rr?.referentStudent || "",
+      ...(rr ? referentCsvCells(rr) : ["", ""]),
       rr?.email || "",
       upsellTypeLabel(u.upsellType),
       upsellDetail(u),
@@ -565,11 +568,11 @@ export async function GET(
     formatCsvRow(["Places convives vendues", String(allGuests.length)]),
     formatCsvRow(["Montant total encaissé (€)", eurLabel(totalRevenue)]),
     "",
-    "SYNTHÈSE — UNE LIGNE PAR RÉSERVATION PAYÉE (ordre chronologique de commande)",
+    "SYNTHÈSE — UNE LIGNE PAR RÉSERVATION PAYÉE (ordre : nom de l'élève référent, puis prénom)",
     formatCsvRow(synthHeaders),
     ...synthRows,
     "",
-    "LISTE DÉTAILLÉE — CONVIVES (ordre : date de réservation, puis rang / table / siège)",
+    "LISTE DÉTAILLÉE — CONVIVES (ordre : nom de l'élève référent, prénom, puis rang / table / siège)",
     formatCsvRow(guestHeaders),
     ...guestRows.map(formatCsvRow),
     ...recapRows.map(recapLine),
@@ -591,20 +594,19 @@ export async function GET(
         "Id rés.",
         "Statut paiement",
         "Créée le",
-        "Élève référent",
+        ...REFERENT_CSV_HEADERS,
         "Email",
         "Tél.",
         "Montant (€)",
         "Id session Stripe Checkout",
       ]),
-      ...unpaidReservations
-        .sort((a, b) => b.id - a.id)
+      ...sortByReferentName(unpaidReservations)
         .map((r) =>
           formatCsvRow([
             String(r.id),
             STRIPE_STATUS_FR[r.stripeStatus] ?? r.stripeStatus,
             formatDateFr(r.createdAt),
-            r.referentStudent,
+            ...referentCsvCells(r),
             r.email,
             r.phone || "",
             eurLabel(r.totalAmount),

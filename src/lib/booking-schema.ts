@@ -33,7 +33,8 @@ export const bookingSchema = z.object({
     )
     .max(16)
     .optional(),
-  referentStudent: personName,
+  referentLastName: personName,
+  referentFirstName: personName,
   email: z.string().trim().email().max(160),
   phone: z.string().trim().min(6).max(30),
 }).superRefine((data, ctx) => {
@@ -46,5 +47,30 @@ export const bookingSchema = z.object({
     ctx.addIssue({ code: "custom", message: "Les convives ne correspondent pas aux sièges" });
   }
 });
+
+export const referentNamesSchema = z.object({
+  referentLastName: personName,
+  referentFirstName: personName,
+});
+
+export type ReferentNames = z.infer<typeof referentNamesSchema>;
+
+/** Absent : ne pas modifier. Présent : les deux champs sont obligatoires. */
+export function parseReferentUpdate(input: {
+  referentLastName?: unknown;
+  referentFirstName?: unknown;
+}): { ok: true; update: ReferentNames | null } | { ok: false; error: string } {
+  if (input.referentLastName === undefined && input.referentFirstName === undefined) {
+    return { ok: true, update: null };
+  }
+  const parsed = referentNamesSchema.safeParse({
+    referentLastName: input.referentLastName,
+    referentFirstName: input.referentFirstName,
+  });
+  if (!parsed.success) {
+    return { ok: false, error: "Indiquez le nom et le prénom de l'élève référent" };
+  }
+  return { ok: true, update: parsed.data };
+}
 
 export type BookingInput = z.infer<typeof bookingSchema>;

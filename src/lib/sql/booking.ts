@@ -129,8 +129,9 @@ RETURNING seat_id
 /**
  * Crée la réservation, les convives et les repas danseur, ou rien.
  * $1 session, $2 event, $3 seat ids, $4 hold expiry, $5 count,
- * $6 guests jsonb, $7 referent, $8 email, $9 phone, $10 total cents,
- * $11 public token, $12 upsells jsonb
+ * $6 guests jsonb, $7 référent historique « Nom Prénom », $8 email, $9 phone,
+ * $10 total cents, $11 public token, $12 upsells jsonb,
+ * $13 nom de l'élève référent, $14 prénom de l'élève référent
  */
 export const INSERT_RESERVATION_SQL = `
 WITH held AS (
@@ -160,10 +161,10 @@ extended AS (
 ),
 ins AS (
   INSERT INTO reservations (
-    event_id, referent_student, email, phone, total_amount,
-    stripe_status, public_token, session_id
+    event_id, referent_student, referent_last_name, referent_first_name,
+    email, phone, total_amount, stripe_status, public_token, session_id
   )
-  SELECT $2, $7, $8, $9, $10, 'pending', $11, $1
+  SELECT $2, $7, $13, $14, $8, $9, $10, 'pending', $11, $1
   WHERE (SELECT count(*)::int FROM extended) = $5
   RETURNING id
 ),

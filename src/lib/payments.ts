@@ -108,6 +108,8 @@ export async function sendPaidConfirmation(reservationId: number): Promise<void>
     eventDate: eventData.eventDate,
     timeInfo: eventData.timeInfo,
     referentStudent: reservation.referentStudent,
+    referentLastName: reservation.referentLastName,
+    referentFirstName: reservation.referentFirstName,
     totalAmount: reservation.totalAmount,
     tableInfo,
     isVip,

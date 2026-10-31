@@ -15,6 +15,7 @@ import { maskEmail } from "@/lib/security";
 import { canEditMeals, formatDeadlineFr, mealEditDeadline } from "@/lib/deadline";
 import { PolicyNotice } from "@/components/PolicyNotice";
 import { DisneyBanner } from "@/components/DisneyBanner";
+import { hasSplitReferent } from "@/lib/referent";
 
 export const dynamic = "force-dynamic";
 
@@ -154,8 +155,17 @@ export default async function ConfirmationPage({ params }: Props) {
               )}
 
               <InfoBlock label="Contact">
-                <p className="text-sm text-white">{reservation.referentStudent}</p>
-                <p className="text-sm text-[#666]">{maskEmail(reservation.email)}</p>
+                {hasSplitReferent(reservation) ? (
+                  <>
+                    <p className="text-[11px] text-[#666]">Nom de l&apos;élève référent</p>
+                    <p className="text-sm text-white">{reservation.referentLastName}</p>
+                    <p className="text-[11px] text-[#666] mt-2">Prénom de l&apos;élève référent</p>
+                    <p className="text-sm text-white">{reservation.referentFirstName}</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-white">{reservation.referentStudent}</p>
+                )}
+                <p className="text-sm text-[#666] mt-2">{maskEmail(reservation.email)}</p>
               </InfoBlock>
             </div>
 

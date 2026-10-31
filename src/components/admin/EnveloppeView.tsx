@@ -1,4 +1,5 @@
 import { MEAL_OPTIONS, DANCER_MEAL_OPTIONS, DESSERT_LABEL } from "@/types";
+import { referentParts } from "@/lib/referent";
 
 interface Guest {
   firstName: string;
@@ -16,6 +17,8 @@ interface DancerMeal {
 export interface Enveloppe {
   reservationId: number;
   referentStudent: string;
+  referentLastName: string | null;
+  referentFirstName: string | null;
   tableInfo: string;
   isVip: boolean;
   guests: Guest[];
@@ -34,6 +37,7 @@ export function EnveloppeView({ envelopes }: Props) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {envelopes.map((env) => {
+        const name = referentParts(env);
         const mealTotals: Record<string, number> = {};
         let dessertTotal = 0;
         for (const g of env.guests) {
@@ -54,7 +58,12 @@ export function EnveloppeView({ envelopes }: Props) {
             <div className="bg-gradient-to-r from-[#1c1600] to-[#111000] px-5 py-4 flex items-start justify-between border-b border-[#c9a227]/20">
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-white font-bold text-base">{env.referentStudent}</span>
+                  <span className="text-white font-bold text-base">
+                    {name.lastName}
+                    {name.firstName ? (
+                      <span className="font-medium"> {name.firstName}</span>
+                    ) : null}
+                  </span>
                   {env.isVip && (
                     <span className="text-[9px] bg-[#c9a227]/15 text-[#c9a227] px-2 py-0.5 rounded-full font-bold border border-[#c9a227]/30">VIP</span>
                   )}

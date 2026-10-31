@@ -86,6 +86,9 @@ export const reservations = pgTable(
       .notNull()
       .references(() => events.id, { onDelete: "cascade" }),
     referentStudent: text("referent_student").notNull(),
+    // Nullables : réservations antérieures à la séparation nom / prénom.
+    referentLastName: text("referent_last_name"),
+    referentFirstName: text("referent_first_name"),
     email: text("email").notNull(),
     phone: text("phone"),
     totalAmount: integer("total_amount").notNull(),

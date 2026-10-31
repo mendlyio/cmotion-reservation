@@ -1,6 +1,7 @@
 import { DANCER_MEAL_OPTIONS, DESSERT_LABEL, mealLabel } from "@/types";
 import { escapeHtml } from "@/lib/security";
 import { POLICY_TEXT } from "@/lib/deadline";
+import { referentMailLines, type ReferentSource } from "@/lib/referent";
 
 interface ConfirmationEmailProps {
   reservationId: number;
@@ -8,6 +9,8 @@ interface ConfirmationEmailProps {
   eventDate: string;
   timeInfo: string;
   referentStudent: string;
+  referentLastName?: string | null;
+  referentFirstName?: string | null;
   totalAmount: number;
   tableInfo?: string;
   isVip?: boolean;
@@ -25,6 +28,15 @@ interface ConfirmationEmailProps {
   upsells?: { type: string; quantity: number; unitPrice: number; mealChoice?: string | null }[];
 }
 
+function referentRows(source: ReferentSource): string {
+  return referentMailLines(source)
+    .map(
+      (line) =>
+        `<tr><td style="padding: 4px 0; color: #64748b;">${escapeHtml(line.label)}</td><td style="padding: 4px 0; font-weight: 600;">${escapeHtml(line.value)}</td></tr>`
+    )
+    .join("");
+}
+
 export function renderConfirmationEmail(props: ConfirmationEmailProps): string {
   const {
     reservationId,
@@ -32,6 +44,8 @@ export function renderConfirmationEmail(props: ConfirmationEmailProps): string {
     eventDate,
     timeInfo,
     referentStudent,
+    referentLastName,
+    referentFirstName,
     totalAmount,
     tableInfo,
     isVip,
@@ -108,7 +122,7 @@ export function renderConfirmationEmail(props: ConfirmationEmailProps): string {
               <tr><td style="padding: 4px 0; color: #64748b;">Spectacle</td><td style="padding: 4px 0; font-weight: 600;">${escapeHtml(eventName)}</td></tr>
               <tr><td style="padding: 4px 0; color: #64748b;">Date</td><td style="padding: 4px 0; font-weight: 600;">${escapeHtml(formattedDate)}</td></tr>
               <tr><td style="padding: 4px 0; color: #64748b;">Heure</td><td style="padding: 4px 0; font-weight: 600;">${escapeHtml(timeInfo)}</td></tr>
-              <tr><td style="padding: 4px 0; color: #64748b;">Élève référent</td><td style="padding: 4px 0; font-weight: 600;">${escapeHtml(referentStudent)}</td></tr>
+              ${referentRows({ referentStudent, referentLastName, referentFirstName })}
               ${tableInfo ? `<tr><td style="padding: 4px 0; color: #64748b;">Table</td><td style="padding: 4px 0; font-weight: 600;">${escapeHtml(tableInfo)}${isVip ? " ★ VIP" : ""}</td></tr>` : ""}
             </table>
 

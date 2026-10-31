@@ -51,6 +51,14 @@ export function OrderSummary({ data, tables = [], deadlineLabel }: Props) {
         </p>
       </div>
 
+      <div className="px-4 py-3 border-b border-[#141414]">
+        <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest mb-1">Élève référent</p>
+        <p className="text-sm text-white">
+          <span className="text-[#666]">Nom </span>{data.referentLastName.trim() || "—"}
+          <span className="text-[#666] ml-3">Prénom </span>{data.referentFirstName.trim() || "—"}
+        </p>
+      </div>
+
       <div className="divide-y divide-[#141414]">
         {data.isVip ? (
           <div className="p-4">

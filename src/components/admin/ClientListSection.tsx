@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { MEAL_OPTIONS, DESSERT_LABEL, getSeatLabel } from "@/types";
 import { toast } from "sonner";
+import { formatReferentDisplay } from "@/lib/referent";
 
 export interface ClientGuest {
   id: number;
@@ -18,6 +19,8 @@ export interface ClientGuest {
 export interface ClientReservation {
   id: number;
   referentStudent: string;
+  referentLastName: string | null;
+  referentFirstName: string | null;
   email: string;
   phone: string | null;
   totalAmount: number;
@@ -66,7 +69,7 @@ export function ClientListSection({ reservations, events }: Props) {
       if (search.trim()) {
         const q = search.toLowerCase();
         const matchReservation =
-          r.referentStudent.toLowerCase().includes(q) ||
+          formatReferentDisplay(r).toLowerCase().includes(q) ||
           r.email.toLowerCase().includes(q) ||
           `#${r.id}`.includes(q);
         const matchGuest = r.guests.some(
@@ -267,7 +270,7 @@ export function ClientListSection({ reservations, events }: Props) {
                     <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                       <span className="text-[10px] font-mono text-[#444]">#{r.id}</span>
                       <span className="font-semibold text-white text-sm truncate">
-                        {r.referentStudent}
+                        {formatReferentDisplay(r)}
                       </span>
                       {r.isVip && (
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-[#c9a227]/15 text-[#c9a227] border border-[#c9a227]/30 uppercase tracking-wider">
