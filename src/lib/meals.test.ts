@@ -31,9 +31,12 @@ describe("modification des plats au même prix", () => {
   it("centralise la règle sur l'échange au même prix", () => {
     assert.equal(MEAL_EDIT_POLICY.mode, "same-line-price");
     assert.equal(dessertEditable(), false);
-    assert.match(MEAL_EDIT_MESSAGE, /28 €/);
-    assert.match(MEAL_EDIT_MESSAGE, /30 €/);
-    assert.match(MEAL_EDIT_MESSAGE, /dessert/i);
+    assert.match(MEAL_EDIT_MESSAGE, /Lasagne au poulet, salade de saison et 2 boulettes \(30 €\) s'échangent entre eux/);
+    assert.match(MEAL_EDIT_MESSAGE, /1 boulette \(28 €\) ne peut passer qu'à un autre plat à 28 €/);
+    assert.match(MEAL_EDIT_MESSAGE, /sans autre plat à ce prix, elle reste figée/);
+    assert.match(MEAL_EDIT_MESSAGE, /Le dessert reste figé/);
+    assert.match(MEAL_EDIT_MESSAGE, /Le montant déjà payé ne change pas/);
+    assert.doesNotMatch(MEAL_EDIT_MESSAGE, /salade de saison et 1 boulette/);
   });
 
   it("échange lasagne, salade de saison et 2 boulettes à 30 €", () => {

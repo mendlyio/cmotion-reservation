@@ -196,7 +196,7 @@ function GuestMealFields({
         <p className="text-[11px] text-[#e4c76b]">Choisissez le plat inclus pour ce convive.</p>
       ) : null}
       {locked && editable ? (
-        <p className="text-[11px] text-[#777]">Ce plat n&apos;a pas d&apos;équivalent au même prix : il reste inchangé.</p>
+        <p className="text-[11px] text-[#777]">Ce plat n&apos;a pas d&apos;autre plat au même prix : il reste inchangé.</p>
       ) : null}
       {description ? <p className="text-[11px] text-[#777]">{description}</p> : null}
       {isVip ? (

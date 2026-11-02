@@ -12,9 +12,10 @@ import {
  * `same-line-price` : une ligne ne peut passer qu'à un plat du même prix.
  * Le dessert ne s'ajoute ni ne se retire. Le montant déjà payé n'est jamais
  * recalculé. Lasagne au poulet, salade de saison et 2 boulettes (30 €)
- * s'échangent. 1 boulette reste à 28 €. Le dessert et un repas élève d'un
- * autre prix restent figés. Une table VIP choisit n'importe quel plat du
- * menu : il est inclus dans les 280 €, le dessert aussi.
+ * s'échangent entre eux. 1 boulette (28 €) ne peut passer qu'à un autre plat
+ * à 28 € : sans équivalent, elle reste figée. Le dessert reste figé. Un repas
+ * élève ne s'échange qu'au même prix. Une table VIP choisit n'importe quel
+ * plat du menu : il est inclus dans les 280 €, le dessert aussi.
  *
  * Pour une autre décision de la cliente, changer uniquement `mode` et le
  * comportement de ce fichier. Ne pas élargir la règle ailleurs : un plat
@@ -27,7 +28,7 @@ export const MEAL_EDIT_POLICY = {
 export type MealEditMode = (typeof MEAL_EDIT_POLICY)["mode"];
 
 export const MEAL_EDIT_MESSAGE =
-  "Seuls les plats au même prix peuvent être échangés : 1 boulette reste à 28 € ; lasagne au poulet, salade de saison et 2 boulettes (30 €) s'échangent entre eux. Le dessert et un repas élève d'un autre prix ne sont pas modifiables. Le montant déjà payé ne change pas.";
+  "Seuls les plats au même prix peuvent être échangés. Lasagne au poulet, salade de saison et 2 boulettes (30 €) s'échangent entre eux. 1 boulette (28 €) ne peut passer qu'à un autre plat à 28 € : sans autre plat à ce prix, elle reste figée. Le dessert reste figé. Un repas élève ne s'échange qu'avec un repas élève du même prix. Le montant déjà payé ne change pas.";
 
 export interface MealGuestEdit {
   id: number;
