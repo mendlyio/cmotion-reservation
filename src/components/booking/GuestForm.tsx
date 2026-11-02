@@ -84,16 +84,22 @@ export function GuestForm({ index, seatLabel, data, isVip, onChange }: Props) {
           </div>
         </div>
 
-        {isVip ? (
-          <p className="text-sm text-[#e4c76b] leading-snug">{VIP_FORMULA}</p>
-        ) : (
         <div>
+          {isVip ? (
+            <p className="text-sm text-[#e4c76b] leading-snug mb-2">{VIP_FORMULA}</p>
+          ) : null}
           <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-widest mb-1">
             Choix du plat <span className="text-red-400">*</span>
           </label>
           <select
             value={data.mealChoice}
-            onChange={(e) => onChange({ ...data, mealChoice: e.target.value as MealChoice })}
+            onChange={(e) =>
+              onChange({
+                ...data,
+                mealChoice: e.target.value as MealChoice,
+                hasDessert: isVip ? true : data.hasDessert,
+              })
+            }
             className="w-full h-11 px-3 rounded-lg border border-[#2a2a2a] bg-[#141414] text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#c9a227]/30 focus:border-[#c9a227]/50 transition-all"
           >
             {MEAL_OPTIONS.map((m) => (
@@ -108,7 +114,6 @@ export function GuestForm({ index, seatLabel, data, isVip, onChange }: Props) {
             </p>
           )}
         </div>
-        )}
 
         {!isVip && (
           <label className="flex items-center gap-3 py-1 cursor-pointer active:opacity-70 select-none">

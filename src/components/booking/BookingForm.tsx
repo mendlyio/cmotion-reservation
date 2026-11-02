@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { GuestForm } from "./GuestForm";
 import { UpsellSection } from "./UpsellSection";
 import { OrderSummary } from "./OrderSummary";
-import { TableWithSeats, SeatFormData, BookingFormData, MealChoice, VIP_MEAL, calculateTotal, getTableLabel, getSeatLabel } from "@/types";
+import { TableWithSeats, SeatFormData, BookingFormData, MealChoice, calculateTotal, getTableLabel, getSeatLabel } from "@/types";
 import { PolicyNotice } from "@/components/PolicyNotice";
 
 interface Props {
@@ -106,7 +106,7 @@ export function BookingForm({ eventId, tables, selectedSeatIds, onCancel, deadli
             )}
           </div>
           <p className="text-[#555] text-[11px] mt-0.5">
-            {vip ? "8 places · 280€ · 35€ par personne" : `${ids.length} ${ids.length > 1 ? "sièges sélectionnés" : "siège sélectionné"}`}
+            {vip ? "8 places · 280€ · plat et dessert inclus" : `${ids.length} ${ids.length > 1 ? "sièges sélectionnés" : "siège sélectionné"}`}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -154,7 +154,7 @@ export function BookingForm({ eventId, tables, selectedSeatIds, onCancel, deadli
             <motion.div key="s0" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.12 }} className="space-y-3">
               {vip && (
                 <div className="flex items-center gap-2 p-3 bg-[#c9a227]/8 border border-[#c9a227]/20 rounded-xl text-xs text-[#c9a227] font-medium">
-                  <span>★</span> Mousseux, dessert inclus, pas de plat
+                  <span>★</span> Mousseux, plat et dessert inclus
                 </div>
               )}
               {!vip && (
@@ -162,8 +162,9 @@ export function BookingForm({ eventId, tables, selectedSeatIds, onCancel, deadli
                   Vous pouvez encore ajouter des sièges en cliquant sur le plan ci-dessus
                 </p>
               )}
+              <UpsellSection upsells={upsells} onChange={setUpsells} />
               <p className="text-[11px] text-[#555] bg-[#141414] border border-[#1e1e1e] px-3 py-2 rounded-xl">
-                {vip ? "Indiquez le nom de chaque convive. La formule VIP ne comprend pas de plat." : "Veuillez choisir un plat pour chaque convive ci-dessous."}
+                {vip ? "Choisissez un plat pour chaque convive. Il est inclus dans les 280 € de la table." : "Veuillez choisir un plat pour chaque convive ci-dessous."}
               </p>
               <AnimatePresence initial={false}>
                 {guests.map((g, i) => {
@@ -315,29 +316,33 @@ function Field({ label, value, set, placeholder, type = "text", required, autoCo
   );
 }
 
+function bookableMeal(meal: MealChoice | undefined): MealChoice {
+  switch (meal) {
+    case "lasagne":
+    case "salade_saison":
+    case "1_boulette_frites":
+    case "2_boulettes_frites":
+      return meal;
+    case "salade_grecque":
+    case "vip_inclus":
+    case undefined:
+      return "lasagne";
+    default: {
+      const unexpected: never = meal;
+      return unexpected;
+    }
+  }
+}
+
 function build(ids: number[], saved: Map<number, SeatFormData>, vip: boolean): SeatFormData[] {
   return ids.map((id) => {
     const previous = saved.get(id);
-    if (vip) {
-      return {
-        seatId: id,
-        firstName: previous?.firstName ?? "",
-        lastName: previous?.lastName ?? "",
-        mealChoice: VIP_MEAL,
-        hasDessert: true,
-      };
-    }
-    if (!previous || previous.mealChoice === VIP_MEAL || previous.mealChoice === "salade_grecque") {
-      return {
-        seatId: id,
-        firstName: previous?.firstName ?? "",
-        lastName: previous?.lastName ?? "",
-        mealChoice: previous && previous.mealChoice !== VIP_MEAL && previous.mealChoice !== "salade_grecque"
-          ? previous.mealChoice
-          : "lasagne" as MealChoice,
-        hasDessert: previous?.hasDessert ?? false,
-      };
-    }
-    return previous;
+    return {
+      seatId: id,
+      firstName: previous?.firstName ?? "",
+      lastName: previous?.lastName ?? "",
+      mealChoice: bookableMeal(previous?.mealChoice),
+      hasDessert: vip ? true : (previous?.hasDessert ?? false),
+    };
   });
 }

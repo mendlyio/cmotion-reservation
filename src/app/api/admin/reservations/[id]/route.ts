@@ -9,7 +9,7 @@ import { eq } from "drizzle-orm";
 import { verifyAdmin } from "@/lib/admin";
 import { resend } from "@/lib/resend";
 import { renderUpdateEmail } from "@/emails/ReservationUpdateEmail";
-import { MEAL_OPTIONS } from "@/types";
+import { mealLabel } from "@/types";
 import { parseReferentUpdate } from "@/lib/booking-schema";
 import { formatReferentDisplay } from "@/lib/referent";
 
@@ -90,12 +90,8 @@ export async function PUT(
         updates.lastName = guest.lastName;
       }
       if (guest.mealChoice !== existing.mealChoice) {
-        const oldMeal =
-          MEAL_OPTIONS.find((m) => m.value === existing.mealChoice)?.label ||
-          existing.mealChoice;
-        const newMeal =
-          MEAL_OPTIONS.find((m) => m.value === guest.mealChoice)?.label ||
-          guest.mealChoice;
+        const oldMeal = mealLabel(existing.mealChoice);
+        const newMeal = mealLabel(guest.mealChoice);
         changes.push(
           `Repas de ${existing.firstName} ${existing.lastName} changé : ${oldMeal} → ${newMeal}`
         );

@@ -2,7 +2,6 @@ import {
   DANCER_MEAL_OPTIONS,
   DESSERT_PRICE,
   MEAL_OPTIONS,
-  VIP_MEAL,
   getMealPrice,
   isBookableGuestMeal,
 } from "@/lib/pricing";
@@ -12,9 +11,10 @@ import {
  *
  * `same-line-price` : une ligne ne peut passer qu'à un plat du même prix.
  * Le dessert ne s'ajoute ni ne se retire. Le montant déjà payé n'est jamais
- * recalculé. Lasagne au poulet, salade de saison et 1 boulette (28 €)
- * s'échangent. 2 boulettes, le dessert et un repas danseur d'un autre prix
- * restent figés.
+ * recalculé. Lasagne au poulet, salade de saison et 2 boulettes (30 €)
+ * s'échangent. 1 boulette reste à 28 €. Le dessert et un repas élève d'un
+ * autre prix restent figés. Une table VIP choisit n'importe quel plat du
+ * menu : il est inclus dans les 280 €, le dessert aussi.
  *
  * Pour une autre décision de la cliente, changer uniquement `mode` et le
  * comportement de ce fichier. Ne pas élargir la règle ailleurs : un plat
@@ -27,7 +27,7 @@ export const MEAL_EDIT_POLICY = {
 export type MealEditMode = (typeof MEAL_EDIT_POLICY)["mode"];
 
 export const MEAL_EDIT_MESSAGE =
-  "Seuls les plats au même prix peuvent être échangés : lasagne au poulet, salade de saison et 1 boulette (28 €). Le dessert, le passage à 2 boulettes et un repas danseur d'un autre prix ne sont pas modifiables. Le montant déjà payé ne change pas.";
+  "Seuls les plats au même prix peuvent être échangés : 1 boulette reste à 28 € ; lasagne au poulet, salade de saison et 2 boulettes (30 €) s'échangent entre eux. Le dessert et un repas élève d'un autre prix ne sont pas modifiables. Le montant déjà payé ne change pas.";
 
 export interface MealGuestEdit {
   id: number;
@@ -63,31 +63,50 @@ export function dancerLinePrice(mealChoice: string | null | undefined): number |
 }
 
 /** Plats proposés dans le formulaire pour cette ligne, selon la règle en vigueur. */
-export function editableGuestMeals(current: { mealChoice: string; hasDessert: boolean }) {
-  switch (MEAL_EDIT_POLICY.mode) {
+export function editableGuestMeals(
+  current: { mealChoice: string; hasDessert: boolean },
+  scope: { isVip?: boolean } = {},
+) {
+  const mode = MEAL_EDIT_POLICY.mode;
+  switch (mode) {
     case "same-line-price": {
+      if (scope.isVip) return MEAL_OPTIONS;
       const price = getMealPrice(current.mealChoice);
       if (price === null) return [];
       return MEAL_OPTIONS.filter((meal) => meal.price === price);
+    }
+    default: {
+      const unexpected: never = mode;
+      return unexpected;
     }
   }
 }
 
 export function editableDancerMeals(mealChoice: string | null | undefined) {
-  switch (MEAL_EDIT_POLICY.mode) {
+  const mode = MEAL_EDIT_POLICY.mode;
+  switch (mode) {
     case "same-line-price": {
       const price = dancerLinePrice(mealChoice);
       if (price === null) return [];
       return DANCER_MEAL_OPTIONS.filter((meal) => meal.price === price);
+    }
+    default: {
+      const unexpected: never = mode;
+      return unexpected;
     }
   }
 }
 
 /** Le dessert est un supplément : la règle actuelle ne permet pas de le cocher après paiement. */
 export function dessertEditable(): boolean {
-  switch (MEAL_EDIT_POLICY.mode) {
+  const mode = MEAL_EDIT_POLICY.mode;
+  switch (mode) {
     case "same-line-price":
       return false;
+    default: {
+      const unexpected: never = mode;
+      return unexpected;
+    }
   }
 }
 
@@ -99,7 +118,8 @@ function sameIds(current: number[], next: number[]): boolean {
 }
 
 function sameGuestPrice(current: CurrentMealGuest, next: MealGuestEdit): boolean {
-  switch (MEAL_EDIT_POLICY.mode) {
+  const mode = MEAL_EDIT_POLICY.mode;
+  switch (mode) {
     case "same-line-price": {
       const before = guestLinePrice(current.mealChoice, current.hasDessert);
       const after = guestLinePrice(next.mealChoice, next.hasDessert);
@@ -108,16 +128,25 @@ function sameGuestPrice(current: CurrentMealGuest, next: MealGuestEdit): boolean
       }
       return before === after;
     }
+    default: {
+      const unexpected: never = mode;
+      return unexpected;
+    }
   }
 }
 
 function sameDancerPrice(current: string | null, next: string): boolean {
-  switch (MEAL_EDIT_POLICY.mode) {
+  const mode = MEAL_EDIT_POLICY.mode;
+  switch (mode) {
     case "same-line-price": {
       const before = dancerLinePrice(current);
       const after = dancerLinePrice(next);
       if (before === null || after === null) return (current ?? "") === next;
       return before === after;
+    }
+    default: {
+      const unexpected: never = mode;
+      return unexpected;
     }
   }
 }
@@ -148,8 +177,8 @@ export function validateMealEdit(input: {
     const current = guestsById.get(guest.id);
     if (!current) return { ok: false, error: "Les convives ne correspondent pas à la réservation" };
     if (input.isVip) {
-      if (guest.mealChoice !== VIP_MEAL || guest.hasDessert !== true) {
-        return { ok: false, error: "La formule VIP reste sans plat, dessert inclus" };
+      if (guest.hasDessert !== true || !isBookableGuestMeal(guest.mealChoice)) {
+        return { ok: false, error: "Choisissez un plat pour chaque convive VIP. Le dessert reste inclus." };
       }
       continue;
     }

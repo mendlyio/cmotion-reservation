@@ -211,7 +211,8 @@ export default async function ConfirmationPage({ params }: Props) {
                   return (
                     <div key={u.id} className="flex justify-between text-sm">
                       <span className="text-[#888]">
-                        {option?.label || u.upsellType} ×{u.quantity}
+                        {option?.label || u.upsellType}
+                        {u.mealChoice ? ` · ${mealLabel(u.mealChoice)}` : ""} ×{u.quantity}
                       </span>
                       <span className="text-white font-medium tabular-nums">
                         {((u.unitPrice * u.quantity) / 100).toFixed(2)}€

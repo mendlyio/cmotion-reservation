@@ -411,7 +411,7 @@ export default async function AdminDashboardPage() {
                 {Object.values(s.dancerMealCounts).some((c) => c > 0) && (
                   <>
                     <h3 className="text-xs font-semibold text-[#666] uppercase tracking-widest mb-3 mt-2">
-                      Repas Danseur
+                      Repas élève
                     </h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {DANCER_MEAL_OPTIONS.map((opt) => (

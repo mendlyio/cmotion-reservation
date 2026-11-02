@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { MEAL_OPTIONS, DESSERT_LABEL, getSeatLabel } from "@/types";
+import { MEAL_OPTIONS, DESSERT_LABEL, getSeatLabel, mealLabel } from "@/types";
 import { toast } from "sonner";
 import { formatReferentDisplay } from "@/lib/referent";
 
@@ -382,6 +382,9 @@ export function ClientListSection({ reservations, events }: Props) {
                               onChange={(e) => updateGuest(r.id, gIdx, "mealChoice", e.target.value)}
                               className="w-full h-9 px-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-sm text-white focus:outline-none focus:border-[#c9a227]/50 transition-all"
                             >
+                              {MEAL_OPTIONS.some((m) => m.value === g.mealChoice) ? null : (
+                                <option value={g.mealChoice}>{mealLabel(g.mealChoice)}</option>
+                              )}
                               {MEAL_OPTIONS.map((m) => (
                                 <option key={m.value} value={m.value}>{m.label}</option>
                               ))}

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { MEAL_OPTIONS, DESSERT_LABEL, getSeatLabel } from "@/types";
+import { MEAL_OPTIONS, DESSERT_LABEL, getSeatLabel, mealLabel } from "@/types";
 
 interface GuestData {
   id: number;
@@ -185,6 +185,9 @@ export function ReservationEditor({
                   onChange={(e) => handleGuestChange(i, "mealChoice", e.target.value)}
                   className="w-full h-10 px-3 rounded-xl bg-[#141414] border border-[#2a2a2a] text-sm text-white focus:outline-none focus:border-[#c9a227]/50 transition-all"
                 >
+                  {MEAL_OPTIONS.some((meal) => meal.value === guest.mealChoice) ? null : (
+                    <option value={guest.mealChoice}>{mealLabel(guest.mealChoice)}</option>
+                  )}
                   {MEAL_OPTIONS.map((meal) => (
                     <option key={meal.value} value={meal.value}>{meal.label}</option>
                   ))}

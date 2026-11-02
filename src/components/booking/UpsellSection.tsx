@@ -37,16 +37,16 @@ export function UpsellSection({ upsells, onChange }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-bold text-[#888] uppercase tracking-widest">Repas Danseur</p>
-        <p className="text-[11px] text-[#555]">Optionnel</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-bold text-[#e4c76b] uppercase tracking-widest">Repas élève (sans place à table)</p>
+        <p className="text-[11px] text-[#555] shrink-0">Optionnel</p>
       </div>
 
-      <div className="rounded-xl border border-[#1e1e1e] bg-[#0a0a0a] p-3 space-y-1">
-        <p className="text-[11px] text-[#555]">Commandez un repas pour les danseurs.</p>
+      <div className="rounded-xl border border-[#c9a227]/35 bg-[#1a1500] p-3 space-y-1">
+        <p className="text-[12px] text-[#e4c76b]">Pour un élève qui mange à la table des parents, sans occuper de siège.</p>
         {DANCER_MEAL_OPTIONS.map((o) => (
-          <p key={o.value} className="text-[11px] text-[#444]">
-            · {o.label} — {(o.price / 100).toFixed(0)}€
+          <p key={o.value} className="text-[11px] text-[#d9c48a]">
+            · {o.label} — {(o.price / 100).toFixed(0)} €
           </p>
         ))}
       </div>
@@ -87,7 +87,7 @@ export function UpsellSection({ upsells, onChange }: Props) {
         onClick={addDancer}
         className="w-full h-10 rounded-xl border border-dashed border-[#c9a227]/30 bg-[#c9a227]/5 text-[#c9a227] text-sm font-semibold hover:bg-[#c9a227]/10 hover:border-[#c9a227]/50 transition active:scale-[0.98]"
       >
-        + Ajouter un repas danseur
+        + Ajouter un repas élève
       </button>
     </div>
   );

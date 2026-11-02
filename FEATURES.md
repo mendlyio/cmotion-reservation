@@ -18,7 +18,7 @@ Système complet de réservation de spectacles avec gestion avancée de la concu
 - **Tables VIP (rangs 1-3)** :
   - Bordure dorée distinctive
   - Réservation de la table entière (8 personnes)
-  - Prix fixe : 280€ (inclus bulles, zakouski, dessert)
+  - Prix fixe : 280€ (mousseux, plat au choix et dessert inclus)
 - **Tables normales (rangs 4-9)** :
   - Réservation par siège individuel
   - Prix variable selon le repas choisi (28€ ou 30€)
@@ -45,9 +45,10 @@ Système complet de réservation de spectacles avec gestion avancée de la concu
 ### 6. Formulaire de réservation
 - **Par convive** : Prénom, Nom, Choix du plat, Dessert (si non-VIP)
 - **Choix de plats** :
-  - 28€ : Lasagne / Salade grecque / 1 boulette-frites-salade
-  - 30€ : 2 boulettes, frites, salade
-- **Upsells** : Repas danseur (28€), Champagne (35€) avec quantité ajustable
+  - 28€ : 1 boulette, frites, salade
+  - 30€ : lasagne au poulet / salade de saison / 2 boulettes, frites, salade
+  - Table VIP : le même choix de plat, inclus dans les 280€, dessert inclus
+- **Repas élève (sans place à table)** : 12€ pour 1 boulette ; 14€ pour lasagne, salade de saison ou 2 boulettes
 - **Contact** : Nom de l'élève référent, Email, Téléphone
 - **Récapitulatif dynamique** : Calcul automatique du total avec détail par ligne
 

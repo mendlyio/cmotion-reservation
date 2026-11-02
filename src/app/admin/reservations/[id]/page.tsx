@@ -192,7 +192,7 @@ export default async function AdminReservationPage({ params }: Props) {
 
       {upsells.length > 0 && (
         <div className="bg-[#0f0f0f] rounded-2xl border border-[#1e1a0e] p-5">
-          <h2 className="text-xs font-semibold text-[#555] uppercase tracking-widest mb-4">Repas Danseur</h2>
+          <h2 className="text-xs font-semibold text-[#555] uppercase tracking-widest mb-4">Repas élève</h2>
           <div className="space-y-2">
             {upsells.map((u, i) => {
               const opt = u.mealChoice

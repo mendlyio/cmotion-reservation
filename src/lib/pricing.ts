@@ -7,29 +7,31 @@ export const DESSERT_PRICE = 450;
 export const DESSERT_LABEL = "Panna cotta fruits rouges";
 export const VIP_TABLE_PRICE = 28000;
 export const VIP_PERSON_PRICE = 3500;
+/** Ancien code stocké quand la formule VIP n'enregistrait pas de plat. Plus réservable. */
 export const VIP_MEAL = "vip_inclus";
 export const VIP_FORMULA =
-  "Bouteille de mousseux pour la table et panna cotta fruits rouges par personne. Pas de plat.";
+  "Bouteille de mousseux pour la table, plat au choix et panna cotta fruits rouges par personne.";
 
 export const SALADE_DESCRIPTION =
   "Houmous de potiron, salade croquante, boulette falafel, pois chiches au cumin, feta, légumes rôtis";
 
 export const MEAL_OPTIONS: { value: string; label: string; price: number; description?: string }[] = [
-  { value: "lasagne", label: "Lasagne au poulet", price: 2800 },
-  { value: "salade_saison", label: "Salade de saison", price: 2800, description: SALADE_DESCRIPTION },
+  { value: "lasagne", label: "Lasagne au poulet", price: 3000 },
+  { value: "salade_saison", label: "Salade de saison", price: 3000, description: SALADE_DESCRIPTION },
   { value: "1_boulette_frites", label: "1 Boulette, Frites, Salade", price: 2800 },
   { value: "2_boulettes_frites", label: "2 Boulettes, Frites, Salade", price: 3000 },
 ];
 
 export const DANCER_MEAL_OPTIONS: { value: string; label: string; price: number }[] = [
-  { value: "une_boulette", label: "1 Boulette, Frites, Salade", price: 1000 },
-  { value: "lasagne_danseur", label: "Lasagne au poulet", price: 1000 },
-  { value: "deux_boulettes", label: "2 Boulettes, Frites, Salade", price: 1200 },
+  { value: "une_boulette", label: "1 Boulette, Frites, Salade", price: 1200 },
+  { value: "lasagne_danseur", label: "Lasagne au poulet", price: 1400 },
+  { value: "salade_saison_danseur", label: "Salade de saison", price: 1400 },
+  { value: "deux_boulettes", label: "2 Boulettes, Frites, Salade", price: 1400 },
 ];
 
 const LEGACY_MEAL_LABELS: Record<string, string> = {
   salade_grecque: "Salade de saison",
-  vip_inclus: "Formule VIP (mousseux et dessert, sans plat)",
+  vip_inclus: "Formule VIP (plat non renseigné)",
 };
 
 export const MAX_DANCER_LINES = 16;
@@ -58,12 +60,13 @@ export function shortMealLabel(meal: string): string {
       return "1 Boulette";
     case "salade_saison":
     case "salade_grecque":
+    case "salade_saison_danseur":
       return "Salade de saison";
     case "lasagne":
     case "lasagne_danseur":
       return "Lasagne au poulet";
     case "vip_inclus":
-      return "Sans plat";
+      return "Plat à choisir";
     default:
       return mealLabel(meal);
   }
@@ -91,7 +94,8 @@ export type Quote =
 /**
  * Calcule le total à partir du type de table déjà vérifié en base.
  * `isVip` ne doit jamais venir du navigateur.
- * Table VIP : 280 €, sans plat, dessert inclus. Les repas danseur s'ajoutent.
+ * Table VIP : 280 €. Le plat choisi et le dessert sont inclus, sans supplément.
+ * Les repas élève s'ajoutent.
  */
 export function quoteBooking(input: {
   isVip: boolean;
@@ -109,8 +113,8 @@ export function quoteBooking(input: {
 
   for (const guest of input.guests) {
     if (input.isVip) {
-      if (guest.mealChoice !== VIP_MEAL) {
-        return { ok: false, error: "La table VIP n'inclut pas de plat" };
+      if (!isBookableGuestMeal(guest.mealChoice)) {
+        return { ok: false, error: "Choix de plat invalide" };
       }
       continue;
     }

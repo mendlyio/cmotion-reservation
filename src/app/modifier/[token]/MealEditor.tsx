@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DESSERT_LABEL, MEAL_OPTIONS, VIP_FORMULA, VIP_MEAL, mealLabel } from "@/lib/pricing";
+import { DESSERT_LABEL, MEAL_OPTIONS, VIP_FORMULA, isBookableGuestMeal, mealLabel } from "@/lib/pricing";
 import {
   MEAL_EDIT_MESSAGE,
   dessertEditable,
@@ -61,7 +61,7 @@ export function MealEditor({
           token,
           guests: rows.map((row) => ({
             id: row.id,
-            mealChoice: isVip ? VIP_MEAL : row.mealChoice,
+            mealChoice: row.mealChoice,
             hasDessert: isVip ? true : row.hasDessert,
           })),
           upsells: extras.map((extra) => ({ id: extra.id, mealChoice: extra.mealChoice })),
@@ -83,10 +83,13 @@ export function MealEditor({
       {closedReason ? (
         <p className="rounded-xl border border-[#2a2a2a] bg-[#141414] px-4 py-3 text-sm text-[#ccc]">{closedReason}</p>
       ) : null}
-      <p className="rounded-xl border border-[#2a2a2a] bg-[#141414] px-4 py-3 text-sm text-[#ccc]">{MEAL_EDIT_MESSAGE}</p>
       {isVip ? (
-        <p className="rounded-xl border border-[#c9a227]/30 bg-[#1a1500] px-4 py-3 text-sm text-[#e4c76b]">{VIP_FORMULA}</p>
-      ) : null}
+        <p className="rounded-xl border border-[#c9a227]/30 bg-[#1a1500] px-4 py-3 text-sm text-[#e4c76b]">
+          {VIP_FORMULA} Le plat se choisit pour chaque convive et reste inclus : le montant payé ne change pas.
+        </p>
+      ) : (
+        <p className="rounded-xl border border-[#2a2a2a] bg-[#141414] px-4 py-3 text-sm text-[#ccc]">{MEAL_EDIT_MESSAGE}</p>
+      )}
       <div className="space-y-3">
         {rows.map((row, index) => (
           <div key={row.id} className="rounded-xl border border-[#1e1e1e] bg-[#0f0f0f] p-4 space-y-2">
@@ -94,19 +97,16 @@ export function MealEditor({
               <p className="text-sm font-semibold text-white">{row.name}</p>
               <span className="text-xs font-mono text-[#c9a227]">{row.place}</span>
             </div>
-            {isVip ? (
-              <p className="text-sm text-[#aaa]">Sans plat · dessert inclus</p>
-            ) : (
-              <GuestMealFields
-                editable={editable}
-                row={row}
-                onMeal={(mealChoice) => {
-                  const next = [...rows];
-                  next[index] = { ...row, mealChoice };
-                  setRows(next);
-                }}
-              />
-            )}
+            <GuestMealFields
+              editable={editable}
+              isVip={isVip}
+              row={row}
+              onMeal={(mealChoice) => {
+                const next = [...rows];
+                next[index] = { ...row, mealChoice, hasDessert: isVip ? true : row.hasDessert };
+                setRows(next);
+              }}
+            />
           </div>
         ))}
       </div>
@@ -147,7 +147,7 @@ export function MealEditor({
         <button
           type="button"
           onClick={save}
-          disabled={loading}
+          disabled={loading || (isVip && rows.some((row) => !isBookableGuestMeal(row.mealChoice)))}
           className="w-full h-12 rounded-xl bg-gradient-to-r from-[#c9a227] to-[#a07818] text-black text-sm font-bold disabled:opacity-40"
         >
           {loading ? "Enregistrement…" : "Enregistrer les plats"}
@@ -161,16 +161,20 @@ export function MealEditor({
 
 function GuestMealFields({
   editable,
+  isVip,
   row,
   onMeal,
 }: {
   editable: boolean;
+  isVip: boolean;
   row: EditorGuest;
   onMeal: (mealChoice: string) => void;
 }) {
-  const options = editableGuestMeals(row);
-  const locked = !editable || options.length < 2;
+  const options = editableGuestMeals(row, { isVip });
+  const locked = !editable || (!isVip && options.length < 2);
+  const known = isBookableGuestMeal(row.mealChoice);
   const description = MEAL_OPTIONS.find((meal) => meal.value === row.mealChoice)?.description;
+  const choices = options.length > 0 ? options : [{ value: row.mealChoice, label: mealLabel(row.mealChoice) }];
   return (
     <>
       <select
@@ -179,27 +183,37 @@ function GuestMealFields({
         onChange={(event) => onMeal(event.target.value)}
         className="w-full h-11 px-3 rounded-lg border border-[#2a2a2a] bg-[#141414] text-sm text-white disabled:opacity-60"
       >
-        {(options.length > 0 ? options : [{ value: row.mealChoice, label: mealLabel(row.mealChoice) }]).map((meal) => (
+        {!known && options.length > 0 ? (
+          <option value={row.mealChoice}>{mealLabel(row.mealChoice)}</option>
+        ) : null}
+        {choices.map((meal) => (
           <option key={meal.value} value={meal.value}>
             {meal.label}
           </option>
         ))}
       </select>
+      {isVip && !known ? (
+        <p className="text-[11px] text-[#e4c76b]">Choisissez le plat inclus pour ce convive.</p>
+      ) : null}
       {locked && editable ? (
         <p className="text-[11px] text-[#777]">Ce plat n&apos;a pas d&apos;équivalent au même prix : il reste inchangé.</p>
       ) : null}
       {description ? <p className="text-[11px] text-[#777]">{description}</p> : null}
-      <label className="flex items-center gap-2 text-sm text-[#aaa]">
-        <input
-          type="checkbox"
-          disabled={!editable || !dessertEditable()}
-          checked={row.hasDessert}
-          onChange={() => undefined}
-        />
-        {row.hasDessert
-          ? `${DESSERT_LABEL} inclus. Il ne peut pas être retiré après le paiement.`
-          : `${DESSERT_LABEL} non compris. Il ne peut pas être ajouté après le paiement.`}
-      </label>
+      {isVip ? (
+        <p className="text-sm text-[#c9a227]/80">{DESSERT_LABEL} inclus</p>
+      ) : (
+        <label className="flex items-center gap-2 text-sm text-[#aaa]">
+          <input
+            type="checkbox"
+            disabled={!editable || !dessertEditable()}
+            checked={row.hasDessert}
+            onChange={() => undefined}
+          />
+          {row.hasDessert
+            ? `${DESSERT_LABEL} inclus. Il ne peut pas être retiré après le paiement.`
+            : `${DESSERT_LABEL} non compris. Il ne peut pas être ajouté après le paiement.`}
+        </label>
+      )}
     </>
   );
 }

@@ -11,7 +11,7 @@ import { eq, inArray } from "drizzle-orm";
 import { verifyAdmin } from "@/lib/admin";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { MEAL_OPTIONS, getTableLabel, getSeatLabel } from "@/types";
+import { mealLabel, getTableLabel, getSeatLabel } from "@/types";
 import { AdminSeatingView } from "./AdminSeatingView";
 import { EnveloppeView, type Enveloppe } from "@/components/admin/EnveloppeView";
 import { sortByReferentName } from "@/lib/referent";
@@ -192,11 +192,10 @@ export default async function AdminEventPage({ params, searchParams }: Props) {
                 {guests.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
                     {guests.map((g, i) => {
-                      const meal = MEAL_OPTIONS.find((m) => m.value === g.mealChoice);
                       return (
                         <div key={i} className="bg-[#1a1a1a] rounded-lg p-2 text-sm">
                           <p className="font-medium text-white">{g.firstName} {g.lastName}</p>
-                          <p className="text-[#555] text-xs">{meal?.label || g.mealChoice}</p>
+                          <p className="text-[#555] text-xs">{mealLabel(g.mealChoice)}</p>
                           <Link href={`/admin/reservations/${g.reservationId}`} className="text-[#c9a227] text-xs hover:underline">
                             Rés. #{g.reservationId}
                           </Link>

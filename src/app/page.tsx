@@ -164,7 +164,7 @@ export default async function HomePage() {
                     <div className="text-2xl font-extrabold text-[#c9a227] leading-none mb-0.5">280€</div>
                     <div className="text-[11px] text-[#c9a227]/50 font-medium">table de 8 · 35 € / pers.</div>
                     <div className="mt-3 space-y-1.5">
-                      {["Rangs 1 – 3", "35 € par personne", "Bouteille de mousseux", "Dessert inclus", "Pas de plat"].map((f) => (
+                      {["Rangs 1 – 3", "35 € par personne", "Bouteille de mousseux", "Plat inclus", "Dessert inclus"].map((f) => (
                         <div key={f} className="flex items-center gap-1.5">
                           <div className="w-1.5 h-1.5 rounded-full bg-[#c9a227] shrink-0" />
                           <span className="text-[11px] text-[#888]">{f}</span>

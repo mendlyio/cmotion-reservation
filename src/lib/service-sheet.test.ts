@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { inflateSync } from "node:zlib";
 import { describe, it } from "node:test";
 import { formatReferentDisplay } from "./referent";
-import { buildFiche } from "./service-sheet";
+import { buildFiche, buildRecaps } from "./service-sheet";
 import { renderFichesPdf } from "./pdf/documents";
 
 function pdfPlainText(bytes: Uint8Array): string {
@@ -35,6 +35,21 @@ describe("fiche imprimable", () => {
     assert.equal(fiche.referentLastName, "Dupont");
     assert.equal(fiche.referentFirstName, "Marie");
     assert.equal(fiche.rows[0].place, "4A");
+  });
+
+  it("compte la salade élève avec les salades, à part des convives", () => {
+    const [recap] = buildRecaps({
+      timeInfo: "18h00",
+      reservations: [
+        {
+          guests: [{ tableNumber: 4, place: "4A", mealChoice: "salade_saison", hasDessert: true }],
+          extras: [{ mealChoice: "salade_saison_danseur", quantity: 2 }],
+        },
+      ],
+    });
+    const salade = recap.lines.find((line) => line.key === "salade");
+    assert.equal(salade?.parents, 1);
+    assert.equal(salade?.eleves, 2);
   });
 
   it("écrit les deux parties sur le PDF", async () => {

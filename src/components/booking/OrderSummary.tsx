@@ -61,8 +61,8 @@ export function OrderSummary({ data, tables = [], deadlineLabel }: Props) {
 
       <div className="divide-y divide-[#141414]">
         {data.isVip ? (
-          <div className="p-4">
-            <div className="flex justify-between items-start mb-1">
+          <div className="p-4 space-y-3">
+            <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-semibold text-white">Table VIP · 8 personnes</p>
                 <p className="text-[11px] text-[#c9a227]/70 mt-0.5 flex items-center gap-1">
@@ -72,6 +72,19 @@ export function OrderSummary({ data, tables = [], deadlineLabel }: Props) {
               <span className="text-sm font-bold text-[#c9a227] tabular-nums shrink-0 ml-3">
                 {(VIP_TABLE_PRICE / 100).toFixed(2)}€
               </span>
+            </div>
+            <div className="space-y-1.5">
+              {data.guests.map((g, i) => {
+                const meal = MEAL_OPTIONS.find((item) => item.value === g.mealChoice);
+                const fullName = [g.firstName, g.lastName].filter(Boolean).join(" ") || `Convive ${i + 1}`;
+                return (
+                  <div key={g.seatId} className="flex justify-between gap-2 text-[11px] text-[#888]">
+                    <span className="truncate">{fullName} · {meal?.label || mealLabel(g.mealChoice)}</span>
+                    <span className="shrink-0 text-[#c9a227]/80">inclus</span>
+                  </div>
+                );
+              })}
+              <p className="text-[11px] text-[#c9a227]/70">{DESSERT_LABEL} inclus</p>
             </div>
           </div>
         ) : (
@@ -112,7 +125,7 @@ export function OrderSummary({ data, tables = [], deadlineLabel }: Props) {
 
         {dancerMeals.length > 0 && (
           <div className="px-4 py-3 space-y-1.5">
-            <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest mb-2">Repas Danseur</p>
+            <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest mb-2">Repas élève (sans place à table)</p>
             {dancerMeals.map((u, i) => {
               const opt = DANCER_MEAL_OPTIONS.find((o) => o.value === u.mealChoice);
               if (!opt) return null;

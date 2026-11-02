@@ -54,6 +54,7 @@ const ELEVE_KEY: Record<string, PictoKey> = {
   deux_boulettes: "deux",
   une_boulette: "une",
   lasagne_danseur: "lasagne",
+  salade_saison_danseur: "salade",
 };
 
 export function tablesLabel(numbers: number[]): string {

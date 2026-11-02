@@ -32,7 +32,7 @@ export type MealChoice =
 
 // Only repas_danseur remains (champagne removed)
 export const UPSELL_OPTIONS = [
-  { type: "repas_danseur", label: "Repas Danseur" },
+  { type: "repas_danseur", label: "Repas élève (sans place à table)" },
 ];
 
 export interface SeatingRow {

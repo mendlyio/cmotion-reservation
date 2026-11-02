@@ -32,16 +32,17 @@ describe("modification des plats au même prix", () => {
     assert.equal(MEAL_EDIT_POLICY.mode, "same-line-price");
     assert.equal(dessertEditable(), false);
     assert.match(MEAL_EDIT_MESSAGE, /28 €/);
+    assert.match(MEAL_EDIT_MESSAGE, /30 €/);
     assert.match(MEAL_EDIT_MESSAGE, /dessert/i);
   });
 
-  it("échange lasagne, salade de saison et 1 boulette", () => {
-    const current = [guest(1, "lasagne"), guest(2, "salade_saison"), guest(3, "1_boulette_frites")];
-    const next = [guest(1, "1_boulette_frites"), guest(2, "lasagne"), guest(3, "salade_saison")];
+  it("échange lasagne, salade de saison et 2 boulettes à 30 €", () => {
+    const current = [guest(1, "lasagne"), guest(2, "salade_saison"), guest(3, "2_boulettes_frites")];
+    const next = [guest(1, "2_boulettes_frites"), guest(2, "lasagne"), guest(3, "salade_saison")];
     assert.deepEqual(edit(current, next), { ok: true });
     assert.deepEqual(
       editableGuestMeals(guest(1, "lasagne")).map((meal) => meal.value).sort(),
-      ["1_boulette_frites", "lasagne", "salade_saison"]
+      ["2_boulettes_frites", "lasagne", "salade_saison"]
     );
   });
 
@@ -51,8 +52,12 @@ describe("modification des plats au même prix", () => {
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.error, MEAL_EDIT_MESSAGE);
     assert.deepEqual(
-      editableGuestMeals(guest(1, "2_boulettes_frites")).map((meal) => meal.value),
-      ["2_boulettes_frites"]
+      editableGuestMeals(guest(1, "1_boulette_frites")).map((meal) => meal.value),
+      ["1_boulette_frites"]
+    );
+    assert.deepEqual(
+      editableGuestMeals(guest(1, "2_boulettes_frites")).map((meal) => meal.value).sort(),
+      ["2_boulettes_frites", "lasagne", "salade_saison"]
     );
   });
 
@@ -62,40 +67,67 @@ describe("modification des plats au même prix", () => {
     assert.equal(edit([guest(1, "lasagne", true)], [guest(1, "salade_saison", true)]).ok, true);
   });
 
-  it("échange les repas danseur à 10 € et refuse le passage à 12 €", () => {
-    const current = [{ id: 4, mealChoice: "une_boulette" }];
-    assert.equal(edit([], [], current, [{ id: 4, mealChoice: "lasagne_danseur" }]).ok, true);
-    const refused = edit([], [], current, [{ id: 4, mealChoice: "deux_boulettes" }]);
+  it("échange les repas élève à 14 € et refuse le passage depuis 12 €", () => {
+    const current = [{ id: 4, mealChoice: "lasagne_danseur" }];
+    assert.equal(edit([], [], current, [{ id: 4, mealChoice: "salade_saison_danseur" }]).ok, true);
+    assert.equal(edit([], [], current, [{ id: 4, mealChoice: "deux_boulettes" }]).ok, true);
+    const refused = edit([], [], [{ id: 4, mealChoice: "une_boulette" }], [{ id: 4, mealChoice: "lasagne_danseur" }]);
     assert.equal(refused.ok, false);
     if (!refused.ok) assert.equal(refused.error, MEAL_EDIT_MESSAGE);
     assert.deepEqual(
-      editableDancerMeals("une_boulette").map((meal) => meal.value).sort(),
-      ["lasagne_danseur", "une_boulette"]
+      editableDancerMeals("lasagne_danseur").map((meal) => meal.value).sort(),
+      ["deux_boulettes", "lasagne_danseur", "salade_saison_danseur"]
     );
     assert.deepEqual(
-      editableDancerMeals("deux_boulettes").map((meal) => meal.value),
-      ["deux_boulettes"]
+      editableDancerMeals("une_boulette").map((meal) => meal.value),
+      ["une_boulette"]
     );
   });
 
-  it("laisse la formule VIP sans plat", () => {
-    const result = validateMealEdit({
-      isVip: true,
-      currentGuests: [guest(1, "vip_inclus", true)],
-      currentUpsells: [],
-      guests: [guest(1, "lasagne", true)],
-      upsells: [],
-    });
-    assert.equal(result.ok, false);
+  it("laisse choisir le plat VIP inclus, dessert compris", () => {
     assert.equal(
       validateMealEdit({
         isVip: true,
         currentGuests: [guest(1, "vip_inclus", true)],
-        currentUpsells: [{ id: 9, mealChoice: "une_boulette" }],
-        guests: [guest(1, "vip_inclus", true)],
-        upsells: [{ id: 9, mealChoice: "lasagne_danseur" }],
+        currentUpsells: [],
+        guests: [guest(1, "lasagne", true)],
+        upsells: [],
       }).ok,
       true
+    );
+    assert.equal(
+      validateMealEdit({
+        isVip: true,
+        currentGuests: [guest(1, "lasagne", true)],
+        currentUpsells: [],
+        guests: [guest(1, "2_boulettes_frites", true)],
+        upsells: [],
+      }).ok,
+      true
+    );
+    assert.equal(
+      validateMealEdit({
+        isVip: true,
+        currentGuests: [guest(1, "lasagne", true)],
+        currentUpsells: [],
+        guests: [guest(1, "lasagne", false)],
+        upsells: [],
+      }).ok,
+      false
+    );
+    assert.equal(
+      validateMealEdit({
+        isVip: true,
+        currentGuests: [guest(1, "vip_inclus", true)],
+        currentUpsells: [],
+        guests: [guest(1, "vip_inclus", true)],
+        upsells: [],
+      }).ok,
+      false
+    );
+    assert.deepEqual(
+      editableGuestMeals(guest(1, "vip_inclus", true), { isVip: true }).map((meal) => meal.value).sort(),
+      ["1_boulette_frites", "2_boulettes_frites", "lasagne", "salade_saison"]
     );
   });
 

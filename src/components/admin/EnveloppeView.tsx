@@ -1,4 +1,4 @@
-import { MEAL_OPTIONS, DANCER_MEAL_OPTIONS, DESSERT_LABEL } from "@/types";
+import { DANCER_MEAL_OPTIONS, DESSERT_LABEL, mealLabel } from "@/types";
 import { referentParts } from "@/lib/referent";
 
 interface Guest {
@@ -79,7 +79,6 @@ export function EnveloppeView({ envelopes }: Props) {
                 <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest mb-2">Tickets Repas</p>
                 <div className="space-y-1.5">
                   {env.guests.map((g, i) => {
-                    const meal = MEAL_OPTIONS.find((m) => m.value === g.mealChoice);
                     return (
                       <div key={i} className="flex items-center justify-between bg-[#141414] rounded-lg px-3 py-2">
                         <div className="flex items-center gap-2">
@@ -89,7 +88,7 @@ export function EnveloppeView({ envelopes }: Props) {
                           <span className="text-sm font-medium text-white">{g.firstName} {g.lastName}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-[#666]">{meal?.label || g.mealChoice}</span>
+                          <span className="text-xs text-[#666]">{mealLabel(g.mealChoice)}</span>
                           {g.hasDessert && (
                             <span className="text-[10px] bg-[#c9a227]/15 text-[#c9a227] px-1.5 py-0.5 rounded font-semibold">+ {DESSERT_LABEL}</span>
                           )}
@@ -120,10 +119,9 @@ export function EnveloppeView({ envelopes }: Props) {
                 <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest mb-2">Récap Tickets</p>
                 <div className="grid grid-cols-2 gap-1.5">
                   {Object.entries(mealTotals).map(([mc, count]) => {
-                    const meal = MEAL_OPTIONS.find((m) => m.value === mc);
                     return (
                       <div key={mc} className="flex items-center justify-between bg-[#0a0a14] border border-blue-500/15 rounded-lg px-3 py-1.5">
-                        <span className="text-xs text-blue-300/70 font-medium truncate">{meal?.label || mc}</span>
+                        <span className="text-xs text-blue-300/70 font-medium truncate">{mealLabel(mc)}</span>
                         <span className="text-sm font-bold text-blue-200 ml-1">×{count}</span>
                       </div>
                     );
@@ -140,7 +138,7 @@ export function EnveloppeView({ envelopes }: Props) {
               {/* Repas danseur */}
               {Object.keys(dancerTotals).length > 0 && (
                 <div>
-                  <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest mb-2">Repas Danseur</p>
+                  <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest mb-2">Repas élève</p>
                   <div className="space-y-1">
                     {Object.entries(dancerTotals).map(([mc, count]) => {
                       const opt = DANCER_MEAL_OPTIONS.find((o) => o.value === mc);
