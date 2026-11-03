@@ -48,7 +48,7 @@ Système complet de réservation de spectacles avec gestion avancée de la concu
   - 28€ : 1 boulette, frites, salade
   - 30€ : lasagne au poulet / salade de saison / 2 boulettes, frites, salade
   - Table VIP : le même choix de plat, inclus dans les 280€, dessert inclus
-- **Repas élève (sans place à table)** : 12€ pour 1 boulette ; 14€ pour lasagne, salade de saison ou 2 boulettes
+- **Repas élève (chaise à rajouter le jour J)** : 12€ pour 1 boulette ; 14€ pour lasagne, salade de saison ou 2 boulettes
 - **Contact** : Nom de l'élève référent, Email, Téléphone
 - **Récapitulatif dynamique** : Calcul automatique du total avec détail par ligne
 

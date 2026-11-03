@@ -139,7 +139,7 @@ export function renderConfirmationEmail(props: ConfirmationEmailProps): string {
             </table>
 
             ${dancerRows ? `
-            <h2 style="color: #1e293b; font-size: 18px; margin: 0 0 12px;">Repas élève (sans place à table)</h2>
+            <h2 style="color: #1e293b; font-size: 18px; margin: 0 0 12px;">Repas élève (chaise à rajouter le jour J)</h2>
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
               <thead>
                 <tr style="background: #f1f5f9;">

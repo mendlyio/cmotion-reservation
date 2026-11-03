@@ -38,7 +38,7 @@ export function UpsellSection({ upsells, onChange }: Props) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-bold text-[#e4c76b] uppercase tracking-widest">Repas élève (sans place à table)</p>
+        <p className="text-xs font-bold text-[#e4c76b] uppercase tracking-widest">Repas élève (chaise à rajouter le jour J)</p>
         <p className="text-[11px] text-[#555] shrink-0">Optionnel</p>
       </div>
 

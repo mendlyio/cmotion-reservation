@@ -125,7 +125,7 @@ export function OrderSummary({ data, tables = [], deadlineLabel }: Props) {
 
         {dancerMeals.length > 0 && (
           <div className="px-4 py-3 space-y-1.5">
-            <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest mb-2">Repas élève (sans place à table)</p>
+            <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest mb-2">Repas élève (chaise à rajouter le jour J)</p>
             {dancerMeals.map((u, i) => {
               const opt = DANCER_MEAL_OPTIONS.find((o) => o.value === u.mealChoice);
               if (!opt) return null;
