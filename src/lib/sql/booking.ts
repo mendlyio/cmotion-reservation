@@ -240,6 +240,10 @@ SELECT
   (SELECT count(*)::int FROM reserved) AS seats
 `;
 
+/**
+ * Les CTE voient l'état d'avant la requête : la réservation marquée failed
+ * apparaît encore pending dans le NOT EXISTS, d'où l'exclusion explicite.
+ */
 export const FAIL_PENDING_SQL = `
 WITH marked AS (
   UPDATE reservations
@@ -267,6 +271,7 @@ WHERE id IN (SELECT seat_id FROM dropped)
     INNER JOIN reservations r ON r.id = rs.reservation_id
     WHERE rs.seat_id = seats.id
       AND r.stripe_status IN ('paid', 'pending')
+      AND r.id NOT IN (SELECT id FROM marked)
   )
 `;
 
@@ -301,6 +306,7 @@ WHERE status = 'held'
     INNER JOIN reservations r ON r.id = rs.reservation_id
     WHERE rs.seat_id = seats.id
       AND r.stripe_status IN ('paid', 'pending')
+      AND r.id NOT IN (SELECT id FROM doomed)
   )
 `;
 
