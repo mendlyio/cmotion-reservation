@@ -70,6 +70,30 @@ describe("masquage Sentry", () => {
     assert.equal(JSON.stringify(scrubbed).includes("secret-session"), false);
   });
 
+  it("retire l'adresse IP et les en-têtes qui la portent", () => {
+    const event = {
+      type: undefined,
+      user: { ip_address: "203.0.113.8" },
+      request: {
+        headers: {
+          "x-forwarded-for": "203.0.113.8",
+          "x-real-ip": "203.0.113.8",
+          forwarded: 'for=203.0.113.8',
+          "user-agent": "test",
+        },
+      },
+    } as ErrorEvent;
+
+    const scrubbed = scrubSentryEvent(event);
+
+    assert.equal(scrubbed.user?.ip_address, "[Filtered]");
+    assert.equal(scrubbed.request?.headers?.["x-forwarded-for"], "[Filtered]");
+    assert.equal(scrubbed.request?.headers?.["x-real-ip"], "[Filtered]");
+    assert.equal(scrubbed.request?.headers?.forwarded, "[Filtered]");
+    assert.equal(scrubbed.request?.headers?.["user-agent"], "test");
+    assert.equal(JSON.stringify(scrubbed).includes("203.0.113.8"), false);
+  });
+
   it("retire session_id et public_token même hors d'une URL", () => {
     const event = {
       type: undefined,

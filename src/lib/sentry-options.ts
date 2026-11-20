@@ -17,12 +17,16 @@ export const tracesSampleRate = process.env.NODE_ENV === "development" ? 1.0 : 0
  * paramètres de requêtes SQL, ni variables locales, ni query string.
  * Les jetons de chemin sont retirés ensuite par le masquage.
  * L'en-tête Cookie est refusé en plus : `cmotion_admin` n'est pas
- * dans la liste de noms sensibles du SDK.
+ * dans la liste de noms sensibles du SDK. `userInfo` reste coupé
+ * pour ne pas exporter l'adresse IP des invités.
  */
 export const sentryDataCollection = {
+  userInfo: false,
   cookies: false,
   httpHeaders: {
-    request: { deny: ["cookie", "authorization"] },
+    request: {
+      deny: ["cookie", "authorization", "forwarded", "real-ip", "client-ip", "connecting-ip"],
+    },
     response: { deny: ["cookie", "authorization"] },
   },
   httpBodies: [],

@@ -31,7 +31,15 @@ function isSensitiveField(key: string): boolean {
     lower === "public_token" ||
     lower === "publictoken" ||
     lower.includes("cookie") ||
-    lower.includes("authorization")
+    lower.includes("authorization") ||
+    lower === "ip_address" ||
+    lower.endsWith(".ip_address") ||
+    lower === "client.address" ||
+    lower.endsWith(".client.address") ||
+    lower.includes("forwarded") ||
+    lower.includes("real-ip") ||
+    lower.includes("client-ip") ||
+    lower.includes("connecting-ip")
   );
 }
 
