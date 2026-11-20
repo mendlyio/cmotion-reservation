@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -6,7 +7,7 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self' https://api.stripe.com https://checkout.stripe.com",
+  "connect-src 'self' https://api.stripe.com https://checkout.stripe.com https://*.ingest.de.sentry.io",
   "frame-src https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
@@ -34,4 +35,15 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: "vjo",
+  project: "cmotion-reservation",
+  sentryUrl: "https://de.sentry.io",
+  silent: !process.env.CI,
+  errorHandler(error) {
+    console.warn(
+      "Sentry : l'envoi des artefacts de build a échoué, la compilation continue.",
+      error,
+    );
+  },
+});
