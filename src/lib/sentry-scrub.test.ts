@@ -74,23 +74,33 @@ describe("masquage Sentry", () => {
     const event = {
       type: undefined,
       request: {
-        query_string: [
+        query_string: "session_id=cs_test_secret&from=stripe",
+      },
+      extra: {
+        public_token: TOKEN,
+        publicToken: TOKEN,
+        pairs: [
           ["session_id", "cs_test_secret"],
           ["from", "stripe"],
         ],
+        note: "other_session_id=keep-me",
       },
-      extra: { public_token: TOKEN, publicToken: TOKEN },
     } as ErrorEvent;
 
     const scrubbed = scrubSentryEvent(event);
 
-    assert.deepEqual(scrubbed.request?.query_string, [
-      ["session_id", "[Filtered]"],
-      ["from", "stripe"],
-    ]);
+    assert.equal(
+      scrubbed.request?.query_string,
+      "session_id=%5BFiltered%5D&from=stripe",
+    );
     assert.deepEqual(scrubbed.extra, {
       public_token: "[Filtered]",
       publicToken: "[Filtered]",
+      pairs: [
+        ["session_id", "[Filtered]"],
+        ["from", "stripe"],
+      ],
+      note: "other_session_id=keep-me",
     });
   });
 

@@ -14,8 +14,8 @@ function scrubString(value: string): string {
       "%2F$1%2F%5Btoken%5D",
     )
     .replace(
-      /([?&])session_id=[^&#\s]*/gi,
-      (_match, prefix: string) => `${prefix}session_id=${encodeURIComponent(FILTERED)}`,
+      /\bsession_id=[^&#\s]*/gi,
+      `session_id=${encodeURIComponent(FILTERED)}`,
     )
     .replace(
       /session_id%3D.*?(?=%26|$)/gi,
