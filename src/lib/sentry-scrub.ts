@@ -3,8 +3,6 @@ import type { StreamedSpanJSON } from "@sentry/core";
 
 const FILTERED = "[Filtered]";
 
-const SECRET_KEY = /^(?:session_id|public_token|publictoken)$/i;
-
 function scrubString(value: string): string {
   return value
     .replace(
@@ -22,11 +20,19 @@ function scrubString(value: string): string {
     .replace(
       /session_id%3D.*?(?=%26|$)/gi,
       `session_id%3D${encodeURIComponent(FILTERED)}`,
-    );
+    )
+    .replace(/\b(cmotion_admin|cmotion_session)=[^;\s,]*/gi, `$1=${FILTERED}`);
 }
 
-function isSecretKey(key: string): boolean {
-  return SECRET_KEY.test(key);
+function isSensitiveField(key: string): boolean {
+  const lower = key.toLowerCase();
+  return (
+    lower === "session_id" ||
+    lower === "public_token" ||
+    lower === "publictoken" ||
+    lower.includes("cookie") ||
+    lower.includes("authorization")
+  );
 }
 
 function scrubInPlace(value: unknown, seen: WeakSet<object>): void {
@@ -36,7 +42,7 @@ function scrubInPlace(value: unknown, seen: WeakSet<object>): void {
     if (
       value.length === 2 &&
       typeof value[0] === "string" &&
-      isSecretKey(value[0]) &&
+      isSensitiveField(value[0]) &&
       typeof value[1] === "string"
     ) {
       value[1] = FILTERED;
@@ -57,8 +63,12 @@ function scrubInPlace(value: unknown, seen: WeakSet<object>): void {
   const record = value as Record<string, unknown>;
   for (const key of Object.keys(record)) {
     const entry = record[key];
+    if (isSensitiveField(key)) {
+      record[key] = FILTERED;
+      continue;
+    }
     if (typeof entry === "string") {
-      record[key] = isSecretKey(key) ? FILTERED : scrubString(entry);
+      record[key] = scrubString(entry);
       continue;
     }
     scrubInPlace(entry, seen);

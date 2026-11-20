@@ -43,6 +43,33 @@ describe("masquage Sentry", () => {
     assert.equal(JSON.stringify(scrubbed).includes("cs_live_secret"), false);
   });
 
+  it("retire le cookie admin même s'il voyage dans un en-tête", () => {
+    const event = {
+      type: undefined,
+      request: {
+        headers: {
+          cookie: "cmotion_admin=secret-admin; cmotion_session=secret-session; cmotion_db_ready=1",
+          "user-agent": "test",
+        },
+      },
+      extra: {
+        "http.request.header.cookie": ["cmotion_admin=secret-admin"],
+        authorization: "Bearer secret",
+        note: "vu cmotion_admin=secret-admin dans le journal",
+      },
+    } as ErrorEvent;
+
+    const scrubbed = scrubSentryEvent(event);
+
+    assert.equal(scrubbed.request?.headers?.cookie, "[Filtered]");
+    assert.equal(scrubbed.request?.headers?.["user-agent"], "test");
+    assert.equal(scrubbed.extra?.["http.request.header.cookie"], "[Filtered]");
+    assert.equal(scrubbed.extra?.authorization, "[Filtered]");
+    assert.equal(scrubbed.extra?.note, "vu cmotion_admin=[Filtered] dans le journal");
+    assert.equal(JSON.stringify(scrubbed).includes("secret-admin"), false);
+    assert.equal(JSON.stringify(scrubbed).includes("secret-session"), false);
+  });
+
   it("retire session_id et public_token même hors d'une URL", () => {
     const event = {
       type: undefined,
