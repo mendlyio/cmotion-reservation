@@ -78,7 +78,10 @@ describe("masquage Sentry", () => {
         headers: {
           "x-forwarded-for": "203.0.113.8",
           "x-real-ip": "203.0.113.8",
-          forwarded: 'for=203.0.113.8',
+          forwarded: "for=203.0.113.8",
+          "x-vercel-ip-city": "Spa",
+          "x-vercel-ip-country": "BE",
+          "x-vercel-ip-latitude": "50.49",
           "user-agent": "test",
         },
       },
@@ -90,8 +93,50 @@ describe("masquage Sentry", () => {
     assert.equal(scrubbed.request?.headers?.["x-forwarded-for"], "[Filtered]");
     assert.equal(scrubbed.request?.headers?.["x-real-ip"], "[Filtered]");
     assert.equal(scrubbed.request?.headers?.forwarded, "[Filtered]");
+    assert.equal(scrubbed.request?.headers?.["x-vercel-ip-city"], "[Filtered]");
+    assert.equal(scrubbed.request?.headers?.["x-vercel-ip-country"], "[Filtered]");
+    assert.equal(scrubbed.request?.headers?.["x-vercel-ip-latitude"], "[Filtered]");
     assert.equal(scrubbed.request?.headers?.["user-agent"], "test");
     assert.equal(JSON.stringify(scrubbed).includes("203.0.113.8"), false);
+    assert.equal(JSON.stringify(scrubbed).includes("Spa"), false);
+  });
+
+  it("retire le jeton encodé dans l'arbre de navigation", () => {
+    const tree = `[["token","${TOKEN}","d"]]`;
+    const encoded = encodeURIComponent(tree);
+    const event = {
+      type: undefined,
+      request: {
+        headers: {
+          "next-router-state-tree": encoded,
+          "user-agent": "test",
+        },
+      },
+      extra: {
+        parsed: ["token", TOKEN, "d"],
+        note: tree,
+        encoded,
+      },
+    } as ErrorEvent;
+
+    const scrubbed = scrubSentryEvent(event);
+    const serialized = JSON.stringify(scrubbed);
+
+    assert.equal(scrubbed.request?.headers?.["next-router-state-tree"], "[Filtered]");
+    assert.equal(scrubbed.request?.headers?.["user-agent"], "test");
+    assert.deepEqual(scrubbed.extra?.parsed, ["token", "[Filtered]", "d"]);
+    assert.equal(
+      scrubbed.extra?.encoded,
+      encoded.replace(TOKEN, encodeURIComponent("[Filtered]")),
+    );
+    assert.equal(serialized.includes(TOKEN), false);
+    assert.equal(
+      scrubSentryEvent({
+        type: undefined,
+        extra: { trace: "a".repeat(32) },
+      } as ErrorEvent).extra?.trace,
+      "a".repeat(32),
+    );
   });
 
   it("retire session_id et public_token même hors d'une URL", () => {

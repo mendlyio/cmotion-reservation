@@ -21,7 +21,13 @@ function scrubString(value: string): string {
       /session_id%3D.*?(?=%26|$)/gi,
       `session_id%3D${encodeURIComponent(FILTERED)}`,
     )
-    .replace(/\b(cmotion_admin|cmotion_session)=[^;\s,]*/gi, `$1=${FILTERED}`);
+    .replace(/\b(cmotion_admin|cmotion_session)=[^;\s,]*/gi, `$1=${FILTERED}`)
+    .replace(/("token"\s*,\s*")[a-f0-9]{32}/gi, `$1${FILTERED}`)
+    .replace(/("token"\s*:\s*")[a-f0-9]{32}/gi, `$1${FILTERED}`)
+    .replace(
+      /(%22token%22(?:%2C|%2c)(?:%20)*%22)[a-f0-9]{32}/gi,
+      `$1${encodeURIComponent(FILTERED)}`,
+    );
 }
 
 function isSensitiveField(key: string): boolean {
@@ -39,7 +45,10 @@ function isSensitiveField(key: string): boolean {
     lower.includes("forwarded") ||
     lower.includes("real-ip") ||
     lower.includes("client-ip") ||
-    lower.includes("connecting-ip")
+    lower.includes("connecting-ip") ||
+    lower.includes("-ip") ||
+    lower.includes("router-state-tree") ||
+    lower === "token"
   );
 }
 
@@ -47,6 +56,9 @@ function scrubInPlace(value: unknown, seen: WeakSet<object>): void {
   if (Array.isArray(value)) {
     if (seen.has(value)) return;
     seen.add(value);
+    const mentionsToken = value.some(
+      (entry) => typeof entry === "string" && entry.toLowerCase() === "token",
+    );
     if (
       value.length === 2 &&
       typeof value[0] === "string" &&
@@ -58,8 +70,10 @@ function scrubInPlace(value: unknown, seen: WeakSet<object>): void {
     }
     for (let index = 0; index < value.length; index += 1) {
       const entry = value[index];
-      if (typeof entry === "string") value[index] = scrubString(entry);
-      else scrubInPlace(entry, seen);
+      if (typeof entry === "string") {
+        value[index] =
+          mentionsToken && /^[a-f0-9]{32}$/i.test(entry) ? FILTERED : scrubString(entry);
+      } else scrubInPlace(entry, seen);
     }
     return;
   }
