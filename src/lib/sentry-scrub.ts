@@ -1,0 +1,113 @@
+import type { Breadcrumb, ErrorEvent } from "@sentry/core";
+import type { StreamedSpanJSON } from "@sentry/core";
+
+const FILTERED = "[Filtered]";
+
+function scrubString(value: string): string {
+  return value
+    .replace(
+      /\/(confirmation|modifier)\/[a-f0-9]{32}(?![a-f0-9])/gi,
+      "/$1/[token]",
+    )
+    .replace(
+      /%2F(confirmation|modifier)%2F[a-f0-9]{32}(?![a-f0-9])/gi,
+      "%2F$1%2F%5Btoken%5D",
+    )
+    .replace(
+      /\bsession_id=[^&#\s]*/gi,
+      `session_id=${encodeURIComponent(FILTERED)}`,
+    )
+    .replace(
+      /session_id%3D.*?(?=%26|$)/gi,
+      `session_id%3D${encodeURIComponent(FILTERED)}`,
+    )
+    .replace(/\b(cmotion_admin|cmotion_session)=[^;\s,]*/gi, `$1=${FILTERED}`)
+    .replace(/("token"\s*,\s*")[a-f0-9]{32}/gi, `$1${FILTERED}`)
+    .replace(/("token"\s*:\s*")[a-f0-9]{32}/gi, `$1${FILTERED}`)
+    .replace(
+      /(%22token%22(?:%2C|%2c)(?:%20)*%22)[a-f0-9]{32}/gi,
+      `$1${encodeURIComponent(FILTERED)}`,
+    );
+}
+
+function isSensitiveField(key: string): boolean {
+  const lower = key.toLowerCase();
+  return (
+    lower === "session_id" ||
+    lower === "public_token" ||
+    lower === "publictoken" ||
+    lower.includes("cookie") ||
+    lower.includes("authorization") ||
+    lower === "ip_address" ||
+    lower.endsWith(".ip_address") ||
+    lower === "client.address" ||
+    lower.endsWith(".client.address") ||
+    lower.includes("forwarded") ||
+    lower.includes("real-ip") ||
+    lower.includes("client-ip") ||
+    lower.includes("connecting-ip") ||
+    lower.includes("-ip") ||
+    lower.includes("router-state-tree") ||
+    lower === "token"
+  );
+}
+
+function scrubInPlace(value: unknown, seen: WeakSet<object>): void {
+  if (Array.isArray(value)) {
+    if (seen.has(value)) return;
+    seen.add(value);
+    const mentionsToken = value.some(
+      (entry) => typeof entry === "string" && entry.toLowerCase() === "token",
+    );
+    if (
+      value.length === 2 &&
+      typeof value[0] === "string" &&
+      isSensitiveField(value[0]) &&
+      typeof value[1] === "string"
+    ) {
+      value[1] = FILTERED;
+      return;
+    }
+    for (let index = 0; index < value.length; index += 1) {
+      const entry = value[index];
+      if (typeof entry === "string") {
+        value[index] =
+          mentionsToken && /^[a-f0-9]{32}$/i.test(entry) ? FILTERED : scrubString(entry);
+      } else scrubInPlace(entry, seen);
+    }
+    return;
+  }
+
+  if (!value || typeof value !== "object") return;
+  if (seen.has(value)) return;
+  seen.add(value);
+
+  const record = value as Record<string, unknown>;
+  for (const key of Object.keys(record)) {
+    const entry = record[key];
+    if (isSensitiveField(key)) {
+      record[key] = FILTERED;
+      continue;
+    }
+    if (typeof entry === "string") {
+      record[key] = scrubString(entry);
+      continue;
+    }
+    scrubInPlace(entry, seen);
+  }
+}
+
+export function scrubSentryEvent(event: ErrorEvent): ErrorEvent {
+  scrubInPlace(event, new WeakSet());
+  return event;
+}
+
+export function scrubSentrySpan(span: StreamedSpanJSON): StreamedSpanJSON {
+  scrubInPlace(span, new WeakSet());
+  return span;
+}
+
+export function scrubSentryBreadcrumb(breadcrumb: Breadcrumb): Breadcrumb {
+  scrubInPlace(breadcrumb, new WeakSet());
+  return breadcrumb;
+}
